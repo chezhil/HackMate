@@ -11,7 +11,9 @@ import "server-only";
  */
 
 export type Provider = "groq" | "gemini";
-export type Task = "extract" | "audio" | "chat" | "ideas" | "critique" | "post" | "summarize";
+export type Task =
+  | "extract" | "audio" | "vision" | "chat" | "ideas" | "critique" | "post" | "summarize"
+  | "pitch" | "roast" | "qa" | "review" | "writeup" | "retro";
 
 const ROUTES: Record<Task, Provider[]> = {
   extract: ["gemini", "groq"],
@@ -21,6 +23,14 @@ const ROUTES: Record<Task, Provider[]> = {
   critique: ["groq", "gemini"],
   post: ["groq", "gemini"],
   summarize: ["groq", "gemini"],
+  pitch: ["groq", "gemini"],
+  roast: ["groq", "gemini"],
+  qa: ["groq", "gemini"],
+  review: ["groq", "gemini"],
+  writeup: ["groq", "gemini"],
+  retro: ["groq", "gemini"],
+  // checking a screenshot needs image input; Groq's current models are text-only
+  vision: ["gemini"],
 };
 
 export interface AiMessage {
@@ -34,8 +44,8 @@ export interface AiRequest {
   messages: AiMessage[];
   json?: boolean;
   temperature?: number;
-  /** Attach audio to the last user message (Gemini only). */
-  audio?: { mime: string; base64: string };
+  /** Attach audio or an image to the last user message (Gemini only). */
+  media?: { mime: string; base64: string };
   /** Give up on Gemini after this long and fall through to the next provider (default 120 s). */
   geminiTimeoutMs?: number;
 }
@@ -168,7 +178,7 @@ async function callGemini(req: AiRequest, key: string): Promise<AiResult> {
 
   const contents = req.messages.map((m, i) => {
     const parts: Record<string, unknown>[] = [{ text: m.content }];
-    if (req.audio && i === req.messages.length - 1) parts.push({ inline_data: { mime_type: req.audio.mime, data: req.audio.base64 } });
+    if (req.media && i === req.messages.length - 1) parts.push({ inline_data: { mime_type: req.media.mime, data: req.media.base64 } });
     return { role: m.role === "assistant" ? "model" : "user", parts };
   });
   const res = await fetch(`${GEMINI_BASE}/models/${model}:generateContent`, {

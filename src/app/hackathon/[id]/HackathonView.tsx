@@ -12,8 +12,11 @@ import { SOURCE_LABELS, STATUSES } from "@/lib/types";
 import { AskTab } from "./AskTab";
 import { IdeasTab } from "./IdeasTab";
 import { OverviewTab } from "./OverviewTab";
+import { PitchTab } from "./PitchTab";
 import { StandupsTab } from "./StandupsTab";
+import { SubmitTab } from "./SubmitTab";
 import { TeamTab } from "./TeamTab";
+import { WrapUpTab } from "./WrapUpTab";
 
 export interface AiStatus {
   groq: { configured: boolean; model: string | null };
@@ -33,7 +36,10 @@ const TABS = [
   { key: "ask", label: "Ask AI" },
   { key: "ideas", label: "Ideas" },
   { key: "team", label: "Team" },
+  { key: "pitch", label: "Pitch" },
+  { key: "submit", label: "Submit" },
   { key: "standups", label: "Standups" },
+  { key: "wrapup", label: "Wrap-up" },
 ] as const;
 
 type Tab = (typeof TABS)[number]["key"];
@@ -137,7 +143,10 @@ export function HackathonView() {
       {tab === "ask" && <AskTab id={id} data={data} />}
       {tab === "ideas" && <IdeasTab id={id} />}
       {tab === "team" && <TeamTab id={id} data={data} />}
+      {tab === "pitch" && <PitchTab id={id} />}
+      {tab === "submit" && <SubmitTab id={id} />}
       {tab === "standups" && <StandupsTab id={id} />}
+      {tab === "wrapup" && <WrapUpTab id={id} />}
     </div>
   );
 }

@@ -31,6 +31,30 @@ Each stage has its own action: register link, project link on submit, result and
 - **Team**: add teammates (confirmed or invited) against the team-size limit, and write a "looking for
   teammates" post to share on X, LinkedIn, Reddit, WhatsApp, Discord or the platform's team finder.
 - **Standups**: record voice notes; each is transcribed and split into done / next / blockers.
+- **Pitch**: fill in your project once, then:
+  - a timed pitch script (1–7 min) written to the judging criteria
+  - a demo video storyboard (time, shot, voiceover, captions) that fits the video limit
+  - a **deck roaster**: paste your script or slide text for a score, quoted weak points with fixes,
+    what's missing, and a stronger opening
+  - **mock judge Q&A**: five questions from AI judges (the real judges when they're listed); each answer
+    is scored with what you missed and a model answer
+- **Submit**: a checklist built from the rules (e.g. the usage-card screenshot and a 2-minute video),
+  with links and uploads as proof. **Check submission** tests the deadline and team size, that links
+  open, that the GitHub repo is public with a README, the uploaded video's length, whether screenshots
+  show the right thing (Gemini), and runs an AI review against the rules. Also writes LinkedIn posts,
+  X threads and dev.to blogs about your project.
+- **Wrap-up**: record the result, prizes and certificates, and write retro notes (or draft them from
+  your standups, idea critiques and mock Q&A).
+
+**Profile**: after hackathons:
+- **Stats**: hackathons done, win rate, prize money (won / paid / owed), certificates, monthly
+  activity, results, themes, average idea and Q&A scores.
+- **Portfolio**: every finished hackathon with its project, links, result, prizes and certificate.
+  "Save as PDF" prints it.
+- **Certificate vault**: stored certificates, plus pending ones; any finished hackathon without a
+  certificate shows up automatically.
+- **Prize tracker**: won → claimed → paid out, expected payout dates, and overdue flags.
+- **Notes**: all your retros in one place.
 
 ## Running it
 

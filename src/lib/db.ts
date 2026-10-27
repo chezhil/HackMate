@@ -150,6 +150,93 @@ CREATE TABLE IF NOT EXISTS standups (
   error TEXT,
   created_at TEXT NOT NULL
 );
+
+-- What you're building for a hackathon (feeds the pitch, video script, checks and write-ups).
+CREATE TABLE IF NOT EXISTS projects (
+  hackathon_id TEXT PRIMARY KEY REFERENCES hackathons(id),
+  name TEXT NOT NULL DEFAULT '',
+  tagline TEXT NOT NULL DEFAULT '',
+  problem TEXT NOT NULL DEFAULT '',
+  solution TEXT NOT NULL DEFAULT '',
+  stack TEXT NOT NULL DEFAULT '',
+  repo_url TEXT NOT NULL DEFAULT '',
+  demo_url TEXT NOT NULL DEFAULT '',
+  video_url TEXT NOT NULL DEFAULT '',
+  updated_at TEXT NOT NULL
+);
+
+-- Generated pitches, video scripts, deck roasts and social write-ups (history per hackathon).
+CREATE TABLE IF NOT EXISTS ai_outputs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
+  kind TEXT NOT NULL,
+  params TEXT NOT NULL DEFAULT '{}',
+  content TEXT NOT NULL,
+  provider TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS qa_turns (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
+  session INTEGER NOT NULL,
+  judge TEXT NOT NULL,
+  question TEXT NOT NULL,
+  answer TEXT,
+  grade TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS checklist_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
+  label TEXT NOT NULL,
+  detail TEXT,
+  kind TEXT NOT NULL DEFAULT 'check',
+  required INTEGER NOT NULL DEFAULT 1,
+  done INTEGER NOT NULL DEFAULT 0,
+  value TEXT,
+  file TEXT,
+  mime TEXT,
+  meta TEXT,
+  origin TEXT NOT NULL DEFAULT 'custom',
+  sort INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS certificates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
+  title TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  url TEXT,
+  file TEXT,
+  mime TEXT,
+  received_at TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS prizes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
+  title TEXT NOT NULL,
+  amount REAL,
+  currency TEXT NOT NULL DEFAULT 'INR',
+  kind TEXT NOT NULL DEFAULT 'cash',
+  status TEXT NOT NULL DEFAULT 'won',
+  expected_by TEXT,
+  paid_at TEXT,
+  notes TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS retros (
+  hackathon_id TEXT PRIMARY KEY REFERENCES hackathons(id),
+  rating INTEGER,
+  went_well TEXT NOT NULL DEFAULT '',
+  improve TEXT NOT NULL DEFAULT '',
+  lessons TEXT NOT NULL DEFAULT '',
+  updated_at TEXT NOT NULL
+);
 `;
 
 // Columns added after the first release; CREATE TABLE IF NOT EXISTS won't add them to an existing DB.

@@ -93,7 +93,7 @@ export async function transcribeStandup(id: number): Promise<Standup> {
         temperature: 0.1,
         system: `Transcribe this hackathon team stand-up voice note, then summarise it. Reply with JSON { "transcript": string, ...${SUMMARY_SHAPE} }.`,
         messages: [{ role: "user", content: "Here is the voice note." }],
-        audio: { mime: r.mime, base64: audio.toString("base64") },
+        media: { mime: r.mime, base64: audio.toString("base64") },
       });
       const { transcript, ...summary } = res.data;
       save(transcript, summary);

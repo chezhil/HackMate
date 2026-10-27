@@ -208,3 +208,172 @@ export interface Standup {
   error: string | null;
   createdAt: string;
 }
+
+// ---------- pitch & submission ----------
+
+export interface Project {
+  hackathonId: string;
+  name: string;
+  tagline: string;
+  problem: string;
+  solution: string;
+  stack: string;
+  repoUrl: string;
+  demoUrl: string;
+  videoUrl: string;
+  updatedAt: string | null;
+}
+
+export interface PitchScript {
+  title: string;
+  hook: string;
+  sections: { name: string; seconds: number; text: string }[];
+  tips: string[];
+}
+
+export interface VideoScript {
+  title: string;
+  totalSeconds: number;
+  scenes: { start: number; end: number; shot: string; voiceover: string; onScreen: string }[];
+  tips: string[];
+}
+
+export interface DeckRoast {
+  score: number;
+  verdict: string;
+  strengths: string[];
+  weakPoints: { issue: string; quote: string | null; fix: string }[];
+  missing: string[];
+  rewrittenOpening: string;
+  timing: string | null;
+}
+
+export interface Writeup {
+  platform: "linkedin" | "x" | "devto";
+  text: string;
+}
+
+export type AiOutputKind = "pitch" | "video" | "roast" | "writeup";
+
+export interface AiOutput<T = unknown> {
+  id: number;
+  kind: AiOutputKind;
+  params: Record<string, unknown>;
+  content: T;
+  provider: string | null;
+  createdAt: string;
+}
+
+export interface QaGrade {
+  score: number;
+  feedback: string;
+  missed: string[];
+  modelAnswer: string;
+}
+
+export interface QaTurn {
+  id: number;
+  session: number;
+  judge: string;
+  question: string;
+  answer: string | null;
+  grade: QaGrade | null;
+  createdAt: string;
+}
+
+export type ChecklistKind = "check" | "link" | "file";
+
+export interface ChecklistItem {
+  id: number;
+  label: string;
+  detail: string | null;
+  kind: ChecklistKind;
+  required: boolean;
+  done: boolean;
+  value: string | null;
+  file: string | null;
+  mime: string | null;
+  meta: { durationSec?: number; accept?: "image" | "video" | "pdf" | "any"; limitSec?: number } | null;
+  origin: "rules" | "default" | "custom";
+}
+
+export interface SubmissionCheck {
+  itemId: number | null;
+  label: string;
+  status: "pass" | "warn" | "fail" | "info";
+  detail: string;
+}
+
+// ---------- after the hackathon ----------
+
+export interface Certificate {
+  id: number;
+  hackathonId: string;
+  hackathonTitle: string;
+  title: string;
+  status: "pending" | "received";
+  url: string | null;
+  file: string | null;
+  mime: string | null;
+  receivedAt: string | null;
+}
+
+export type PrizeStatus = "won" | "claimed" | "paid";
+
+export const PRIZE_STATUS_LABELS: Record<PrizeStatus, string> = {
+  won: "Won, not claimed",
+  claimed: "Claimed, awaiting payout",
+  paid: "Paid out",
+};
+
+export interface Prize {
+  id: number;
+  hackathonId: string;
+  hackathonTitle: string;
+  title: string;
+  amount: number | null;
+  currency: string;
+  kind: "cash" | "swag" | "credits" | "other";
+  status: PrizeStatus;
+  expectedBy: string | null;
+  paidAt: string | null;
+  notes: string | null;
+}
+
+export interface Retro {
+  hackathonId: string;
+  rating: number | null;
+  wentWell: string;
+  improve: string;
+  lessons: string;
+  updatedAt: string | null;
+}
+
+export interface Profile {
+  name: string;
+  headline: string;
+  bio: string;
+  location: string;
+  github: string;
+  linkedin: string;
+  website: string;
+}
+
+export interface Stats {
+  tracked: number;
+  done: number;
+  inProgress: number;
+  withResults: number;
+  wins: number;
+  podiums: number;
+  winRate: number | null;
+  prizeUsd: { won: number; paid: number; pending: number };
+  prizeCount: number;
+  certificates: { received: number; pending: number };
+  byMonth: { month: string; count: number; wins: number }[];
+  byMode: Record<string, number>;
+  topThemes: { theme: string; count: number }[];
+  avgIdeaScore: number | null;
+  avgQaScore: number | null;
+  results: Record<string, number>;
+}
