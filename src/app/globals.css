@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f7f7f4;
+  --surface: #ffffff;
+  --surface-2: #f0efea;
+  --border: #e3e1d9;
+  --text: #1c1c19;
+  --muted: #6b6a62;
+  --accent: #4f46e5;
+  --accent-soft: #eceafe;
+  --accent-text: #ffffff;
+  --danger: #dc2626;
+  --danger-soft: #fdecec;
+  --warn: #b45309;
+  --warn-soft: #fdf3e2;
+  --ok: #15803d;
+  --ok-soft: #e7f6ec;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111110;
+    --surface: #1a1a18;
+    --surface-2: #242421;
+    --border: #33322e;
+    --text: #ecebe6;
+    --muted: #9c9a90;
+    --accent: #8b85ff;
+    --accent-soft: #26244a;
+    --accent-text: #0f0e1f;
+    --danger: #f87171;
+    --danger-soft: #3a1c1c;
+    --warn: #fbbf24;
+    --warn-soft: #3a2d14;
+    --ok: #4ade80;
+    --ok-soft: #16301f;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Component classes. Utilities passed alongside them (e.g. "btn btn-sm") still win. */
+@utility btn {
+  @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-medium text-text transition hover:bg-surface-2 disabled:opacity-50;
+}
+@utility btn-primary {
+  @apply border-transparent bg-accent text-accent-text hover:bg-accent hover:opacity-90;
+}
+@utility btn-sm {
+  @apply px-2 py-1 text-xs;
+}
+@utility input {
+  @apply w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-text outline-none placeholder:text-muted focus:border-accent;
+}
+@utility card {
+  @apply rounded-xl border border-border bg-surface;
+}
+@utility chip {
+  @apply inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted;
+}
+@utility label {
+  @apply mb-1 block text-xs font-medium uppercase tracking-wide text-muted;
+}
+
+.leaflet-container {
+  background: var(--surface-2);
+  font-family: inherit;
+}

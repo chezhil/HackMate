@@ -1,3 +1,60 @@
 # HackMate
 
 HackMate keeps track of everything you need for a hackathon.
+
+## What's here so far
+
+**Discover**: pulls upcoming hackathons from **Unstop**, **Devfolio**, **MLH** and **WeMakeDevs** into one list.
+Filter by city, online / in person / hybrid, prize pool, free entry, theme, source and date. In-person events show on a map.
+
+**Tracker**: pin a hackathon, then move it through *Pinned → Registered → Building → Submitted → Results*.
+Each stage has its own action: register link, project link on submit, result and notes at the end.
+
+**Deadlines & calendar**:
+- Registration close, start and submission dates come from the feed automatically. You can edit them or add your own.
+- In-app month calendar with every tracked event and deadline (optionally every discovered hackathon too).
+- Clash detection flags hackathons on the same days, deadlines that land on the same day, and deadlines due
+  while you're at another event. Discover also warns before you pin something that clashes.
+- Calendar sync via a private iCal feed: one-click subscribe for Google, Apple and Outlook, or a one-time `.ics` download.
+- Email reminders before each deadline (1 week / 3 days / 1 day / 3 hours / 1 hour — your pick), batched into one email.
+
+## Running it
+
+Needs Node 22.5+ (uses the built-in `node:sqlite`).
+
+```bash
+npm install
+npm run dev
+```
+
+Open http://localhost:3000. The first load pulls all four feeds (a few seconds). After that they refresh every 6 hours,
+or on demand with **Refresh feeds**. Map coordinates are filled in from OpenStreetMap in the background.
+
+Data lives in `data/hackmate.db` (SQLite, git-ignored).
+
+### Email reminders
+
+Copy `.env.example` to `.env.local` and fill in SMTP details (a Gmail app password works), then restart.
+Without SMTP, reminders are written to the **Outbox** on the Settings page instead of being sent.
+The server checks for due reminders every 5 minutes while it's running.
+
+### Calendar sync
+
+Google and Outlook fetch the feed from their servers, so they need HackMate at a public URL. Set
+`NEXT_PUBLIC_BASE_URL` once it's deployed. Locally, Apple Calendar subscriptions and the `.ics` download both work.
+
+## How the feeds are read
+
+| Source | How |
+| --- | --- |
+| Unstop | public search API (`/api/public/opportunity/search-result`) |
+| Devfolio | public search API (`api.devfolio.co/api/search/hackathons`) |
+| MLH | event JSON embedded in the season events page |
+| WeMakeDevs | hackathon cards embedded in the `/hackathons` page |
+
+None of these are official, documented APIs, so a site redesign can break a source. A failing source is
+reported on the Discover page, and the others keep working. Adapters live in `src/lib/sources/`.
+
+## Stack
+
+Next.js 16 (App Router) · React 19 · Tailwind CSS 4 · SQLite (`node:sqlite`) · Leaflet + OpenStreetMap · Nodemailer

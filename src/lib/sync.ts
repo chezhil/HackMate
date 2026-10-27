@@ -1,0 +1,63 @@
+import "server-only";
+import { getSetting, setSetting } from "./db";
+import { geocodePending } from "./geocode";
+import { syncAllAutoDeadlines, upsertHackathons } from "./repo";
+import { fetchDevfolio } from "./sources/devfolio";
+import { fetchMlh } from "./sources/mlh";
+import { fetchUnstop } from "./sources/unstop";
+import { fetchWeMakeDevs } from "./sources/wemakedevs";
+import type { Hackathon, Source } from "./types";
+
+const FETCHERS: Record<Source, () => Promise<Hackathon[]>> = {
+  unstop: fetchUnstop,
+  devfolio: fetchDevfolio,
+  mlh: fetchMlh,
+  wemakedevs: fetchWeMakeDevs,
+};
+
+export interface SyncReport {
+  at: string;
+  sources: Record<Source, { ok: boolean; count: number; error?: string }>;
+}
+
+export const STALE_AFTER_MS = 6 * 3600_000;
+
+let inFlight: Promise<SyncReport> | null = null;
+
+export function lastSync(): SyncReport | null {
+  const raw = getSetting("lastSync");
+  return raw ? (JSON.parse(raw) as SyncReport) : null;
+}
+
+export function isStale() {
+  const last = lastSync();
+  return !last || Date.now() - new Date(last.at).getTime() > STALE_AFTER_MS;
+}
+
+/** Pull every feed, store the results, refresh tracked deadlines, then geocode in the background. */
+export function syncAll(): Promise<SyncReport> {
+  if (inFlight) return inFlight;
+  inFlight = (async () => {
+    const at = new Date().toISOString();
+    const entries = await Promise.all(
+      (Object.keys(FETCHERS) as Source[]).map(async (source) => {
+        try {
+          const list = await FETCHERS[source]();
+          upsertHackathons(list, at);
+          return [source, { ok: true, count: list.length }] as const;
+        } catch (e) {
+          console.error(`[sync] ${source} failed:`, e);
+          return [source, { ok: false, count: 0, error: (e as Error).message }] as const;
+        }
+      }),
+    );
+    syncAllAutoDeadlines();
+    const report: SyncReport = { at, sources: Object.fromEntries(entries) as SyncReport["sources"] };
+    setSetting("lastSync", JSON.stringify(report));
+    void geocodePending().catch((e) => console.error("[geocode]", e));
+    return report;
+  })().finally(() => {
+    inFlight = null;
+  });
+  return inFlight;
+}
