@@ -5,24 +5,27 @@ import { useEffect, useState } from "react";
 import { CopyButton } from "@/components/CopyButton";
 import { ProjectCard } from "@/components/ProjectCard";
 import { Banner, ScoreBadge } from "@/components/ui/Feedback";
+import { Segmented } from "@/components/ui/Tabs";
 import { call, hid } from "@/lib/client";
 import { relative } from "@/lib/format";
 import type { AiOutput, DeckRoast, PitchScript, QaTurn, VideoScript } from "@/lib/types";
 
-type Section = "pitch" | "video" | "roast" | "qa";
+export type PitchSection = "pitch" | "video" | "roast" | "qa";
 
-const SECTIONS: { key: Section; label: string }[] = [
+export const PITCH_SECTIONS: { key: PitchSection; label: string }[] = [
   { key: "pitch", label: "Pitch script" },
   { key: "video", label: "Demo video script" },
   { key: "roast", label: "Deck roaster" },
   { key: "qa", label: "Mock judge Q&A" },
 ];
 
+export const isPitchSection = (v: string | null): v is PitchSection => PITCH_SECTIONS.some((s) => s.key === v);
+
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 
 
-export function PitchTab({ id }: { id: string }) {
-  const [section, setSection] = useState<Section>("pitch");
+/** The section is owned by the page so it can live in the URL (?tab=pitch&section=qa) and be linked to. */
+export function PitchTab({ id, section, onSection }: { id: string; section: PitchSection; onSection: (s: PitchSection) => void }) {
   const [outputs, setOutputs] = useState<AiOutput[]>([]);
   const [videoLimit, setVideoLimit] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
@@ -53,18 +56,11 @@ export function PitchTab({ id }: { id: string }) {
 
   return (
     <div className="space-y-4">
-      <ProjectCard id={id} />
-      <div className="flex flex-wrap gap-1 rounded-lg border border-border p-0.5 text-sm">
-        {SECTIONS.map((s) => (
-          <button
-            key={s.key}
-            onClick={() => setSection(s.key)}
-            className={`flex-1 rounded-md px-3 py-1.5 ${section === s.key ? "bg-surface-2 font-medium" : "text-muted hover:text-text"}`}
-          >
-            {s.label}
-          </button>
-        ))}
+      <div className="overflow-x-auto pb-1">
+        <Segmented options={PITCH_SECTIONS} value={section} onChange={onSection} label="Pitch tools" />
       </div>
+      {/* The pitch script is written from the project, so its form comes first there; elsewhere the tool you came for does. */}
+      {section === "pitch" && <ProjectCard id={id} />}
       {error && <Banner tone="danger">{error}</Banner>}
 
       {section === "pitch" && <PitchSection items={latest<PitchScript>("pitch")} busy={busy} onGenerate={generate} onDelete={remove} />}
@@ -74,6 +70,7 @@ export function PitchTab({ id }: { id: string }) {
       )}
       {section === "roast" && <RoastSection items={latest<DeckRoast>("roast")} busy={busy} onGenerate={generate} onDelete={remove} />}
       {section === "qa" && <QaSection id={id} />}
+      {section !== "pitch" && <ProjectCard id={id} />}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, GripVertical, Pin, PinOff, TriangleAlert, Trophy } from "lucide-react";
+import { ArrowRight, Check, GripVertical, Pin, PinOff, TriangleAlert, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ClashList } from "@/components/ClashList";
@@ -13,6 +13,7 @@ import { Badge, EmptyState, Kbd } from "@/components/ui/Feedback";
 import { useToast } from "@/components/ui/Toast";
 import type { Tone } from "@/components/ui/tone";
 import { SEVERITY_LABEL, SEVERITY_TONE } from "@/components/ClashList";
+import { toolByKey, toolHref } from "@/components/hackathonTools";
 import { worstSeverity, type Clash } from "@/lib/clashes";
 import { fmtDate, fmtRange, place } from "@/lib/format";
 import type { ResultKind, TrackedWithHackathon, TrackStatus } from "@/lib/types";
@@ -37,6 +38,14 @@ function clashesFor(id: string, clashes: Clash[]) {
 }
 
 const ORDER = STATUSES.map((s) => s.key);
+
+/** The tools you reach for most while a hackathon is on, with shorter labels for the narrow card. */
+const SHORTCUTS = [
+  { ...toolByKey("ask"), short: "Ask AI" },
+  { ...toolByKey("ideas"), short: "Ideas" },
+  { ...toolByKey("pitch"), short: "Pitch" },
+  { ...toolByKey("qa"), short: "Mock Q&A" },
+];
 const labelOf = (s: TrackStatus) => STATUSES.find((x) => x.key === s)!.label;
 
 interface Drag {
@@ -315,6 +324,18 @@ function TrackerCard({
       )}
 
       <StageActions t={t} move={move} />
+
+      {/* Straight to the AI tools for this hackathon. */}
+      <nav aria-label={`Tools for ${h.title}`} className="flex flex-wrap items-center gap-1.5 border-t border-border pt-2">
+        <Link href={`/hackathon/${hid(h.id)}`} className="btn btn-sm btn-primary">
+          Open <ArrowRight aria-hidden className="size-3.5" />
+        </Link>
+        {SHORTCUTS.map((tool) => (
+          <Link key={tool.key} href={toolHref(h.id, tool)} className="chip hover:bg-warn-soft" title={tool.blurb}>
+            <tool.Icon aria-hidden className="size-3" /> {tool.short}
+          </Link>
+        ))}
+      </nav>
 
       <div className="flex items-center justify-between gap-2 pt-1">
         <select

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ExternalLink, Globe, MapPin, Pin, TriangleAlert, Trophy } from "lucide-react";
+import { ArrowRight, Check, ExternalLink, Globe, MapPin, Pin, TriangleAlert, Trophy } from "lucide-react";
 import Link from "next/link";
 import { hid } from "@/lib/client";
 import { fmtRange, place } from "@/lib/format";
@@ -88,11 +88,20 @@ export function HackathonCard({
             >
               {tracked ? <><Check aria-hidden className="size-3.5" /> Tracking</> : <><Pin aria-hidden className="size-3.5" /> Pin</>}
             </button>
+            <Link
+              href={`/hackathon/${hid(h.id)}`}
+              className="btn btn-sm btn-primary"
+              title="Rules, Ask AI, ideas, pitch and Q&A tools"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Open <ArrowRight aria-hidden className="size-3.5" />
+              <span className="sr-only"> {h.title} in HackMate</span>
+            </Link>
             <a
               href={h.url}
               target="_blank"
               rel="noreferrer"
-              className="btn btn-sm btn-primary"
+              className="btn btn-sm"
               title={`Open ${h.title} on ${SOURCE_LABELS[h.source]}`}
               onClick={(e) => e.stopPropagation()}
             >
