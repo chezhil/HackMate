@@ -127,7 +127,7 @@ Citation chip + Sources                                   app/hackathon/[id]/Ask
 | --- | --- | --- | --- |
 | Nav | active link (surface-2), count pill (accent tracked, danger clashes), error strip | `bg-bg/90` blur, `--z-sticky` | all |
 | HackathonCard | default, selected (accent ring), tracked, clash warning, reg countdown | card, Badge for mode, Countdown | S01 |
-| MapView | pin offline (accent), hybrid (warn), tracked (ok), selected (bigger); legend | tokens resolved with `cssVar()` because Leaflet writes SVG attributes | S01 |
+| MapView | sticker pins (`.hm-pin`): in person `--pin-offline`, hybrid `--pin-hybrid`, tracking `--pin-tracked`; hover (scale 1.25), selected (scale 1.5 + ring); outlined popup, zoom, attribution, legend | OSM tiles recoloured by `--map-filter` (cream paper / charcoal); view clamped to the world (`minZoom` 2, `maxBounds`); pins not keyboard-focusable, cards are the keyboard path | S01 |
 | Calendar month grid | today, selected (accent-soft), clash day (danger-soft), event bars | `EVENT_COLORS` (8 AA-safe colours, `text-on-event`), `text-2xs` | S13 |
 | TrackerCard | per-stage action, next deadline, clash badge, result badge | Badge, Countdown, CheckSummary (planned) | S12 |
 | DeadlineEditor | auto (from feed), custom, done | input, btn-sm | S03, S13 |

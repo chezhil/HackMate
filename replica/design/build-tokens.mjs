@@ -21,6 +21,7 @@ const shared = {
   "hard-shadow": t.shadow.hard,
   "hard-sm-shadow": t.shadow["hard-sm"],
   line: `${t["border-width"].line}px`,
+  "map-filter": t.map["tile-filter"],
   scrim: t.overlay.scrim,
   "dur-fast": t.motion.fast,
   "dur-base": t.motion.base,
@@ -28,7 +29,7 @@ const shared = {
   "side-panel": `${t.layout["side-panel"] / 16}rem`,
   ...Object.fromEntries(Object.entries(t.z).filter(([k]) => !k.startsWith("_")).map(([k, v]) => [`z-${k}`, v])),
 };
-const darkOnly = { scrim: t.overlay["scrim-dark"] };
+const darkOnly = { scrim: t.overlay["scrim-dark"], "map-filter": t.map["tile-filter-dark"] };
 
 const theme = [
   ...Object.keys(light).map((k) => `  --color-${k}: var(--${k});`),

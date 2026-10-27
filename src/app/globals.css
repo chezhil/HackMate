@@ -85,23 +85,118 @@ h1, h2, h3 {
   @apply inline-flex h-5 min-w-5 items-center justify-center rounded-md border-(length:--line) border-border bg-surface px-1 font-mono text-2xs font-semibold text-text shadow-hard-sm;
 }
 
-.leaflet-container {
+/* ---------- Map (Leaflet) ----------
+   OpenStreetMap tiles are recoloured per theme with --map-filter; everything drawn on top uses the ink style. */
+.hm-map .leaflet-container {
   background: var(--surface-2);
   font-family: inherit;
 }
-.leaflet-popup-content-wrapper {
+.hm-map .leaflet-tile-pane {
+  filter: var(--map-filter);
+}
+
+/* Pins: round stickers with an ink outline and a hard shadow. */
+.hm-pin-wrap {
+  background: none;
+  border: 0;
+}
+.hm-pin {
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin: 2px;
+  border-radius: 999px;
+  border: var(--line) solid var(--border);
+  box-shadow: 2px 2px 0 0 var(--border);
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+.hm-pin--offline { background: var(--pin-offline); }
+.hm-pin--hybrid { background: var(--pin-hybrid); }
+.hm-pin--tracked { background: var(--pin-tracked); }
+.hm-pin--sm {
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  box-shadow: 1px 1px 0 0 var(--border);
+}
+.hm-pin-wrap:hover .hm-pin,
+.hm-pin.is-hover {
+  transform: translate(-1px, -1px) scale(1.25);
+  box-shadow: 3px 3px 0 0 var(--border);
+}
+.hm-pin.is-selected {
+  transform: translate(-1px, -1px) scale(1.5);
+  box-shadow: 3px 3px 0 0 var(--border);
+  outline: 3px solid var(--surface);
+  outline-offset: 1px;
+}
+
+/* Popups: an outlined card with a hard shadow and the tip drawn in ink. */
+.hm-map .leaflet-popup-content-wrapper {
   background: var(--surface);
   color: var(--text);
   border: var(--line) solid var(--border);
   border-radius: var(--radius-xl);
   box-shadow: var(--hard-shadow);
 }
-.leaflet-popup-tip {
+.hm-map .leaflet-popup-content {
+  margin: 12px 14px;
+}
+.hm-map .leaflet-popup-tip {
   background: var(--surface);
+  border: var(--line) solid var(--border);
   box-shadow: none;
 }
-.leaflet-bar a {
+.hm-map .leaflet-popup-close-button {
+  color: var(--text);
+}
+.hm-popup {
+  font-size: 13px;
+  line-height: 1.45;
+}
+.hm-popup-title {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+.hm-popup-meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+.hm-popup-links {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  font-weight: 600;
+}
+/* Scoped under .hm-map to outrank Leaflet's own `.leaflet-container a` colour. */
+.hm-map .hm-popup-links a {
+  color: var(--accent);
+}
+
+/* Zoom buttons and attribution in the same outlined style. */
+.hm-map .leaflet-bar {
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--hard-sm-shadow);
+  overflow: hidden;
+}
+.hm-map .leaflet-bar a {
   background: var(--surface);
   color: var(--text);
   border-color: var(--border);
+  font-weight: 700;
+}
+.hm-map .leaflet-bar a:hover {
+  background: var(--warn-soft);
+}
+.hm-map .leaflet-control-attribution {
+  background: var(--surface);
+  color: var(--muted);
+  border-top: var(--line) solid var(--border);
+  border-left: var(--line) solid var(--border);
+  border-top-left-radius: var(--radius-lg);
+}
+.hm-map .leaflet-control-attribution a {
+  color: var(--accent);
 }

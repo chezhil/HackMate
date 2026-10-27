@@ -30,10 +30,14 @@
   --event-6: #be185d;
   --event-7: #6d28d9;
   --event-8: #0f766e;
+  --pin-offline: #3b3bf5;
+  --pin-hybrid: #ffd23f;
+  --pin-tracked: #2bd46d;
   --pop-shadow: 6px 6px 0 0 var(--border);
   --hard-shadow: 4px 4px 0 0 var(--border);
   --hard-sm-shadow: 2px 2px 0 0 var(--border);
   --line: 2px;
+  --map-filter: grayscale(1) sepia(0.3) brightness(1.06) contrast(0.92);
   --scrim: rgba(17,17,17,.55);
   --dur-fast: 120ms;
   --dur-base: 200ms;
@@ -77,7 +81,11 @@
     --event-6: #be185d;
     --event-7: #6d28d9;
     --event-8: #0f766e;
+    --pin-offline: #9b9bff;
+    --pin-hybrid: #ffd23f;
+    --pin-tracked: #5fef93;
     --scrim: rgba(0,0,0,.7);
+    --map-filter: invert(1) hue-rotate(180deg) grayscale(0.9) brightness(0.78) contrast(0.95);
   }
 }
 
@@ -111,7 +119,11 @@
   --event-6: #be185d;
   --event-7: #6d28d9;
   --event-8: #0f766e;
+  --pin-offline: #9b9bff;
+  --pin-hybrid: #ffd23f;
+  --pin-tracked: #5fef93;
   --scrim: rgba(0,0,0,.7);
+  --map-filter: invert(1) hue-rotate(180deg) grayscale(0.9) brightness(0.78) contrast(0.95);
 }
 
 @theme inline {
@@ -143,6 +155,9 @@
   --color-event-6: var(--event-6);
   --color-event-7: var(--event-7);
   --color-event-8: var(--event-8);
+  --color-pin-offline: var(--pin-offline);
+  --color-pin-hybrid: var(--pin-hybrid);
+  --color-pin-tracked: var(--pin-tracked);
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 0.875rem;
   --shadow-pop: var(--pop-shadow);
