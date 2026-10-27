@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Pin, TriangleAlert, Trophy } from "lucide-react";
+import { Check, ExternalLink, Globe, MapPin, Pin, TriangleAlert, Trophy } from "lucide-react";
 import Link from "next/link";
 import { hid } from "@/lib/client";
 import { fmtRange, place } from "@/lib/format";
@@ -11,11 +11,22 @@ import type { Tone } from "./ui/tone";
 import type { Hackathon } from "@/lib/types";
 import { SOURCE_LABELS } from "@/lib/types";
 
-const MODE_TONE: Record<Hackathon["mode"], Tone> = {
-  online: "accent",
-  offline: "neutral",
-  hybrid: "warn",
+/** How you take part. Hybrid events are in person, with joining online as an option. */
+const ATTEND: Record<Hackathon["mode"], { label: string; tone: Tone; Icon: typeof Globe }> = {
+  online: { label: "Online", tone: "accent", Icon: Globe },
+  offline: { label: "In person", tone: "warn", Icon: MapPin },
+  hybrid: { label: "In person · online optional", tone: "ok", Icon: MapPin },
 };
+
+export function AttendBadge({ mode }: { mode: Hackathon["mode"] }) {
+  const { label, tone, Icon } = ATTEND[mode];
+  return (
+    <Badge tone={tone}>
+      <Icon aria-hidden className="size-3" />
+      {label}
+    </Badge>
+  );
+}
 
 export function HackathonCard({
   h,
@@ -64,31 +75,34 @@ export function HackathonCard({
             <Link href={`/hackathon/${hid(h.id)}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
               {h.title}
             </Link>
+          </h3>
+          <div className="flex shrink-0 flex-col items-stretch gap-1.5">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (tracked) onUntrack();
+                else onTrack();
+              }}
+              className={`btn btn-sm ${tracked ? "bg-ok-soft text-ok" : ""}`}
+              title={tracked ? "Remove from tracker" : "Pin to tracker"}
+            >
+              {tracked ? <><Check aria-hidden className="size-3.5" /> Tracking</> : <><Pin aria-hidden className="size-3.5" /> Pin</>}
+            </button>
             <a
               href={h.url}
               target="_blank"
               rel="noreferrer"
-              className="ml-1.5 text-xs text-muted hover:text-accent"
-              title="Open on the hackathon's site"
+              className="btn btn-sm btn-primary"
+              title={`Open ${h.title} on ${SOURCE_LABELS[h.source]}`}
               onClick={(e) => e.stopPropagation()}
             >
-              ↗<span className="sr-only">Open on the hackathon&apos;s site</span>
+              Website <ExternalLink aria-hidden className="size-3.5" />
+              <span className="sr-only"> (opens in a new tab)</span>
             </a>
-          </h3>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (tracked) onUntrack();
-              else onTrack();
-            }}
-            className={`btn btn-sm shrink-0 ${tracked ? "border-ok/40 bg-ok-soft text-ok" : ""}`}
-            title={tracked ? "Remove from tracker" : "Pin to tracker"}
-          >
-            {tracked ? <><Check aria-hidden className="size-3.5" /> Tracking</> : <><Pin aria-hidden className="size-3.5" /> Pin</>}
-          </button>
+          </div>
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-          <Badge tone={MODE_TONE[h.mode]} className="capitalize">{h.mode}</Badge>
+          <AttendBadge mode={h.mode} />
           {h.mode !== "online" && <span>{place(h)} ·</span>}
           <span>{fmtRange(h)}</span>
           <span>·</span>

@@ -54,7 +54,7 @@ export const MODE_OPTIONS: { value: Mode | "all"; label: string }[] = [
   { value: "all", label: "Online + offline" },
   { value: "online", label: "Online only" },
   { value: "offline", label: "In person only" },
-  { value: "hybrid", label: "Hybrid only" },
+  { value: "hybrid", label: "In person, online optional" },
 ];
 
 const pick = <T extends string>(v: string | null, allowed: readonly T[], fallback: T): T =>

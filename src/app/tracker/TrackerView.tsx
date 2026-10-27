@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, GripVertical, Pin, TriangleAlert, Trophy } from "lucide-react";
+import { Check, GripVertical, Pin, PinOff, TriangleAlert, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ClashList } from "@/components/ClashList";
@@ -12,7 +12,8 @@ import { Countdown } from "@/components/ui/Countdown";
 import { Badge, EmptyState, Kbd } from "@/components/ui/Feedback";
 import { useToast } from "@/components/ui/Toast";
 import type { Tone } from "@/components/ui/tone";
-import type { Clash } from "@/lib/clashes";
+import { SEVERITY_LABEL, SEVERITY_TONE } from "@/components/ClashList";
+import { worstSeverity, type Clash } from "@/lib/clashes";
 import { fmtDate, fmtRange, place } from "@/lib/format";
 import type { ResultKind, TrackedWithHackathon, TrackStatus } from "@/lib/types";
 import { RESULT_LABELS, SOURCE_LABELS, STATUSES } from "@/lib/types";
@@ -255,6 +256,7 @@ function TrackerCard({
   const move = (s: TrackStatus, extra: Parameters<typeof updateTracked>[1] = {}) =>
     updateTracked(t.hackathonId, { status: s, ...extra });
   const i = ORDER.indexOf(status);
+  const worst = worstSeverity(clashes);
 
   return (
     <article
@@ -266,9 +268,27 @@ function TrackerCard({
           {h.title}
         </Link>
         <div className="flex shrink-0 items-center gap-1">
-          {clashes.length > 0 && (
-            <Badge tone="danger" className="py-1"><TriangleAlert aria-hidden className="size-3" /><span className="sr-only">Has clashes</span></Badge>
+          {worst && worst !== "low" && (
+            <Badge tone={SEVERITY_TONE[worst]} className="py-1" title={`${SEVERITY_LABEL[worst]} clash`}>
+              <TriangleAlert aria-hidden className="size-3" /><span className="sr-only">{SEVERITY_LABEL[worst]} clash</span>
+            </Badge>
           )}
+          <button
+            type="button"
+            className="grid size-7 place-items-center rounded-md border-(length:--line) border-border bg-surface text-muted hover:bg-danger-soft hover:text-danger"
+            aria-label={`Unpin ${h.title}`}
+            title="Unpin"
+            onClick={async () => {
+              const ok = await confirm({
+                title: "Unpin this hackathon?",
+                body: `${h.title} leaves your board and calendar, along with its deadlines and notes.`,
+                confirmLabel: "Unpin",
+              });
+              if (ok) void untrack(t.hackathonId);
+            }}
+          >
+            <PinOff aria-hidden className="size-4" />
+          </button>
           <button
             type="button"
             data-grip={t.hackathonId}

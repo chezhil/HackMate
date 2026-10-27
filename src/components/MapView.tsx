@@ -306,7 +306,7 @@ export default function MapView({
       </div>
       <div className="pointer-events-none absolute bottom-3 left-3 z-[500] flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border-(length:--line) border-border bg-surface px-2.5 py-1.5 text-xs font-semibold shadow-hard-sm">
         <Legend kind="offline" label="In person" />
-        <Legend kind="hybrid" label="Hybrid" />
+        <Legend kind="hybrid" label="Online optional" />
         <Legend kind="tracked" label="Tracking" />
         <span className="font-normal text-muted">{located.length}/{hackathons.length} on map</span>
       </div>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { isNotable, worstSeverity } from "@/lib/clashes";
 import { useHackmate } from "./HackmateProvider";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { CountPill } from "./ui/Feedback";
@@ -18,6 +19,9 @@ export function Nav() {
   const path = usePathname();
   const { tracked, clashes, error } = useHackmate();
   const active = tracked.filter((t) => t.status !== "results").length;
+  // Minor clashes (long online events side by side) don't count toward the badge.
+  const notable = clashes.filter(isNotable);
+  const worst = worstSeverity(notable);
   return (
     <header className="sticky top-0 z-[1000] border-b-(length:--line) border-border bg-surface">
       <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-3 sm:gap-6">
@@ -38,8 +42,10 @@ export function Nav() {
                 {l.href === "/tracker" && active > 0 && (
                   <CountPill label={`${active} active`}>{active}</CountPill>
                 )}
-                {l.href === "/calendar" && clashes.length > 0 && (
-                  <CountPill tone="danger" label={`${clashes.length} clash${clashes.length > 1 ? "es" : ""}`}>{clashes.length}</CountPill>
+                {l.href === "/calendar" && notable.length > 0 && (
+                  <CountPill tone={worst === "medium" ? "warn" : "danger"} label={`${notable.length} clash${notable.length > 1 ? "es" : ""} to look at`}>
+                    {notable.length}
+                  </CountPill>
                 )}
               </Link>
             );
