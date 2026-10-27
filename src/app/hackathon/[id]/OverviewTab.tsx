@@ -2,7 +2,7 @@
 
 import { Info, OctagonX, TriangleAlert } from "lucide-react";
 import { fmtDateTime, relative } from "@/lib/format";
-import { Badge } from "@/components/ui/Feedback";
+import { Badge, Banner } from "@/components/ui/Feedback";
 import type { DetailsPayload } from "./HackathonView";
 
 const LEVEL_STYLE = {
@@ -48,7 +48,7 @@ export function OverviewTab({ data, onRefresh }: { data: DetailsPayload; onRefre
   );
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="grid gap-4 lg:grid-cols-main-side">
       <div className="space-y-4">
         {building && (
           <div className="card flex items-center gap-3 p-4 text-sm">
@@ -57,7 +57,7 @@ export function OverviewTab({ data, onRefresh }: { data: DetailsPayload; onRefre
           </div>
         )}
         {!building && details?.error && (
-          <div className="rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn">{details.error}</div>
+          <Banner tone="warn">{details.error}</Banner>
         )}
 
         {info?.summary && (

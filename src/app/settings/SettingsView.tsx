@@ -3,7 +3,7 @@
 import { Check } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { CalendarSync } from "@/components/CalendarSync";
-import { Badge } from "@/components/ui/Feedback";
+import { Badge, Banner } from "@/components/ui/Feedback";
 import { fmtDateTime } from "@/lib/format";
 import type { Settings } from "@/lib/types";
 import { LEAD_OPTIONS } from "@/lib/types";
@@ -131,10 +131,10 @@ export function SettingsView() {
         </div>
 
         {!smtp && (
-          <div className="rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn">
+          <Banner tone="warn">
             <strong>Email delivery isn&apos;t set up yet.</strong> Reminders are written to the outbox below instead of being sent.
             Add SMTP details to <code>.env.local</code> (see <code>.env.example</code>; a Gmail app password or Resend/SendGrid SMTP works) and restart.
-          </div>
+          </Banner>
         )}
       </section>
 

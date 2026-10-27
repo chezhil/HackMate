@@ -34,6 +34,7 @@
   --dur-fast: 120ms;
   --dur-base: 200ms;
   --ease: cubic-bezier(.2,.8,.2,1);
+  --side-panel: 22rem;
   --z-map: 0;
   --z-sticky: 1000;
   --z-drawer: 1100;

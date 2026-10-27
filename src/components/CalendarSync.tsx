@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Settings } from "@/lib/types";
+import { Banner } from "@/components/ui/Feedback";
 
 type Provider = Settings["calendarProvider"];
 
@@ -95,11 +96,11 @@ export function CalendarSync() {
       <a className="text-xs text-accent hover:underline" href={`${feed}&download`}>Download .ics file (one-time import)</a>
 
       {isLocal && provider !== "apple" && (
-        <p className="rounded-lg bg-warn-soft px-2.5 py-2 text-xs text-warn">
+        <Banner tone="warn">
           {provider === "google" ? "Google" : provider === "outlook" ? "Outlook" : "Cloud calendars"} can&apos;t reach
           localhost. Deploy HackMate (or tunnel it) and set <code>NEXT_PUBLIC_BASE_URL</code>, or use the one-time .ics
           download for now. Apple Calendar on this Mac works locally.
-        </p>
+        </Banner>
       )}
     </div>
   );

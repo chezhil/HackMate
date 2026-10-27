@@ -57,6 +57,10 @@ body {
 @utility label {
   @apply mb-1 block text-xs font-medium uppercase tracking-wide text-muted;
 }
+/* Main column plus the fixed-width side panel used on Calendar, Overview, Ideas and Submit. */
+@utility grid-cols-main-side {
+  grid-template-columns: minmax(0, 1fr) var(--side-panel);
+}
 @utility kbd {
   @apply inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-border bg-surface-2 px-1 font-mono text-2xs text-muted;
 }

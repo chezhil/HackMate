@@ -19,6 +19,7 @@ Live sheet: **`/design`** (light / dark / system toggle). Code: `src/components/
 | Focus | One global `:focus-visible` ring: 2px `--focus`, 2px offset, keyboard only. Inputs show focus as an accent border plus a 1px ring. Never `outline-none` without a replacement. |
 | Motion | `duration-(--dur-fast)` (120ms) for colour changes, `--dur-base` (200ms) for overlays. `prefers-reduced-motion` cuts all of it. |
 | Icons | Lucide (ISC licence), `size-4` inline, `size-3` in badges, `aria-hidden` unless the icon is the only content. **No emoji as icons**; see the migration list at the end. |
+| Layout | Content max 1280px, 16px gutter. Main column + side panel: `lg:grid-cols-main-side` (`--side-panel` 352px). Loading states show skeletons, never the empty-state copy. |
 | Layering | Leaflet uses z 400–1000 inside its box. Sticky nav `--z-sticky` 1000, drawer 1100, dialog 1200, toast 1300. |
 | Status needs more than colour | Every pass/warn/fail/overdue state also carries an icon or a word. |
 
@@ -74,7 +75,8 @@ CheckRow · CheckSummary                                   ui/Feedback.tsx
 Banner                                                    ui/Feedback.tsx
   tones     neutral, ok, warn, danger, optional action button
   a11y      danger → role=alert, others → role=status
-  used on   S01 feed failure, S02 AI not configured, S19 SMTP missing
+  used on   S01 feed failure, S03 AI read error, S04 no AI key, S05/S07/S10 request errors, S13 sync note,
+            S19 SMTP missing
 
 Countdown                                                 ui/Countdown.tsx
   states    on the app's one urgency scale (lib/format `urgency()`): > 7 days neutral "9d 0h" ·
@@ -173,5 +175,12 @@ Done in this pass:
   in CalendarView, the teammate post in `lib/team.ts`, the test email). Lucide can't render there.
   Arrows in link text (↗ → ←) stay as text.
 
-Still to do (not done here):
-- Long arbitrary grid templates (`grid-cols-[minmax(0,1fr)_380px]`, 5 variants) → one `--side-panel` width.
+- Hand-written warning and error boxes → `Banner` (feed failure, SMTP missing, no AI key, AI read error,
+  calendar-sync localhost note, error lines in Pitch, Ideas and Standups). Small inline form errors stay as text.
+- Side panels: four widths (320, 320, 340, 380) → one `--side-panel` (352px) via `lg:grid-cols-main-side`
+  on Calendar, Overview, Ideas and Submit.
+- Loading is not empty: the calendar's upcoming list and clash list show skeletons while data loads, instead
+  of "No open deadlines" / "No clashes" (which was shown even when clashes existed).
+- Tracker cards in Results no longer show a "Next:" deadline, matching the calendar.
+
+Nothing left on this list. New work goes through /replica-build.

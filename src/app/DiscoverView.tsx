@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { HackathonCard } from "@/components/HackathonCard";
 import { useHackmate } from "@/components/HackmateProvider";
+import { Banner } from "@/components/ui/Feedback";
 import { Segmented } from "@/components/ui/Tabs";
 import { clashesWithTracked } from "@/lib/clashes";
 import { relative } from "@/lib/format";
@@ -135,9 +136,9 @@ export function DiscoverView() {
       </div>
 
       {failed.length > 0 && (
-        <div className="rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn">
+        <Banner tone="warn">
           Couldn&apos;t reach {failed.map(([s]) => SOURCE_LABELS[s as Source]).join(", ")} on the last refresh. Showing the last data we have.
-        </div>
+        </Banner>
       )}
 
       {/* Filters */}

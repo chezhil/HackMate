@@ -4,7 +4,7 @@ import { Flame, Timer } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CopyButton } from "@/components/CopyButton";
 import { ProjectCard } from "@/components/ProjectCard";
-import { ScoreBadge } from "@/components/ui/Feedback";
+import { Banner, ScoreBadge } from "@/components/ui/Feedback";
 import { call, hid } from "@/lib/client";
 import { relative } from "@/lib/format";
 import type { AiOutput, DeckRoast, PitchScript, QaTurn, VideoScript } from "@/lib/types";
@@ -65,7 +65,7 @@ export function PitchTab({ id }: { id: string }) {
           </button>
         ))}
       </div>
-      {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
+      {error && <Banner tone="danger">{error}</Banner>}
 
       {section === "pitch" && <PitchSection items={latest<PitchScript>("pitch")} busy={busy} onGenerate={generate} onDelete={remove} />}
       {section === "video" && (
@@ -347,7 +347,7 @@ function QaSection({ id }: { id: string }) {
           <span className="flex items-center gap-2 font-semibold">Round score <ScoreBadge score={Number(avg.toFixed(1))} size="lg" /></span>
         )}
       </div>
-      {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
+      {error && <Banner tone="danger">{error}</Banner>}
 
       {current.map((t, i) => (
         <article key={t.id} className="card space-y-2 p-4 text-sm">

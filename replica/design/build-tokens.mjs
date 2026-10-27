@@ -21,6 +21,7 @@ const shared = {
   "dur-fast": t.motion.fast,
   "dur-base": t.motion.base,
   ease: t.motion.ease,
+  "side-panel": `${t.layout["side-panel"] / 16}rem`,
   ...Object.fromEntries(Object.entries(t.z).filter(([k]) => !k.startsWith("_")).map(([k, v]) => [`z-${k}`, v])),
 };
 const darkOnly = { "pop-shadow": t.shadow["pop-dark"], scrim: t.overlay["scrim-dark"] };

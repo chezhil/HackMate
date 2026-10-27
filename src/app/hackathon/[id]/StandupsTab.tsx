@@ -4,6 +4,7 @@ import { Mic } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { call, hid } from "@/lib/client";
 import { useConfirm } from "@/components/ui/Confirm";
+import { Banner } from "@/components/ui/Feedback";
 import { fmtDateTime } from "@/lib/format";
 import type { Standup, Teammate } from "@/lib/types";
 
@@ -121,7 +122,7 @@ export function StandupsTab({ id }: { id: string }) {
           </button>
         )}
       </section>
-      {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
+      {error && <Banner tone="danger">{error}</Banner>}
 
       {standups.length === 0 && !uploading && <p className="text-center text-sm text-muted">No standups yet.</p>}
       {standups.map((s) => (

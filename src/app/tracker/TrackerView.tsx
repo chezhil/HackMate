@@ -90,7 +90,7 @@ function TrackerCard({ t, clashes }: { t: TrackedWithHackathon; clashes: Clash[]
   const confirm = useConfirm();
   const [open, setOpen] = useState(false);
   const h = t.hackathon;
-  const next = t.deadlines.find((d) => !d.done && new Date(d.dueAt).getTime() > now);
+  const next = t.status === "results" ? undefined : t.deadlines.find((d) => !d.done && new Date(d.dueAt).getTime() > now);
   const move = (status: TrackStatus, extra: Parameters<typeof updateTracked>[1] = {}) =>
     updateTracked(t.hackathonId, { status, ...extra });
 

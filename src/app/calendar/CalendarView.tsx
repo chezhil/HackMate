@@ -8,6 +8,7 @@ import { CalendarSync } from "@/components/CalendarSync";
 import { ClashList } from "@/components/ClashList";
 import { useHackmate } from "@/components/HackmateProvider";
 import { Countdown } from "@/components/ui/Countdown";
+import { Skeleton } from "@/components/ui/Feedback";
 import { EVENT_COLORS } from "@/components/ui/tone";
 import { clashKeyDays, dayKey, eventDays } from "@/lib/clashes";
 import { fmtDateTime, urgency } from "@/lib/format";
@@ -46,7 +47,7 @@ function googleTemplateLink(d: Deadline, h: Hackathon) {
 }
 
 export function CalendarView() {
-  const { hackathons, tracked, clashes, now } = useHackmate();
+  const { hackathons, tracked, clashes, now, loading } = useHackmate();
   const today = new Date(now);
   const [cursor, setCursor] = useState({ y: today.getFullYear(), m: today.getMonth() });
   const [showAll, setShowAll] = useState(false);
@@ -95,7 +96,7 @@ export function CalendarView() {
   const sel = byDay.get(selected);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="grid gap-4 lg:grid-cols-main-side">
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-2xl font-semibold tracking-tight">{monthFmt.format(new Date(cursor.y, cursor.m, 1))}</h1>
@@ -209,7 +210,9 @@ export function CalendarView() {
       <aside className="space-y-4">
         <section className="card p-3">
           <h2 className="mb-2 text-sm font-semibold">Upcoming deadlines</h2>
-          {upcoming.length === 0 ? (
+          {loading ? (
+            <div className="space-y-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-12" />)}</div>
+          ) : upcoming.length === 0 ? (
             <p className="text-sm text-muted">No open deadlines. Pin a hackathon to start tracking its dates.</p>
           ) : (
             <ul className="space-y-2">
@@ -240,7 +243,7 @@ export function CalendarView() {
 
         <section className="card p-3">
           <h2 className="mb-2 text-sm font-semibold">Clashes</h2>
-          <ClashList clashes={clashes} />
+          {loading ? <Skeleton className="h-10" /> : <ClashList clashes={clashes} />}
         </section>
 
         <section className="card p-3">

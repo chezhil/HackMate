@@ -2,7 +2,7 @@
 
 import { Trophy, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Badge, ScoreBadge } from "@/components/ui/Feedback";
+import { Badge, Banner, ScoreBadge } from "@/components/ui/Feedback";
 import { scoreTone } from "@/components/ui/tone";
 import { useConfirm } from "@/components/ui/Confirm";
 import { call, hid } from "@/lib/client";
@@ -59,9 +59,9 @@ export function IdeasTab({ id }: { id: string }) {
     });
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid gap-4 lg:grid-cols-main-side">
       <div className="space-y-4">
-        {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
+        {error && <Banner tone="danger">{error}</Banner>}
 
         <section className="card space-y-3 p-4">
           <div>

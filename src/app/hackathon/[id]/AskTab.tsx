@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { call, hid } from "@/lib/client";
+import { Banner } from "@/components/ui/Feedback";
 import type { ChatMessage } from "@/lib/types";
 import type { DetailsPayload } from "./HackathonView";
 
@@ -73,9 +74,9 @@ export function AskTab({ id, data }: { id: string; data: DetailsPayload }) {
   return (
     <div className="mx-auto max-w-3xl space-y-3">
       {noAi && (
-        <div className="rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn">
+        <Banner tone="warn">
           Add GROQ_API_KEY or GEMINI_API_KEY to <code>.env.local</code> and restart to ask questions.
-        </div>
+        </Banner>
       )}
       <div className="card min-h-[320px] space-y-3 p-4">
         {messages.length === 0 && !pending && (
