@@ -3,6 +3,7 @@
 import { Mic } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { call, hid } from "@/lib/client";
+import { useConfirm } from "@/components/ui/Confirm";
 import { fmtDateTime } from "@/lib/format";
 import type { Standup, Teammate } from "@/lib/types";
 
@@ -18,6 +19,7 @@ function pickMime() {
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 export function StandupsTab({ id }: { id: string }) {
+  const confirm = useConfirm();
   const [standups, setStandups] = useState<Standup[]>([]);
   const [team, setTeam] = useState<Teammate[]>([]);
   const [author, setAuthor] = useState("Me");
@@ -94,8 +96,8 @@ export function StandupsTab({ id }: { id: string }) {
 
   const retry = (s: Standup) =>
     call<{ standups: Standup[] }>(`/api/standups/${s.id}/transcribe`, "POST").then((d) => setStandups(d.standups), (e: Error) => setError(e.message));
-  const remove = (s: Standup) =>
-    confirm("Delete this voice note?") &&
+  const remove = async (s: Standup) =>
+    (await confirm({ title: "Delete this voice note?", body: "The recording and its transcript are deleted.", confirmLabel: "Delete" })) &&
     call<{ standups: Standup[] }>(`/api/standups/${s.id}`, "DELETE").then((d) => setStandups(d.standups));
 
   return (

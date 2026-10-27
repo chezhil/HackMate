@@ -6,6 +6,7 @@ import { useState } from "react";
 import { hid } from "@/lib/client";
 import { fmtDate } from "@/lib/format";
 import type { Certificate } from "@/lib/types";
+import { useConfirm } from "./ui/Confirm";
 
 export interface CertData {
   certificates: Certificate[];
@@ -36,6 +37,7 @@ function UploadButton({ onFile, label }: { onFile: (f: File) => void; label: str
  * so nothing slips through. Pass `hackathonId` to show just one hackathon's certificates.
  */
 export function CertificateList({ data, onChange, hackathonId }: { data: CertData; onChange: (d: CertData) => void; hackathonId?: string }) {
+  const confirm = useConfirm();
   const [error, setError] = useState<string | null>(null);
   const certs = hackathonId ? data.certificates.filter((c) => c.hackathonId === hackathonId) : data.certificates;
   const missing = hackathonId ? data.missing.filter((m) => m.hackathonId === hackathonId) : data.missing;
@@ -122,7 +124,7 @@ export function CertificateList({ data, onChange, hackathonId }: { data: CertDat
                   {!hackathonId && <div className="truncate text-xs text-muted">{c.hackathonTitle}</div>}
                   <div className="text-xs text-muted">{c.receivedAt && `Received ${fmtDate(c.receivedAt)}`}</div>
                 </div>
-                <button className="self-start text-muted opacity-0 hover:text-danger group-hover:opacity-100 focus-visible:opacity-100" title="Delete" onClick={() => confirm("Delete this certificate?") && run(send(`/api/certificates/${c.id}`, "DELETE", {}))}><X aria-hidden className="size-3.5" /><span className="sr-only">Delete certificate</span></button>
+                <button className="self-start text-muted opacity-0 hover:text-danger group-hover:opacity-100 focus-visible:opacity-100" title="Delete" onClick={async () => (await confirm({ title: "Delete this certificate?", body: `${c.title} and its file are removed from your vault.`, confirmLabel: "Delete" })) && run(send(`/api/certificates/${c.id}`, "DELETE", {}))}><X aria-hidden className="size-3.5" /><span className="sr-only">Delete certificate</span></button>
               </li>
             ))}
           </ul>

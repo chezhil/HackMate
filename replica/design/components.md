@@ -92,7 +92,15 @@ Dialog                                                    ui/Dialog.tsx
   states    open (scrim --scrim, shadow-pop, rounded-2xl), closed
   a11y      native <dialog> showModal: focus trap, Escape, focus returns to the opener;
             aria-labelledby the title; click on the scrim closes
-  used on   unpin confirm, delete confirms (replacing window.confirm), S20 command palette shell
+  used on   ConfirmProvider, S20 command palette shell
+
+Confirm (useConfirm)                                      ui/Confirm.tsx · mounted once in layout.tsx
+  call      `if (await confirm({ title, body, confirmLabel })) remove()` — resolves true or false
+  layout    Dialog with body text (muted), footer: ghost Cancel, danger confirm button
+  states    open, cancelled (Escape, Cancel, scrim click or a newer confirm → false), confirmed (true)
+  focus     starts on Cancel (the safe choice), returns to the button that opened it
+  copy      title asks the question ("Delete this idea?"); body says what is lost; button names the action
+  used on   S12 remove from tracker, S05 idea, S09 checklist item, S10 voice note, S16 certificate, S17 prize
 
 Toast                                                     ui/Toast.tsx
   tones     info (4 s, 8 s with Undo), error (stays until dismissed, role=alert)
@@ -153,12 +161,12 @@ Done in this pass:
   sr-only label. Hover-only delete buttons now also show on keyboard focus. Rating stars got `aria-pressed`.
   The Tracker and solo-team empty states use `EmptyState`, which now takes `level={1}` for whole-page states.
   New `Stars` display for retro ratings.
+- All 6 `window.confirm` calls → `useConfirm()` (Dialog), with copy that says what each delete removes.
 - Emoji kept on purpose: text that leaves the app (iCal event titles in `lib/ics.ts`, the Google Calendar link
   in CalendarView, the teammate post in `lib/team.ts`, the test email). Lucide can't render there.
   Arrows in link text (↗ → ←) stay as text.
 
 Still to do (not done here):
-- `window.confirm` deletes → `Dialog`.
 - Remaining hand-rolled badges (`rounded-md px-1.5 … bg-*-soft text-*`) → `Badge`. Hand-rolled empty states → `EmptyState`.
 - Hand-written "Reg closes in…" / "Next: … in 2d" text → `Countdown`.
 - Long arbitrary grid templates (`grid-cols-[minmax(0,1fr)_380px]`, 5 variants) → one `--side-panel` width.

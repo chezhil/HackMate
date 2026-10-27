@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useHackmate } from "./HackmateProvider";
 import { SOFT } from "./ui/tone";
+import { useConfirm } from "./ui/Confirm";
 import { call, hid } from "@/lib/client";
 import { fmtDate } from "@/lib/format";
 import type { Prize, PrizeStatus } from "@/lib/types";
@@ -44,6 +45,7 @@ export function PrizeList({
   hackathonId?: string;
   hackathonOptions?: { id: string; title: string }[];
 }) {
+  const confirm = useConfirm();
   const [form, setForm] = useState({ ...BLANK, hackathonId: hackathonId ?? "" });
   const [adding, setAdding] = useState(false);
   const { now } = useHackmate();
@@ -102,7 +104,7 @@ export function PrizeList({
                   <button
                     className="text-muted opacity-0 hover:text-danger group-hover:opacity-100 focus-visible:opacity-100"
                     title="Delete"
-                    onClick={() => confirm(`Delete "${p.title}"?`) && call<{ prizes: Prize[] }>(`/api/prizes/${p.id}`, "DELETE").then((d) => onChange(d.prizes))}
+                    onClick={async () => (await confirm({ title: "Delete this prize?", body: `${p.title} is removed from your prize tracker and totals.`, confirmLabel: "Delete" })) && call<{ prizes: Prize[] }>(`/api/prizes/${p.id}`, "DELETE").then((d) => onChange(d.prizes))}
                   >
                     <X aria-hidden className="size-3.5" /><span className="sr-only">Delete prize</span>
                   </button>

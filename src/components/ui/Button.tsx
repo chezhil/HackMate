@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
 import { Spinner } from "./Feedback";
 
 type Variant = "default" | "primary" | "ghost" | "danger";
@@ -16,6 +16,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon?: ReactNode;
   /** Shows a spinner and blocks clicks; the label stays so screen readers still hear it. */
   loading?: boolean;
+  ref?: Ref<HTMLButtonElement>;
 }
 
 export function Button({ variant = "default", size = "md", icon, loading, disabled, className = "", children, ...rest }: ButtonProps) {

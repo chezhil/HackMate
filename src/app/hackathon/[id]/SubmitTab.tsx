@@ -4,6 +4,7 @@ import { FileText, Video, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CopyButton } from "@/components/CopyButton";
 import { CheckRow, CheckSummary } from "@/components/ui/Feedback";
+import { useConfirm } from "@/components/ui/Confirm";
 import { ProjectCard } from "@/components/ProjectCard";
 import { call, hid } from "@/lib/client";
 import type { AiOutput, ChecklistItem, ChecklistKind, SubmissionCheck, Writeup } from "@/lib/types";
@@ -153,6 +154,7 @@ function ChecklistRow({
   onRemoveFile: () => void;
   onDelete: () => void;
 }) {
+  const confirm = useConfirm();
   const [value, setValue] = useState(item.value ?? "");
   const [uploading, setUploading] = useState(false);
   const accept = item.meta?.accept ?? (item.kind === "file" ? "any" : undefined);
@@ -172,7 +174,7 @@ function ChecklistRow({
           {item.detail && <div className="text-xs text-muted">{item.detail}</div>}
           {worst && <div className={`text-xs ${worst.status === "fail" ? "text-danger" : "text-warn"}`}>{worst.detail}</div>}
         </div>
-        <button className="text-muted opacity-0 hover:text-danger group-hover:opacity-100 focus-visible:opacity-100" title="Remove" onClick={() => confirm(`Remove "${item.label}"?`) && onDelete()}><X aria-hidden className="size-3.5" /><span className="sr-only">Remove item</span></button>
+        <button className="text-muted opacity-0 hover:text-danger group-hover:opacity-100 focus-visible:opacity-100" title="Remove" onClick={async () => (await confirm({ title: "Remove this checklist item?", body: `"${item.label}" and any link or file attached to it are removed.`, confirmLabel: "Remove" })) && onDelete()}><X aria-hidden className="size-3.5" /><span className="sr-only">Remove item</span></button>
       </div>
       {(item.kind === "link" || accept) && (
         <div className="ml-6 flex flex-wrap items-center gap-2">

@@ -3,6 +3,7 @@
 import { Trophy, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SOFT, scoreTone } from "@/components/ui/tone";
+import { useConfirm } from "@/components/ui/Confirm";
 import { call, hid } from "@/lib/client";
 import { relative } from "@/lib/format";
 import type { Idea, IdeaSuggestion, IdeaVersion, WinnerProject } from "@/lib/types";
@@ -157,6 +158,7 @@ export function IdeasTab({ id }: { id: string }) {
 }
 
 function IdeaCard({ idea, onChange, onDelete }: { idea: Idea; onChange: (i: Idea) => void; onDelete: () => void }) {
+  const confirm = useConfirm();
   const latest = idea.versions.at(-1)!;
   const [text, setText] = useState(latest.text);
   const [busy, setBusy] = useState(false);
@@ -193,7 +195,7 @@ function IdeaCard({ idea, onChange, onDelete }: { idea: Idea; onChange: (i: Idea
               {v.critique!.score}
             </span>
           ))}
-          <button className="ml-1 text-muted hover:text-danger" title="Delete idea" onClick={() => confirm(`Delete "${idea.title}"?`) && onDelete()}><X aria-hidden className="size-3.5" /><span className="sr-only">Delete idea</span></button>
+          <button className="ml-1 text-muted hover:text-danger" title="Delete idea" onClick={async () => (await confirm({ title: "Delete this idea?", body: `"${idea.title}" and all its versions and scores are deleted.`, confirmLabel: "Delete idea" })) && onDelete()}><X aria-hidden className="size-3.5" /><span className="sr-only">Delete idea</span></button>
         </div>
       </div>
 

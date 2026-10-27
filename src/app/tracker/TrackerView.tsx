@@ -7,6 +7,7 @@ import { ClashList } from "@/components/ClashList";
 import { hid } from "@/lib/client";
 import { DeadlineEditor } from "@/components/DeadlineEditor";
 import { useHackmate } from "@/components/HackmateProvider";
+import { useConfirm } from "@/components/ui/Confirm";
 import { EmptyState } from "@/components/ui/Feedback";
 import type { Clash } from "@/lib/clashes";
 import { fmtDate, fmtRange, place, relative } from "@/lib/format";
@@ -84,6 +85,7 @@ export function TrackerView() {
 
 function TrackerCard({ t, clashes }: { t: TrackedWithHackathon; clashes: Clash[] }) {
   const { updateTracked, untrack, now } = useHackmate();
+  const confirm = useConfirm();
   const [open, setOpen] = useState(false);
   const h = t.hackathon;
   const next = t.deadlines.find((d) => !d.done && new Date(d.dueAt).getTime() > now);
@@ -135,8 +137,13 @@ function TrackerCard({ t, clashes }: { t: TrackedWithHackathon; clashes: Clash[]
           <Notes t={t} />
           <button
             className="text-xs text-danger hover:underline"
-            onClick={() => {
-              if (confirm(`Stop tracking ${h.title}? Its deadlines and notes will be removed.`)) void untrack(t.hackathonId);
+            onClick={async () => {
+              const ok = await confirm({
+                title: "Remove from tracker?",
+                body: `${h.title} leaves your board and calendar, along with its deadlines and notes.`,
+                confirmLabel: "Remove",
+              });
+              if (ok) void untrack(t.hackathonId);
             }}
           >
             Remove from tracker
