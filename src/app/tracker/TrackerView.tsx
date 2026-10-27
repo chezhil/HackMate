@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Check, GripVertical, Pin, PinOff, TriangleAlert } from "lucide-react";
+import { ArrowRight, Check, Clock, GripVertical, Pin, PinOff, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ClashList } from "@/components/ClashList";
@@ -330,25 +330,14 @@ function TrackerCard({
 
       <StageActions t={t} move={move} />
 
-      <div className="border-t border-border pt-2">
+      {/* Moving between columns is drag-and-drop or ← → on the grip, so there's no status dropdown here. */}
+      <div className="flex flex-wrap items-center gap-1.5 border-t border-border pt-2">
         <Link href={`/hackathon/${hid(h.id)}`} className="btn btn-sm btn-primary" title="Rules, Ask AI, ideas, pitch and Q&A tools">
           Open <ArrowRight aria-hidden className="size-3.5" />
         </Link>
-      </div>
-
-      <div className="flex items-center justify-between gap-2 pt-1">
-        <select
-          className="input w-auto py-0.5 text-xs"
-          value={status}
-          onChange={(e) => move(e.target.value as TrackStatus)}
-          aria-label="Status"
-        >
-          {STATUSES.map((s) => (
-            <option key={s.key} value={s.key}>{s.label}</option>
-          ))}
-        </select>
-        <button className="text-xs text-accent hover:underline" onClick={() => setOpen(!open)}>
-          {open ? "Less" : `Deadlines (${t.deadlines.length})`}
+        <button type="button" className="btn btn-sm" aria-expanded={open} onClick={() => setOpen(!open)}>
+          <Clock aria-hidden className="size-3.5" />
+          {open ? "Hide deadlines" : `Deadlines (${t.deadlines.length})`}
         </button>
       </div>
 
