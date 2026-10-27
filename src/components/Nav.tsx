@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useHackmate } from "./HackmateProvider";
+import { ThemeSwitch } from "./ThemeSwitch";
 import { CountPill } from "./ui/Feedback";
 
 const LINKS = [
@@ -24,7 +25,7 @@ export function Nav() {
           <span className="grid h-8 w-8 -rotate-6 place-items-center rounded-lg border-(length:--line) border-border bg-warn-soft text-base font-bold text-text shadow-hard-sm">H</span>
           <span className="hidden sm:inline">HackMate</span>
         </Link>
-        <nav className="flex gap-1 overflow-x-auto text-sm">
+        <nav className="flex min-w-0 flex-1 gap-1 overflow-x-auto p-1 text-sm">
           {LINKS.map((l) => {
             const on = l.href === "/" ? path === "/" : path.startsWith(l.href);
             return (
@@ -44,6 +45,10 @@ export function Nav() {
             );
           })}
         </nav>
+        {/* Outside the scrolling nav so it stays in reach on phones. */}
+        <div className="shrink-0">
+          <ThemeSwitch />
+        </div>
       </div>
       {error && (
         <div className="border-t border-danger/30 bg-danger-soft px-4 py-2 text-center text-sm text-danger">{error}</div>

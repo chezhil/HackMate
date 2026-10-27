@@ -1,7 +1,7 @@
 "use client";
 
 import { Inbox, Monitor, Moon, Pin, RefreshCw, Sun, Trash2 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Countdown, useNow } from "@/components/ui/Countdown";
 import { Dialog } from "@/components/ui/Dialog";
@@ -10,8 +10,7 @@ import { ChipToggle, Field } from "@/components/ui/Form";
 import { Segmented, Tabs } from "@/components/ui/Tabs";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
 import { EVENT_COLORS } from "@/components/ui/tone";
-
-type Theme = "system" | "light" | "dark";
+import { setTheme, useTheme } from "@/lib/theme";
 
 const COLORS = [
   ["bg", "Page"], ["surface", "Cards"], ["surface-2", "Hover, wells"], ["border", "Dividers"], ["border-strong", "Input edges"],
@@ -46,15 +45,8 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 export function DesignView() {
-  const [theme, setTheme] = useState<Theme>("system");
-
-  // Preview only: pin the theme on <html> while this page is open, and hand it back on the way out.
-  useEffect(() => {
-    const root = document.documentElement;
-    if (theme === "system") delete root.dataset.theme;
-    else root.dataset.theme = theme;
-    return () => { delete root.dataset.theme; };
-  }, [theme]);
+  // Same setting as the theme switch in the nav, so a choice made here sticks.
+  const theme = useTheme();
 
   return (
     <ToastProvider>
