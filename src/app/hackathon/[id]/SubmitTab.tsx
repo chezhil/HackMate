@@ -1,5 +1,6 @@
 "use client";
 
+import { FileText, Video, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CopyButton } from "@/components/CopyButton";
 import { CheckRow, CheckSummary } from "@/components/ui/Feedback";
@@ -171,7 +172,7 @@ function ChecklistRow({
           {item.detail && <div className="text-xs text-muted">{item.detail}</div>}
           {worst && <div className={`text-xs ${worst.status === "fail" ? "text-danger" : "text-warn"}`}>{worst.detail}</div>}
         </div>
-        <button className="text-xs text-muted opacity-0 hover:text-danger group-hover:opacity-100" onClick={() => confirm(`Remove "${item.label}"?`) && onDelete()}>✕</button>
+        <button className="text-muted opacity-0 hover:text-danger group-hover:opacity-100 focus-visible:opacity-100" title="Remove" onClick={() => confirm(`Remove "${item.label}"?`) && onDelete()}><X aria-hidden className="size-3.5" /><span className="sr-only">Remove item</span></button>
       </div>
       {(item.kind === "link" || accept) && (
         <div className="ml-6 flex flex-wrap items-center gap-2">
@@ -209,8 +210,8 @@ function ChecklistRow({
             // eslint-disable-next-line @next/next/no-img-element
             <a href={`/api/files/${item.file}`} target="_blank" rel="noreferrer"><img src={`/api/files/${item.file}`} alt={item.label} className="h-16 rounded-md border border-border object-cover" /></a>
           ) : (
-            <a href={`/api/files/${item.file}`} target="_blank" rel="noreferrer" className="text-xs text-accent hover:underline">
-              {item.mime?.startsWith("video/") ? "🎬 Video" : "📄 File"} attached
+            <a href={`/api/files/${item.file}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-accent hover:underline">
+              {item.mime?.startsWith("video/") ? <><Video aria-hidden className="size-3.5" /> Video</> : <><FileText aria-hidden className="size-3.5" /> File</>} attached
               {item.meta?.durationSec ? ` · ${Math.round(item.meta.durationSec)}s` : ""}
             </a>
           )}

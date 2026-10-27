@@ -1,5 +1,6 @@
 "use client";
 
+import { Mic } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { call, hid } from "@/lib/client";
 import { fmtDateTime } from "@/lib/format";
@@ -114,7 +115,7 @@ export function StandupsTab({ id }: { id: string }) {
           </button>
         ) : (
           <button className="btn btn-primary" onClick={start} disabled={uploading}>
-            {uploading ? "Transcribing…" : "🎙 Record"}
+            {!uploading && <Mic aria-hidden className="size-4" />}{uploading ? "Transcribing…" : "Record"}
           </button>
         )}
       </section>

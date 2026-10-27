@@ -1,5 +1,6 @@
 "use client";
 
+import { RefreshCw } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { HackathonCard } from "@/components/HackathonCard";
@@ -127,7 +128,8 @@ export function DiscoverView() {
         <div className="flex items-center gap-2">
           <Segmented options={VIEWS} value={view} onChange={setView} label="Layout" />
           <button className="btn" onClick={syncNow} disabled={syncing}>
-            {syncing ? "Syncing…" : "↻ Refresh feeds"}
+            <RefreshCw aria-hidden className={`size-4 ${syncing ? "animate-spin" : ""}`} />
+            {syncing ? "Syncing…" : "Refresh feeds"}
           </button>
         </div>
       </div>

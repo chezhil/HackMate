@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { CalendarSync } from "@/components/CalendarSync";
 import { fmtDateTime } from "@/lib/format";
@@ -107,9 +108,11 @@ export function SettingsView() {
                 <button
                   key={o.minutes}
                   onClick={() => toggleLead(o.minutes)}
+                  aria-pressed={on}
                   className={`chip ${on ? "chip-on" : "hover:text-text"}`}
                 >
-                  {on ? "✓ " : ""}{o.label}
+                  {on && <Check aria-hidden className="size-3" />}
+                  {o.label}
                 </button>
               );
             })}

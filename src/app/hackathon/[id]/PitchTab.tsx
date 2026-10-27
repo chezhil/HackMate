@@ -1,5 +1,6 @@
 "use client";
 
+import { Flame, Timer } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CopyButton } from "@/components/CopyButton";
 import { ProjectCard } from "@/components/ProjectCard";
@@ -241,7 +242,7 @@ function RoastSection({ items, busy, onGenerate, onDelete }: SectionProps<DeckRo
         <p className="text-sm text-muted">Paste your pitch script or the text of your slides. The roaster quotes your weak spots and tells you how to fix them.</p>
         <textarea className="input min-h-40 text-sm" placeholder="Slide 1: …" value={script} onChange={(e) => setScript(e.target.value)} />
         <button className="btn btn-primary" disabled={busy || !script.trim()} onClick={() => onGenerate({ kind: "roast", script })}>
-          {busy ? "Roasting…" : "🔥 Roast it"}
+          {!busy && <Flame aria-hidden className="size-4" />}{busy ? "Roasting…" : "Roast it"}
         </button>
       </div>
       <History
@@ -255,7 +256,7 @@ function RoastSection({ items, busy, onGenerate, onDelete }: SectionProps<DeckRo
                 <span className={`rounded-lg px-2.5 py-1 text-lg font-semibold ${scoreTone(r.score)}`}>{r.score}/10</span>
                 <p className="font-medium">{r.verdict}</p>
               </div>
-              {r.timing && <p className="text-xs text-muted">⏱ {r.timing}</p>}
+              {r.timing && <p className="flex items-center gap-1 text-xs text-muted"><Timer aria-hidden className="size-3.5" /> {r.timing}</p>}
               <div>
                 <h4 className="label text-danger">Weak points</h4>
                 <ul className="space-y-2">

@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, Pin, TriangleAlert, Trophy } from "lucide-react";
 import Link from "next/link";
 import { hid } from "@/lib/client";
 import { fmtDate, fmtRange, place, relative } from "@/lib/format";
@@ -70,7 +71,7 @@ export function HackathonCard({
             className={`btn btn-sm shrink-0 ${tracked ? "border-ok/40 bg-ok-soft text-ok" : ""}`}
             title={tracked ? "Remove from tracker" : "Pin to tracker"}
           >
-            {tracked ? "✓ Tracking" : "📌 Pin"}
+            {tracked ? <><Check aria-hidden className="size-3.5" /> Tracking</> : <><Pin aria-hidden className="size-3.5" /> Pin</>}
           </button>
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
@@ -82,7 +83,7 @@ export function HackathonCard({
         </div>
         {h.tagline && h.tagline !== h.prizeText && <p className="mt-1 line-clamp-1 text-sm text-muted">{h.tagline}</p>}
         <div className="mt-2 flex flex-wrap gap-1.5">
-          {h.prizeText && <span className="chip border-ok/30 text-ok">🏆 {h.prizeText}</span>}
+          {h.prizeText && <span className="chip border-ok/30 text-ok"><Trophy aria-hidden className="size-3" /> {h.prizeText}</span>}
           {h.entryFee === "paid" && <span className="chip border-warn/30 text-warn">Paid entry</span>}
           {regOpen && (
             <span className="chip" title={fmtDate(h.regEndsAt)}>
@@ -94,7 +95,7 @@ export function HackathonCard({
           ))}
           {clashesWith.length > 0 && (
             <span className="chip border-danger/30 bg-danger-soft text-danger" title={clashesWith.map((c) => c.title).join(", ")}>
-              ⚠ Clashes with {clashesWith[0].title}
+              <TriangleAlert aria-hidden className="size-3" /> Clashes with {clashesWith[0].title}
               {clashesWith.length > 1 ? ` +${clashesWith.length - 1}` : ""}
             </span>
           )}

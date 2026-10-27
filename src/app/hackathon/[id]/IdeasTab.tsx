@@ -1,5 +1,6 @@
 "use client";
 
+import { Trophy, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SOFT, scoreTone } from "@/components/ui/tone";
 import { call, hid } from "@/lib/client";
@@ -147,7 +148,7 @@ export function IdeasTab({ id }: { id: string }) {
           <a key={w.url} href={w.url} target="_blank" rel="noreferrer" className="card block p-3 text-sm hover:border-muted">
             <div className="font-medium">{w.name}</div>
             {w.tagline && <div className="line-clamp-2 text-xs text-muted">{w.tagline}</div>}
-            <div className="mt-1 text-xs text-ok">🏆 {w.prizes.slice(0, 2).join(", ") || "Winner"}{w.hackathon && <span className="text-muted"> · {w.hackathon}</span>}</div>
+            <div className="mt-1 text-xs text-ok"><Trophy aria-hidden className="mr-1 inline size-3 align-[-1px]" />{w.prizes.slice(0, 2).join(", ") || "Winner"}{w.hackathon && <span className="text-muted"> · {w.hackathon}</span>}</div>
           </a>
         ))}
       </aside>
@@ -192,7 +193,7 @@ function IdeaCard({ idea, onChange, onDelete }: { idea: Idea; onChange: (i: Idea
               {v.critique!.score}
             </span>
           ))}
-          <button className="ml-1 text-xs text-muted hover:text-danger" onClick={() => confirm(`Delete "${idea.title}"?`) && onDelete()}>✕</button>
+          <button className="ml-1 text-muted hover:text-danger" title="Delete idea" onClick={() => confirm(`Delete "${idea.title}"?`) && onDelete()}><X aria-hidden className="size-3.5" /><span className="sr-only">Delete idea</span></button>
         </div>
       </div>
 

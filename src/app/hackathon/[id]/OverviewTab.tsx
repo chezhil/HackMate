@@ -1,5 +1,6 @@
 "use client";
 
+import { Info, OctagonX, TriangleAlert } from "lucide-react";
 import { fmtDateTime, relative } from "@/lib/format";
 import type { DetailsPayload } from "./HackathonView";
 
@@ -8,7 +9,12 @@ const LEVEL_STYLE = {
   warning: "border-warn/40 bg-warn-soft text-warn",
   info: "border-border bg-surface-2 text-text",
 };
-const LEVEL_ICON = { critical: "⛔", warning: "⚠️", info: "ℹ️" };
+const LEVEL_ICON = { critical: OctagonX, warning: TriangleAlert, info: Info };
+
+function LevelIcon({ level }: { level: keyof typeof LEVEL_ICON }) {
+  const Icon = LEVEL_ICON[level];
+  return <Icon aria-hidden className="mt-0.5 size-4 shrink-0" />;
+}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -65,13 +71,13 @@ export function OverviewTab({ data, onRefresh }: { data: DetailsPayload; onRefre
           ) : (
             <ul className="space-y-2">
               {aiAlerts.map((a, i) => (
-                <li key={`ai${i}`} className={`rounded-lg border px-3 py-2 text-sm ${LEVEL_STYLE[a.level]}`}>
-                  {LEVEL_ICON[a.level]} {a.text}
+                <li key={`ai${i}`} className={`flex gap-2 rounded-lg border px-3 py-2 text-sm ${LEVEL_STYLE[a.level]}`}>
+                  <LevelIcon level={a.level} /> {a.text}
                 </li>
               ))}
               {extraRules.map((r) => (
                 <li key={r.key} className={`rounded-lg border px-3 py-2 text-sm ${LEVEL_STYLE[r.level]}`}>
-                  <div>{LEVEL_ICON[r.level]} {r.label}</div>
+                  <div className="flex gap-2"><LevelIcon level={r.level} /> {r.label}</div>
                   {r.quote && <div className="mt-1 text-xs italic opacity-80">“{r.quote}”</div>}
                 </li>
               ))}

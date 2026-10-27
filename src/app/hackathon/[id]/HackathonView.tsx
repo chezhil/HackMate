@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, Pin, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -109,19 +110,19 @@ export function HackathonView() {
             {h.mode !== "online" && ` · ${place(h)}`} · {SOURCE_LABELS[h.source]}
             {h.organizer && ` · ${h.organizer}`}
           </p>
-          {h.prizeText && <p className="mt-1 text-sm text-ok">🏆 {h.prizeText}</p>}
+          {h.prizeText && <p className="mt-1 flex items-center gap-1.5 text-sm text-ok"><Trophy aria-hidden className="size-4 shrink-0" /> {h.prizeText}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           <a href={h.url} target="_blank" rel="noreferrer" className="btn">Open page ↗</a>
           {isTracked ? (
             <>
               <Link href="/tracker" className="btn border-ok/40 bg-ok-soft text-ok">
-                ✓ {STATUSES.find((s) => s.key === status)?.label ?? "Tracking"}
+                <Check aria-hidden className="size-4" /> {STATUSES.find((s) => s.key === status)?.label ?? "Tracking"}
               </Link>
               <button className="btn" onClick={() => untrack(id)} title="Remove from tracker">Unpin</button>
             </>
           ) : (
-            <button className="btn btn-primary" onClick={() => track(id)}>📌 Pin to tracker</button>
+            <button className="btn btn-primary" onClick={() => track(id)}><Pin aria-hidden className="size-4" /> Pin to tracker</button>
           )}
         </div>
       </header>

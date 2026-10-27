@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import { useState } from "react";
 import { fmtDateTime, relative, toLocalInput, urgency } from "@/lib/format";
 import type { DeadlineKind, TrackedWithHackathon } from "@/lib/types";
@@ -57,11 +58,11 @@ export function DeadlineEditor({ t }: { t: TrackedWithHackathon }) {
             )}
           </div>
           <button
-            className="text-muted opacity-0 hover:text-danger group-hover:opacity-100"
+            className="text-muted opacity-0 hover:text-danger group-hover:opacity-100 focus-visible:opacity-100"
             onClick={() => deleteDeadline(d.id)}
             title="Delete deadline"
           >
-            ✕
+            <X aria-hidden className="size-3.5" /><span className="sr-only">Delete deadline</span>
           </button>
         </div>
       ))}

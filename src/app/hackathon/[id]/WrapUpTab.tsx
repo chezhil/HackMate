@@ -1,5 +1,6 @@
 "use client";
 
+import { Pin, Sparkles, Star, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CertificateList, type CertData } from "@/components/CertificateList";
 import { useHackmate } from "@/components/HackmateProvider";
@@ -24,7 +25,7 @@ export function WrapUpTab({ id }: { id: string }) {
     return (
       <div className="card mx-auto max-w-lg p-8 text-center text-sm">
         <p>Pin this hackathon to record results, prizes, certificates and notes.</p>
-        <button className="btn btn-primary mt-3" onClick={() => track(id)}>📌 Pin to tracker</button>
+        <button className="btn btn-primary mt-3" onClick={() => track(id)}><Pin aria-hidden className="size-4" /> Pin to tracker</button>
       </div>
     );
   }
@@ -41,7 +42,8 @@ export function WrapUpTab({ id }: { id: string }) {
                 onClick={() => updateTracked(id, { status: "results", result: r })}
                 className={`chip ${t?.result === r ? "chip-on" : "hover:text-text"}`}
               >
-                {r === "won" ? "🏆 " : ""}{RESULT_LABELS[r]}
+                {r === "won" && <Trophy aria-hidden className="size-3" />}
+                {RESULT_LABELS[r]}
               </button>
             ))}
           </div>
@@ -116,14 +118,20 @@ function RetroEditor({ id }: { id: string }) {
           <h2 className="font-semibold">Retro notes</h2>
           <p className="text-sm text-muted">Your own notes on how it went. Draft them from your standups, idea critiques and mock Q&A.</p>
         </div>
-        <button className="btn btn-sm" onClick={draft} disabled={drafting}>{drafting ? "Drafting…" : "✨ Draft from my activity"}</button>
+        <button className="btn btn-sm" onClick={draft} disabled={drafting}>{!drafting && <Sparkles aria-hidden className="size-3.5" />}{drafting ? "Drafting…" : "Draft from my activity"}</button>
       </div>
       <div>
         <span className="label">How was it overall?</span>
         <div className="flex gap-1">
           {[1, 2, 3, 4, 5].map((n) => (
-            <button key={n} className={`text-2xl ${retro.rating && n <= retro.rating ? "" : "opacity-25 grayscale"}`} onClick={() => save({ ...retro, rating: n })} aria-label={`${n} stars`}>
-              ⭐
+            <button
+              key={n}
+              className={`rounded-md p-0.5 ${retro.rating && n <= retro.rating ? "text-warn" : "text-border-strong hover:text-warn"}`}
+              onClick={() => save({ ...retro, rating: n })}
+              aria-label={`${n} star${n > 1 ? "s" : ""}`}
+              aria-pressed={retro.rating === n}
+            >
+              <Star aria-hidden className={`size-6 ${retro.rating && n <= retro.rating ? "fill-current" : ""}`} />
             </button>
           ))}
         </div>

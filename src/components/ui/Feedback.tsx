@@ -1,4 +1,4 @@
-import { CircleCheck, CircleX, Info, LoaderCircle, TriangleAlert } from "lucide-react";
+import { CircleCheck, CircleX, Info, LoaderCircle, Star, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 import { OUTLINE, SOFT, scoreTone, type Tone } from "./tone";
 
@@ -87,14 +87,26 @@ export function Skeleton({ className = "h-24" }: { className?: string }) {
   return <div aria-hidden className={`animate-pulse rounded-xl bg-surface-2 ${className}`} />;
 }
 
-export function EmptyState({ icon, title, children, action }: { icon?: ReactNode; title: string; children?: ReactNode; action?: ReactNode }) {
+/** `level` 1 when the empty state is the whole page, so the page still has its h1. */
+export function EmptyState({ icon, title, children, action, level = 2 }: { icon?: ReactNode; title: string; children?: ReactNode; action?: ReactNode; level?: 1 | 2 }) {
+  const Heading = level === 1 ? "h1" : "h2";
   return (
     <div className="card mx-auto max-w-lg p-10 text-center">
       {icon && <div className="mx-auto grid size-10 place-items-center rounded-xl bg-surface-2 text-muted [&>svg]:size-5">{icon}</div>}
-      <h2 className="mt-3 text-xl font-semibold">{title}</h2>
+      <Heading className="mt-3 text-xl font-semibold">{title}</Heading>
       {children && <p className="mt-1 text-sm text-muted">{children}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
+  );
+}
+
+/** Read-only rating, e.g. a retro's 4 of 5. */
+export function Stars({ value, max = 5 }: { value: number; max?: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5 text-warn" title={`${value} of ${max}`}>
+      {Array.from({ length: value }, (_, i) => <Star key={i} aria-hidden className="size-3 fill-current" />)}
+      <span className="sr-only">{value} of {max} stars</span>
+    </span>
   );
 }
 

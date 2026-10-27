@@ -148,10 +148,16 @@ Done in this pass:
 - Hackathon and Profile tab bars use `Tabs` (keyboard support). Discover's view switch uses `Segmented`.
 - `text-[10px]` → `text-2xs` (6×), bare `rounded` → `rounded-md` (15×), selected chips → `chip-on` (4×).
 - Global focus ring, reduced-motion, `color-scheme`, themed Leaflet popups.
+- Emoji icons → Lucide across 17 files: Pin, Check, Trophy, TriangleAlert, OctagonX, Info, Clock, Timer,
+  ScrollText, Sparkles, Flame, Mic, Video, FileText, User, RefreshCw, Star, X. Icon-only controls got an
+  sr-only label. Hover-only delete buttons now also show on keyboard focus. Rating stars got `aria-pressed`.
+  The Tracker and solo-team empty states use `EmptyState`, which now takes `level={1}` for whole-page states.
+  New `Stars` display for retro ratings.
+- Emoji kept on purpose: text that leaves the app (iCal event titles in `lib/ics.ts`, the Google Calendar link
+  in CalendarView, the teammate post in `lib/team.ts`, the test email). Lucide can't render there.
+  Arrows in link text (↗ → ←) stay as text.
 
 Still to do (not done here):
-- **Emoji used as icons** (📌 🏆 ⏰ ⚠ ✓ ✕ 📜 ✨ 🎙 🎬 🔥 …, ~45 places) → Lucide: Pin, Trophy, Clock, TriangleAlert,
-  Check, X, ScrollText, Sparkles, Mic, Video, Flame. Arrows in link text (↗ → ←) can stay as text.
 - `window.confirm` deletes → `Dialog`.
 - Remaining hand-rolled badges (`rounded-md px-1.5 … bg-*-soft text-*`) → `Badge`. Hand-rolled empty states → `EmptyState`.
 - Hand-written "Reg closes in…" / "Next: … in 2d" text → `Countdown`.

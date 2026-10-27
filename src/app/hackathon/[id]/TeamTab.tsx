@@ -1,6 +1,8 @@
 "use client";
 
+import { User } from "lucide-react";
 import { useEffect, useState } from "react";
+import { EmptyState } from "@/components/ui/Feedback";
 import { call, hid } from "@/lib/client";
 import type { Teammate } from "@/lib/types";
 import type { DetailsPayload } from "./HackathonView";
@@ -43,11 +45,9 @@ export function TeamTab({ id, data }: { id: string; data: DetailsPayload }) {
 
   if (solo) {
     return (
-      <div className="card mx-auto max-w-lg p-8 text-center">
-        <div className="text-3xl">🧍</div>
-        <h2 className="mt-2 font-semibold">This is a solo hackathon</h2>
-        <p className="mt-1 text-sm text-muted">Teams aren&apos;t allowed, so there&apos;s nothing to set up here.</p>
-      </div>
+      <EmptyState icon={<User />} title="This is a solo hackathon">
+        Teams aren&apos;t allowed, so there&apos;s nothing to set up here.
+      </EmptyState>
     );
   }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { ScrollText, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { hid } from "@/lib/client";
@@ -87,7 +88,7 @@ export function CertificateList({ data, onChange, hackathonId }: { data: CertDat
                 <span className="flex gap-1.5">
                   <UploadButton label="Upload" onFile={(f) => attach(c, f)} />
                   <button className="btn btn-sm" onClick={() => run(send(`/api/certificates/${c.id}`, "PATCH", { status: "received" }))}>Got it</button>
-                  <button className="text-xs text-muted hover:text-danger" onClick={() => run(send(`/api/certificates/${c.id}`, "DELETE", {}))}>✕</button>
+                  <button className="text-muted hover:text-danger" title="Delete" onClick={() => run(send(`/api/certificates/${c.id}`, "DELETE", {}))}><X aria-hidden className="size-3.5" /><span className="sr-only">Delete certificate</span></button>
                 </span>
               </li>
             ))}
@@ -113,7 +114,7 @@ export function CertificateList({ data, onChange, hackathonId }: { data: CertDat
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={`/api/files/${c.file}`} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    "📜"
+                    <ScrollText aria-hidden className="size-6 text-muted" />
                   )}
                 </a>
                 <div className="min-w-0 flex-1">
@@ -121,7 +122,7 @@ export function CertificateList({ data, onChange, hackathonId }: { data: CertDat
                   {!hackathonId && <div className="truncate text-xs text-muted">{c.hackathonTitle}</div>}
                   <div className="text-xs text-muted">{c.receivedAt && `Received ${fmtDate(c.receivedAt)}`}</div>
                 </div>
-                <button className="self-start text-xs text-muted opacity-0 hover:text-danger group-hover:opacity-100" onClick={() => confirm("Delete this certificate?") && run(send(`/api/certificates/${c.id}`, "DELETE", {}))}>✕</button>
+                <button className="self-start text-muted opacity-0 hover:text-danger group-hover:opacity-100 focus-visible:opacity-100" title="Delete" onClick={() => confirm("Delete this certificate?") && run(send(`/api/certificates/${c.id}`, "DELETE", {}))}><X aria-hidden className="size-3.5" /><span className="sr-only">Delete certificate</span></button>
               </li>
             ))}
           </ul>

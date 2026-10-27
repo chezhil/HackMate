@@ -1,11 +1,13 @@
 "use client";
 
+import { Check, Pin, TriangleAlert, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { ClashList } from "@/components/ClashList";
 import { hid } from "@/lib/client";
 import { DeadlineEditor } from "@/components/DeadlineEditor";
 import { useHackmate } from "@/components/HackmateProvider";
+import { EmptyState } from "@/components/ui/Feedback";
 import type { Clash } from "@/lib/clashes";
 import { fmtDate, fmtRange, place, relative } from "@/lib/format";
 import type { ResultKind, TrackedWithHackathon, TrackStatus } from "@/lib/types";
@@ -34,12 +36,14 @@ export function TrackerView() {
 
   if (!loading && tracked.length === 0) {
     return (
-      <div className="card mx-auto max-w-lg p-10 text-center">
-        <div className="text-4xl">📌</div>
-        <h1 className="mt-3 text-xl font-semibold">Nothing tracked yet</h1>
-        <p className="mt-1 text-sm text-muted">Pin hackathons from Discover to track registration, building, submission and results here.</p>
-        <Link href="/" className="btn btn-primary mt-4">Find hackathons</Link>
-      </div>
+      <EmptyState
+        level={1}
+        icon={<Pin />}
+        title="Nothing tracked yet"
+        action={<Link href="/" className="btn btn-primary">Find hackathons</Link>}
+      >
+        Pin hackathons from Discover to track registration, building, submission and results here.
+      </EmptyState>
     );
   }
 
@@ -93,7 +97,7 @@ function TrackerCard({ t, clashes }: { t: TrackedWithHackathon; clashes: Clash[]
           {h.title}
         </Link>
         {clashes.length > 0 && (
-          <span className="shrink-0 rounded-md bg-danger-soft px-1.5 py-0.5 text-xs text-danger" title="Has clashes">⚠</span>
+          <span className="shrink-0 rounded-md bg-danger-soft px-1.5 py-1 text-danger" title="Has clashes"><TriangleAlert aria-hidden className="size-3" /><span className="sr-only">Has clashes</span></span>
         )}
       </div>
       <div className="text-xs text-muted">
@@ -166,7 +170,7 @@ function StageActions({
     case "registered":
       return (
         <div className="space-y-1">
-          {t.registeredAt && <p className="text-xs text-ok">✓ Registered {fmtDate(t.registeredAt)}</p>}
+          {t.registeredAt && <p className="flex items-center gap-1 text-xs text-ok"><Check aria-hidden className="size-3" /> Registered {fmtDate(t.registeredAt)}</p>}
           <button className="btn btn-sm" onClick={() => move("building")}>Start building →</button>
         </div>
       );
@@ -209,7 +213,7 @@ function StageActions({
     case "results":
       return (
         <div className="space-y-1">
-          {t.result && <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${RESULT_STYLE[t.result]}`}>{t.result === "won" ? "🏆 " : ""}{RESULT_LABELS[t.result]}</span>}
+          {t.result && <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ${RESULT_STYLE[t.result]}`}>{t.result === "won" && <Trophy aria-hidden className="size-3" />}{RESULT_LABELS[t.result]}</span>}
           {t.resultNotes && <p className="text-xs text-muted">{t.resultNotes}</p>}
           {t.submissionUrl && (
             <a href={t.submissionUrl} target="_blank" rel="noreferrer" className="block truncate text-xs text-accent hover:underline">

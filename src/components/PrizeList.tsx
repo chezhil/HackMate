@@ -1,5 +1,6 @@
 "use client";
 
+import { Trophy, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useHackmate } from "./HackmateProvider";
@@ -74,7 +75,8 @@ export function PrizeList({
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="font-medium">
-                    🏆 {p.title}
+                    <Trophy aria-hidden className="mr-1 inline size-4 align-text-bottom text-warn" />
+                    {p.title}
                     {p.amount != null && <span className="ml-2 text-ok">{money(p.amount, p.currency)}</span>}
                     {p.kind !== "cash" && <span className="ml-2 text-xs text-muted">({p.kind})</span>}
                   </div>
@@ -98,10 +100,11 @@ export function PrizeList({
                   </select>
                   {next && <button className="text-xs text-accent hover:underline" onClick={() => patch(p, { status: next })}>Mark {next}</button>}
                   <button
-                    className="text-xs text-muted opacity-0 hover:text-danger group-hover:opacity-100"
+                    className="text-muted opacity-0 hover:text-danger group-hover:opacity-100 focus-visible:opacity-100"
+                    title="Delete"
                     onClick={() => confirm(`Delete "${p.title}"?`) && call<{ prizes: Prize[] }>(`/api/prizes/${p.id}`, "DELETE").then((d) => onChange(d.prizes))}
                   >
-                    ✕
+                    <X aria-hidden className="size-3.5" /><span className="sr-only">Delete prize</span>
                   </button>
                 </div>
               </div>

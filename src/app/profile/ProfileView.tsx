@@ -1,10 +1,11 @@
 "use client";
 
+import { ScrollText, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CertificateList, type CertData } from "@/components/CertificateList";
 import { money, PrizeList } from "@/components/PrizeList";
-import { CountPill } from "@/components/ui/Feedback";
+import { CountPill, Stars } from "@/components/ui/Feedback";
 import { Tabs } from "@/components/ui/Tabs";
 import { call, hid } from "@/lib/client";
 import { fmtDate, fmtRange } from "@/lib/format";
@@ -307,8 +308,9 @@ function PortfolioTab({ entries }: { entries: PortfolioEntry[] }) {
                 {p.tagline && <p className="text-sm text-muted">{p.tagline}</p>}
               </div>
               {t.result && (
-                <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${t.result === "won" || t.result === "runner_up" ? "bg-ok-soft text-ok" : "bg-surface-2 text-muted"}`}>
-                  {t.result === "won" ? "🏆 " : ""}{RESULT_LABELS[t.result]}
+                <span className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ${t.result === "won" || t.result === "runner_up" ? "bg-ok-soft text-ok" : "bg-surface-2 text-muted"}`}>
+                  {t.result === "won" && <Trophy aria-hidden className="size-3" />}
+                  {RESULT_LABELS[t.result]}
                 </span>
               )}
             </div>
@@ -318,12 +320,12 @@ function PortfolioTab({ entries }: { entries: PortfolioEntry[] }) {
             {p.solution && <p className="line-clamp-3 text-sm">{p.solution}</p>}
             {p.stack && <p className="text-xs text-muted">Built with {p.stack}</p>}
             {prizes.length > 0 && (
-              <p className="text-sm text-ok">🏆 {prizes.map((x) => `${x.title}${x.amount ? ` (${money(x.amount, x.currency)})` : ""}`).join(", ")}</p>
+              <p className="flex items-start gap-1.5 text-sm text-ok"><Trophy aria-hidden className="mt-0.5 size-4 shrink-0" /> {prizes.map((x) => `${x.title}${x.amount ? ` (${money(x.amount, x.currency)})` : ""}`).join(", ")}</p>
             )}
             <div className="flex flex-wrap gap-3 text-sm">
               {links.map((l) => <a key={l.label} href={l.href} target="_blank" rel="noreferrer" className="text-accent hover:underline">{l.label} ↗</a>)}
               {certificates.filter((c) => c.status === "received").map((c) => (
-                <a key={c.id} href={c.file ? `/api/files/${c.file}` : (c.url ?? "#")} target="_blank" rel="noreferrer" className="text-accent hover:underline">📜 Certificate</a>
+                <a key={c.id} href={c.file ? `/api/files/${c.file}` : (c.url ?? "#")} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline"><ScrollText aria-hidden className="size-4" /> Certificate</a>
               ))}
             </div>
           </article>
@@ -368,7 +370,7 @@ function NotesTab({ entries }: { entries: PortfolioEntry[] }) {
         <article key={t.hackathonId} className="card space-y-2 p-4 text-sm">
           <div className="flex items-center justify-between gap-2">
             <Link href={`/hackathon/${hid(t.hackathonId)}`} className="font-semibold hover:underline">{t.hackathon.title}</Link>
-            <span className="text-xs text-muted">{r.rating ? "⭐".repeat(r.rating) : ""} {r.updatedAt && `· ${fmtDate(r.updatedAt)}`}</span>
+            <span className="flex items-center gap-1 text-xs text-muted">{r.rating ? <Stars value={r.rating} /> : null} {r.updatedAt && `· ${fmtDate(r.updatedAt)}`}</span>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             {([["Went well", r.wentWell, "text-ok"], ["Do better", r.improve, "text-warn"], ["Lessons", r.lessons, "text-accent"]] as const).map(([label, text, tone]) => (

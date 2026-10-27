@@ -1,5 +1,6 @@
 "use client";
 
+import { Clock, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { hid } from "@/lib/client";
@@ -148,7 +149,7 @@ export function CalendarView() {
                     >
                       {d.getDate()}
                     </span>
-                    {clash && <span className="text-xs text-danger" title="Clash">⚠</span>}
+                    {clash && <span className="text-danger" title="Clash"><TriangleAlert aria-hidden className="size-3" /><span className="sr-only">Clash</span></span>}
                   </div>
                   <div className="mt-0.5 space-y-0.5">
                     {deadlines.map(({ d: dl, h }) => (
@@ -157,7 +158,8 @@ export function CalendarView() {
                         className="truncate rounded-md border border-danger/40 px-1 text-2xs font-medium leading-4 text-danger"
                         title={`${dl.label} — ${h.title}`}
                       >
-                        ⏰ {dl.label.replace(/ (closes|due)$/i, "")}
+                        <Clock aria-hidden className="mr-0.5 inline size-2.5 align-[-1px]" />
+                        {dl.label.replace(/ (closes|due)$/i, "")}
                       </div>
                     ))}
                     {shown.map(({ h, tracked: isTracked }) => (
@@ -186,7 +188,7 @@ export function CalendarView() {
             <ul className="space-y-1.5 text-sm">
               {sel.deadlines.map(({ d, h }) => (
                 <li key={`d${d.id}`} className="flex flex-wrap items-center gap-2">
-                  <span className="text-danger">⏰ {d.label}</span>
+                  <span className="inline-flex items-center gap-1 text-danger"><Clock aria-hidden className="size-3.5" /> {d.label}</span>
                   <span>{h.title}</span>
                   <span className="text-xs text-muted">{fmtDateTime(d.dueAt)}</span>
                 </li>
