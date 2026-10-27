@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowRight, Check, ExternalLink, Globe, MapPin, Pin, TriangleAlert, Trophy } from "lucide-react";
+import { ArrowRight, Ban, Check, ExternalLink, Globe, MapPin, Pin, Sparkles, TriangleAlert, Trophy } from "lucide-react";
+import type { AiPolicyKind } from "@/lib/aiPolicy";
 import Link from "next/link";
 import { hid } from "@/lib/client";
 import { fmtRange, place } from "@/lib/format";
@@ -17,6 +18,25 @@ const ATTEND: Record<Hackathon["mode"], { label: string; tone: Tone; Icon: typeo
   offline: { label: "In person", tone: "warn", Icon: MapPin },
   hybrid: { label: "In person · online optional", tone: "ok", Icon: MapPin },
 };
+
+const AI_BADGE: Record<AiPolicyKind, { label: string; tone: Tone; Icon: typeof Globe }> = {
+  allowed: { label: "AI allowed", tone: "ok", Icon: Sparkles },
+  conditional: { label: "AI with conditions", tone: "warn", Icon: Sparkles },
+  banned: { label: "No AI", tone: "danger", Icon: Ban },
+};
+
+/** The hackathon's stated rule on AI tools; hover shows the sentence it came from. Hidden when the rules don't say. */
+export function AiPolicyBadge({ policy }: { policy: Hackathon["aiPolicy"] }) {
+  if (!policy) return null;
+  const { label, tone, Icon } = AI_BADGE[policy.kind];
+  return (
+    <Badge tone={tone} title={`From the rules: “${policy.quote}”`}>
+      <Icon aria-hidden className="size-3" />
+      {label}
+      <span className="sr-only">. From the rules: {policy.quote}</span>
+    </Badge>
+  );
+}
 
 export function AttendBadge({ mode }: { mode: Hackathon["mode"] }) {
   const { label, tone, Icon } = ATTEND[mode];
@@ -112,6 +132,7 @@ export function HackathonCard({
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
           <AttendBadge mode={h.mode} />
+          <AiPolicyBadge policy={h.aiPolicy} />
           {h.mode !== "online" && <span>{place(h)} ·</span>}
           <span>{fmtRange(h)}</span>
           <span>·</span>

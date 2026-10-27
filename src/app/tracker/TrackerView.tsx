@@ -346,19 +346,7 @@ function TrackerCard({
           <DeadlineEditor t={t} />
           {clashes.length > 0 && <ClashList clashes={clashes} compact />}
           <Notes t={t} />
-          <button
-            className="text-xs text-danger hover:underline"
-            onClick={async () => {
-              const ok = await confirm({
-                title: "Remove from tracker?",
-                body: `${h.title} leaves your board and calendar, along with its deadlines and notes.`,
-                confirmLabel: "Remove",
-              });
-              if (ok) void untrack(t.hackathonId);
-            }}
-          >
-            Remove from tracker
-          </button>
+          {/* Unpinning is the pin button at the top of the card, so there's no second remove link down here. */}
         </div>
       )}
     </article>

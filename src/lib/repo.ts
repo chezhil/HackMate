@@ -1,4 +1,5 @@
 import "server-only";
+import { aiPolicy } from "./aiPolicy";
 import { db } from "./db";
 import type {
   Deadline,
@@ -109,14 +110,17 @@ export function upsertHackathons(list: Hackathon[], seenAt: string) {
 /** Hackathons that haven't ended yet (or have no end date), plus anything being tracked. */
 export function listHackathons(): Hackathon[] {
   const cutoff = new Date(Date.now() - 24 * 3600_000).toISOString();
-  return db()
-    .prepare(
-      `SELECT * FROM hackathons
-       WHERE ends_at IS NULL OR ends_at >= ? OR id IN (SELECT hackathon_id FROM tracked)
-       ORDER BY COALESCE(starts_at, ends_at) ASC`,
-    )
-    .all(cutoff)
-    .map(toHackathon);
+  return (
+    db()
+      .prepare(
+        // The full rules (when the AI has read them) win over the feed description for the AI policy.
+        `SELECT h.*, COALESCE(d.source_text, h.description) AS policy_text FROM hackathons h
+         LEFT JOIN hackathon_details d ON d.hackathon_id = h.id
+         WHERE h.ends_at IS NULL OR h.ends_at >= ? OR h.id IN (SELECT hackathon_id FROM tracked)
+         ORDER BY COALESCE(h.starts_at, h.ends_at) ASC`,
+      )
+      .all(cutoff) as Record<string, unknown>[]
+  ).map((r) => ({ ...toHackathon(r), aiPolicy: aiPolicy(r.policy_text as string | null) }));
 }
 
 export function getDescription(id: string): string | null {

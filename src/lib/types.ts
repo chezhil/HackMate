@@ -1,3 +1,5 @@
+import type { AiPolicy } from "./aiPolicy";
+
 // Shared types used by the server (sync, API) and the client (pages).
 
 export type Source = "unstop" | "devfolio" | "mlh" | "wemakedevs";
@@ -37,6 +39,8 @@ export interface Hackathon {
   teamMax: number | null;
   /** Full description text from the feed. Only set by the source adapters; not sent in list responses. */
   description?: string | null;
+  /** Its stated rule on using AI tools, when the rules or description say one. Set in list responses. */
+  aiPolicy?: AiPolicy | null;
 }
 
 export type TrackStatus = "interested" | "registered" | "building" | "submitted" | "results";
