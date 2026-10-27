@@ -1,7 +1,10 @@
-import { Clapperboard, Flame, Gavel, Lightbulb, ListChecks, MessageCircleQuestion, Presentation, ScrollText } from "lucide-react";
+import {
+  Clapperboard, Flame, FolderKanban, Gavel, Lightbulb, ListChecks, MessageCircleQuestion, Mic, PartyPopper, Presentation,
+  ScrollText, Users,
+} from "lucide-react";
 import { hid } from "@/lib/client";
 
-export type ToolTab = "overview" | "ask" | "ideas" | "pitch" | "submit";
+export type ToolTab = "overview" | "ask" | "ideas" | "team" | "project" | "pitch" | "submit" | "standups" | "wrapup";
 export type ToolSection = "pitch" | "video" | "roast" | "qa";
 
 export interface HackathonTool {
@@ -13,17 +16,43 @@ export interface HackathonTool {
   Icon: typeof Flame;
 }
 
-/** The AI tools on a hackathon page, in the order you'd use them. The strip, Tracker shortcuts and links share this list. */
-export const TOOLS: HackathonTool[] = [
-  { key: "rules", label: "Understand the rules", blurb: "Summary, gotchas, judging", tab: "overview", Icon: ScrollText },
-  { key: "ask", label: "Ask AI", blurb: "Answers with sources", tab: "ask", Icon: MessageCircleQuestion },
-  { key: "ideas", label: "Ideas", blurb: "Suggestions, critique, past winners", tab: "ideas", Icon: Lightbulb },
-  { key: "pitch", label: "Pitch script", blurb: "Timed to the criteria", tab: "pitch", section: "pitch", Icon: Presentation },
-  { key: "video", label: "Demo video", blurb: "Shot-by-shot script", tab: "pitch", section: "video", Icon: Clapperboard },
-  { key: "roast", label: "Roast my deck", blurb: "Weak spots and fixes", tab: "pitch", section: "roast", Icon: Flame },
-  { key: "qa", label: "Mock judge Q&A", blurb: "Practise, get scored", tab: "pitch", section: "qa", Icon: Gavel },
-  { key: "submit", label: "Check submission", blurb: "Against the rules", tab: "submit", Icon: ListChecks },
+/** Everything on a hackathon page, grouped by when you'd use it. This panel is the page's only navigation. */
+export const TOOL_GROUPS: { label: string; tools: HackathonTool[] }[] = [
+  {
+    label: "Understand",
+    tools: [
+      { key: "rules", label: "Rules & overview", blurb: "Summary, gotchas, judging", tab: "overview", Icon: ScrollText },
+      { key: "ask", label: "Ask AI", blurb: "Answers with sources", tab: "ask", Icon: MessageCircleQuestion },
+    ],
+  },
+  {
+    label: "Plan",
+    tools: [
+      { key: "ideas", label: "Ideas", blurb: "Suggestions, critique, past winners", tab: "ideas", Icon: Lightbulb },
+      { key: "team", label: "Team", blurb: "Teammates and a recruiting post", tab: "team", Icon: Users },
+      { key: "project", label: "Your project", blurb: "Used by every tool below", tab: "project", Icon: FolderKanban },
+    ],
+  },
+  {
+    label: "Pitch",
+    tools: [
+      { key: "pitch", label: "Pitch script", blurb: "Timed to the criteria", tab: "pitch", section: "pitch", Icon: Presentation },
+      { key: "video", label: "Demo video", blurb: "Shot-by-shot script", tab: "pitch", section: "video", Icon: Clapperboard },
+      { key: "roast", label: "Roast my deck", blurb: "Weak spots and fixes", tab: "pitch", section: "roast", Icon: Flame },
+      { key: "qa", label: "Mock judge Q&A", blurb: "Practise, get scored", tab: "pitch", section: "qa", Icon: Gavel },
+    ],
+  },
+  {
+    label: "Finish",
+    tools: [
+      { key: "submit", label: "Submit", blurb: "Checklist and checks", tab: "submit", Icon: ListChecks },
+      { key: "standups", label: "Standups", blurb: "Voice or written", tab: "standups", Icon: Mic },
+      { key: "wrapup", label: "Wrap-up", blurb: "Result, prizes, retro", tab: "wrapup", Icon: PartyPopper },
+    ],
+  },
 ];
+
+export const TOOLS: HackathonTool[] = TOOL_GROUPS.flatMap((g) => g.tools);
 
 export const toolByKey = (key: string) => TOOLS.find((t) => t.key === key)!;
 

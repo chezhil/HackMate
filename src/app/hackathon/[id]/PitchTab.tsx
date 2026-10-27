@@ -3,9 +3,8 @@
 import { Flame, Timer } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CopyButton } from "@/components/CopyButton";
-import { ProjectCard } from "@/components/ProjectCard";
+import { ProjectNote } from "@/components/ProjectCard";
 import { Banner, ScoreBadge } from "@/components/ui/Feedback";
-import { Segmented } from "@/components/ui/Tabs";
 import { call, hid } from "@/lib/client";
 import { relative } from "@/lib/format";
 import type { AiOutput, DeckRoast, PitchScript, QaTurn, VideoScript } from "@/lib/types";
@@ -25,7 +24,7 @@ const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).
 
 
 /** The section is owned by the page so it can live in the URL (?tab=pitch&section=qa) and be linked to. */
-export function PitchTab({ id, section, onSection }: { id: string; section: PitchSection; onSection: (s: PitchSection) => void }) {
+export function PitchTab({ id, section, onOpenProject }: { id: string; section: PitchSection; onOpenProject: () => void }) {
   const [outputs, setOutputs] = useState<AiOutput[]>([]);
   const [videoLimit, setVideoLimit] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
@@ -56,11 +55,8 @@ export function PitchTab({ id, section, onSection }: { id: string; section: Pitc
 
   return (
     <div className="space-y-4">
-      <div className="overflow-x-auto pb-1">
-        <Segmented options={PITCH_SECTIONS} value={section} onChange={onSection} label="Pitch tools" />
-      </div>
-      {/* The pitch script is written from the project, so its form comes first there; elsewhere the tool you came for does. */}
-      {section === "pitch" && <ProjectCard id={id} />}
+      {/* Switching between Pitch tools happens in the page's tool panel; the project lives in its own section. */}
+      {section !== "roast" && <ProjectNote id={id} onOpen={onOpenProject} />}
       {error && <Banner tone="danger">{error}</Banner>}
 
       {section === "pitch" && <PitchSection items={latest<PitchScript>("pitch")} busy={busy} onGenerate={generate} onDelete={remove} />}
@@ -70,7 +66,6 @@ export function PitchTab({ id, section, onSection }: { id: string; section: Pitc
       )}
       {section === "roast" && <RoastSection items={latest<DeckRoast>("roast")} busy={busy} onGenerate={generate} onDelete={remove} />}
       {section === "qa" && <QaSection id={id} />}
-      {section !== "pitch" && <ProjectCard id={id} />}
     </div>
   );
 }

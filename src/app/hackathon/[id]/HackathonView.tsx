@@ -5,11 +5,11 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AttendBadge } from "@/components/HackathonCard";
-import { TOOLS } from "@/components/hackathonTools";
+import { TOOL_GROUPS, TOOLS, type HackathonTool } from "@/components/hackathonTools";
+import { ProjectCard } from "@/components/ProjectCard";
 import { useHackmate } from "@/components/HackmateProvider";
 import { useConfirm } from "@/components/ui/Confirm";
 import { EmptyState, Skeleton } from "@/components/ui/Feedback";
-import { Tabs } from "@/components/ui/Tabs";
 import type { RuleAlert } from "@/lib/alerts";
 import { call, hid } from "@/lib/client";
 import { fmtRange, place } from "@/lib/format";
@@ -37,20 +37,12 @@ export interface DetailsPayload {
   ai: AiStatus;
 }
 
-const TABS = [
-  { key: "overview", label: "Overview" },
-  { key: "ask", label: "Ask AI" },
-  { key: "ideas", label: "Ideas" },
-  { key: "team", label: "Team" },
-  { key: "pitch", label: "Pitch" },
-  { key: "submit", label: "Submit" },
-  { key: "standups", label: "Standups" },
-  { key: "wrapup", label: "Wrap-up" },
-] as const;
+/** The page's sections. The grouped tool panel (TOOL_GROUPS) is how you move between them. */
+const TABS = ["overview", "ask", "ideas", "team", "project", "pitch", "submit", "standups", "wrapup"] as const;
 
-type Tab = (typeof TABS)[number]["key"];
+type Tab = (typeof TABS)[number];
 
-const isTab = (v: string | null): v is Tab => TABS.some((t) => t.key === v);
+const isTab = (v: string | null): v is Tab => (TABS as readonly string[]).includes(v ?? "");
 
 export function HackathonView() {
   const id = decodeURIComponent(useParams<{ id: string }>().id);
@@ -79,7 +71,6 @@ export function HackathonView() {
     else url.searchParams.delete("section");
     window.history.replaceState(null, "", url);
   };
-  const setTab = (t: Tab) => go(t);
   const confirm = useConfirm();
 
   // A shortcut (strip or Tracker link) should show the tool, not leave it below the header and strip.
@@ -207,53 +198,71 @@ export function HackathonView() {
         }}
       />
 
-      {/* scroll-mt clears the sticky nav when a shortcut scrolls the chosen tool into view. */}
-      <div ref={tabsRef} className="scroll-mt-20">
-        <Tabs tabs={TABS} value={tab} onChange={setTab} label="Hackathon sections" />
+      {/* scroll-mt clears the sticky nav when choosing a tool scrolls it into view. */}
+      <div ref={tabsRef} className="scroll-mt-20 space-y-4 border-t-(length:--line) border-border pt-4">
+        <h2 className="text-lg font-bold">{toolTitle(tab, section)}</h2>
+        {tab === "overview" && <OverviewTab data={data} onRefresh={refresh} />}
+        {tab === "ask" && <AskTab id={id} data={data} />}
+        {tab === "ideas" && <IdeasTab id={id} />}
+        {tab === "team" && <TeamTab id={id} data={data} />}
+        {tab === "project" && <div className="mx-auto max-w-3xl"><ProjectCard id={id} standalone /></div>}
+        {tab === "pitch" && <PitchTab id={id} section={section} onOpenProject={() => go("project")} />}
+        {tab === "submit" && <SubmitTab id={id} onOpenProject={() => go("project")} />}
+        {tab === "standups" && <StandupsTab id={id} />}
+        {tab === "wrapup" && <WrapUpTab id={id} />}
       </div>
-
-      {tab === "overview" && <OverviewTab data={data} onRefresh={refresh} />}
-      {tab === "ask" && <AskTab id={id} data={data} />}
-      {tab === "ideas" && <IdeasTab id={id} />}
-      {tab === "team" && <TeamTab id={id} data={data} />}
-      {tab === "pitch" && <PitchTab id={id} section={section} onSection={(s) => go("pitch", s)} />}
-      {tab === "submit" && <SubmitTab id={id} />}
-      {tab === "standups" && <StandupsTab id={id} />}
-      {tab === "wrapup" && <WrapUpTab id={id} />}
     </div>
   );
 }
 
-/** "What you can do here": every AI tool on this page as a one-click shortcut, so none hide behind a tab. */
+const isOn = (t: HackathonTool, tab: Tab, section: PitchSection) => tab === t.tab && (t.tab !== "pitch" || t.section === section);
+
+/** Heading for whatever is open, so the content says what it is without a separate tab row. */
+function toolTitle(tab: Tab, section: PitchSection) {
+  return TOOLS.find((t) => isOn(t, tab, section))?.label ?? "";
+}
+
+/**
+ * "What you can do here": the page's only navigation. Every section and Pitch tool is a tile, grouped by
+ * stage. On phones each group scrolls sideways so the panel stays short.
+ */
 function ToolStrip({ active, section, onGo }: { active: Tab; section: PitchSection; onGo: (t: Tab, s?: PitchSection) => void }) {
   return (
-    <nav aria-label="What you can do here" className="space-y-1.5">
+    <nav aria-label="What you can do here" className="space-y-2">
       <h2 className="text-xs font-bold uppercase tracking-wider">What you can do here</h2>
-      <ul className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
-        {TOOLS.map((t) => {
-          const on = active === t.tab && (t.tab !== "pitch" || t.section === section);
-          return (
-            <li key={t.key} className="shrink-0">
-              <button
-                type="button"
-                onClick={() => onGo(t.tab, t.section)}
-                aria-current={on ? "true" : undefined}
-                className={`flex w-40 items-start gap-2 rounded-xl border-(length:--line) border-border p-2 text-left shadow-hard-sm transition-[transform,box-shadow] duration-(--dur-fast) hover:-translate-x-px hover:-translate-y-px hover:shadow-hard ${
-                  on ? "bg-accent-soft" : "bg-surface"
-                }`}
-              >
-                <span className="grid size-7 shrink-0 place-items-center rounded-lg border-(length:--line) border-border bg-warn-soft">
-                  <t.Icon aria-hidden className="size-4" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-bold leading-tight">{t.label}</span>
-                  <span className="block text-2xs leading-snug text-muted">{t.blurb}</span>
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {TOOL_GROUPS.map((g) => (
+          <div key={g.label} className="min-w-0">
+            <h3 className="mb-1.5 text-2xs font-bold uppercase tracking-wider text-muted">{g.label}</h3>
+            <ul className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1.5 sm:flex-col sm:overflow-visible">
+              {g.tools.map((t) => {
+                const on = isOn(t, active, section);
+                return (
+                  <li key={t.key} className="shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => onGo(t.tab, t.section)}
+                      aria-current={on ? "page" : undefined}
+                      // Narrow enough on phones that the next tile peeks in, so the row reads as scrollable.
+                      className={`flex w-38 items-center gap-2 rounded-xl border-(length:--line) border-border px-2 py-1.5 text-left transition-[transform,box-shadow] duration-(--dur-fast) sm:w-full ${
+                        on ? "bg-accent text-accent-text shadow-none" : "bg-surface shadow-hard-sm hover:-translate-x-px hover:-translate-y-px hover:shadow-hard"
+                      }`}
+                    >
+                      <span className={`grid size-7 shrink-0 place-items-center rounded-lg border-(length:--line) border-border ${on ? "bg-surface text-text" : "bg-warn-soft"}`}>
+                        <t.Icon aria-hidden className="size-4" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-bold leading-tight">{t.label}</span>
+                        <span className={`block truncate text-2xs leading-snug ${on ? "opacity-85" : "text-muted"}`}>{t.blurb}</span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
     </nav>
   );
 }

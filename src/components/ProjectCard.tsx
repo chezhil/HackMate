@@ -16,7 +16,7 @@ const FIELDS: { key: keyof Project; label: string; placeholder: string; long?: b
 ];
 
 /** What you're building. Pitches, scripts, checks and write-ups all read from this. */
-export function ProjectCard({ id, onSaved }: { id: string; onSaved?: (p: Project) => void }) {
+export function ProjectCard({ id, onSaved, standalone }: { id: string; onSaved?: (p: Project) => void; standalone?: boolean }) {
   const [project, setProject] = useState<Project | null>(null);
   const [open, setOpen] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -34,7 +34,7 @@ export function ProjectCard({ id, onSaved }: { id: string; onSaved?: (p: Project
     const d = await call<{ project: Project }>(`/api/h/${hid(id)}/project`, "PUT", project);
     setProject(d.project);
     setSaved(true);
-    setOpen(false);
+    if (!standalone) setOpen(false);
     setTimeout(() => setSaved(false), 1500);
     onSaved?.(d.project);
   };
@@ -43,17 +43,20 @@ export function ProjectCard({ id, onSaved }: { id: string; onSaved?: (p: Project
     <section className="card p-4">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <h2 className="font-bold">{project.name || "Your project"}</h2>
+          {/* On its own tab the page heading already says "Your project". */}
+          {!standalone && <h2 className="font-bold">{project.name || "Your project"}</h2>}
           <p className="truncate text-sm text-muted">
-            {project.tagline || (project.updatedAt ? "No one-liner yet" : "Fill this in once; the pitch, video script, checks and posts all use it.")}
+            {standalone
+              ? "Fill this in once. The pitch script, demo video, mock Q&A, submission checks and write-ups all use it."
+              : project.tagline || (project.updatedAt ? "No one-liner yet" : "Fill this in once; the pitch, video script, checks and posts all use it.")}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {saved && <span className="text-xs text-ok">Saved</span>}
-          <button className="btn btn-sm" onClick={() => setOpen(!open)}>{open ? "Close" : "Edit project"}</button>
+          {saved && <span className="text-xs text-ok" role="status">Saved</span>}
+          {!standalone && <button className="btn btn-sm" onClick={() => setOpen(!open)}>{open ? "Close" : "Edit project"}</button>}
         </div>
       </div>
-      {open && (
+      {(open || standalone) && (
         <div className="mt-3 grid gap-2 md:grid-cols-2">
           {FIELDS.map((f) => (
             <label key={f.key} className={f.long ? "md:col-span-2" : ""}>
@@ -81,5 +84,31 @@ export function ProjectCard({ id, onSaved }: { id: string; onSaved?: (p: Project
         </div>
       )}
     </section>
+  );
+}
+
+/** One line where the project is used (Pitch, Submit): which project it reads, or a nudge to fill it in first. */
+export function ProjectNote({ id, onOpen }: { id: string; onOpen: () => void }) {
+  const [project, setProject] = useState<Project | null>(null);
+  useEffect(() => {
+    call<{ project: Project }>(`/api/h/${hid(id)}/project`).then((d) => setProject(d.project), () => {});
+  }, [id]);
+  if (!project) return null;
+  const filled = Boolean(project.updatedAt && (project.name || project.solution));
+  return (
+    <p className={`flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border-(length:--line) px-3 py-2 text-sm ${filled ? "border-border bg-surface" : "border-warn bg-warn-soft text-warn"}`}>
+      {filled ? (
+        <>
+          <span className="text-muted">Using your project:</span>
+          <span className="font-semibold">{project.name || "Untitled"}</span>
+          {project.tagline && <span className="truncate text-muted">· {project.tagline}</span>}
+        </>
+      ) : (
+        <span className="font-semibold">Fill in your project first: these tools write from it.</span>
+      )}
+      <button type="button" className="ml-auto font-semibold text-accent hover:underline" onClick={onOpen}>
+        {filled ? "Edit project" : "Open Your project"}
+      </button>
+    </p>
   );
 }

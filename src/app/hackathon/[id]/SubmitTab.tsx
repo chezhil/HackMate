@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { CopyButton } from "@/components/CopyButton";
 import { Badge, CheckRow, CheckSummary } from "@/components/ui/Feedback";
 import { useConfirm } from "@/components/ui/Confirm";
-import { ProjectCard } from "@/components/ProjectCard";
+import { ProjectNote } from "@/components/ProjectCard";
 import { call, hid } from "@/lib/client";
 import type { AiOutput, ChecklistItem, ChecklistKind, SubmissionCheck, Writeup } from "@/lib/types";
 
@@ -25,7 +25,7 @@ function videoDuration(file: File): Promise<number | null> {
   });
 }
 
-export function SubmitTab({ id }: { id: string }) {
+export function SubmitTab({ id, onOpenProject }: { id: string; onOpenProject: () => void }) {
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [result, setResult] = useState<{ checks: SubmissionCheck[]; summary: string | null } | null>(null);
   const [verifying, setVerifying] = useState(false);
@@ -71,7 +71,7 @@ export function SubmitTab({ id }: { id: string }) {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-main-side">
       <div className="space-y-4">
-        <ProjectCard id={id} />
+        <ProjectNote id={id} onOpen={onOpenProject} />
 
         <section className="card space-y-3 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
