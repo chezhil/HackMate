@@ -24,9 +24,13 @@ type Row = {
   created_at: string;
 };
 
+/** Written standups share the table: no audio file, mime "text/plain", the note kept as the transcript. */
+const TEXT_MIME = "text/plain";
+
 function toStandup(r: Row): Standup {
   return {
     id: r.id,
+    kind: r.mime === TEXT_MIME ? "text" : "voice",
     author: r.author,
     mime: r.mime,
     durationSec: r.duration_sec,
@@ -56,16 +60,49 @@ export function saveStandup(hackathonId: string, audio: Buffer, mime: string, au
   return r.id;
 }
 
+type Summary = { done: string[]; next: string[]; blockers: string[] };
+
+/**
+ * A written standup. If you filled in done / next / blockers yourself it's saved as is (no AI needed);
+ * a free-form note is split into those three by the AI, like a voice note.
+ */
+export async function saveTextStandup(hackathonId: string, author: string | null, note: string, parts: Summary): Promise<number> {
+  const typed = parts.done.length + parts.next.length + parts.blockers.length > 0;
+  const r = db()
+    .prepare("INSERT INTO standups (hackathon_id, author, file, mime, transcript, summary, created_at) VALUES (?, ?, '', ?, ?, ?, ?) RETURNING id")
+    .get(hackathonId, author, TEXT_MIME, note || null, typed ? JSON.stringify(parts) : null, new Date().toISOString()) as { id: number };
+  if (!typed && note) await summarizeText(r.id);
+  return r.id;
+}
+
+async function summarizeText(id: number) {
+  const r = row(id);
+  if (!r?.transcript) return;
+  try {
+    const res = await generateJson<Summary>({
+      task: "summarize",
+      temperature: 0.1,
+      system: `Summarise this hackathon stand-up note. Reply with JSON ${SUMMARY_SHAPE}.`,
+      messages: [{ role: "user", content: r.transcript }],
+    });
+    db().prepare("UPDATE standups SET summary = ?, error = NULL WHERE id = ?").run(JSON.stringify(res.data), id);
+  } catch (e) {
+    const msg = e instanceof AiUnavailableError ? e.message : `Couldn't summarise: ${(e as Error).message}`;
+    db().prepare("UPDATE standups SET error = ? WHERE id = ?").run(msg, id);
+  }
+}
+
 export function standupAudio(id: number): { data: Buffer; mime: string } | null {
   const r = row(id);
-  if (!r) return null;
+  if (!r || !r.file) return null;
   return { data: readFileSync(path.join(AUDIO_DIR, r.file)), mime: r.mime };
 }
 
 export function deleteStandup(id: number) {
   const r = row(id);
   if (!r) return;
-  rmSync(path.join(AUDIO_DIR, r.file), { force: true });
+  // Written standups have no file; never pass an empty name, which would point at the audio folder itself.
+  if (r.file) rmSync(path.join(AUDIO_DIR, path.basename(r.file)), { force: true });
   db().prepare("DELETE FROM standups WHERE id = ?").run(id);
 }
 
@@ -73,7 +110,6 @@ export function standupHackathon(id: number) {
   return row(id)?.hackathon_id ?? null;
 }
 
-type Summary = { done: string[]; next: string[]; blockers: string[] };
 const SUMMARY_SHAPE = '{ "done": string[], "next": string[], "blockers": string[] } — short items, empty arrays if nothing fits';
 
 /**
@@ -83,6 +119,11 @@ const SUMMARY_SHAPE = '{ "done": string[], "next": string[], "blockers": string[
 export async function transcribeStandup(id: number): Promise<Standup> {
   const r = row(id);
   if (!r) throw new Error("Standup not found");
+  // Retrying a written standup re-runs the summary; there's nothing to transcribe.
+  if (r.mime === TEXT_MIME) {
+    await summarizeText(id);
+    return toStandup(row(id)!);
+  }
   const audio = readFileSync(path.join(AUDIO_DIR, r.file));
   const save = (transcript: string, summary: Summary) =>
     db().prepare("UPDATE standups SET transcript = ?, summary = ?, error = NULL WHERE id = ?").run(transcript, JSON.stringify(summary), id);

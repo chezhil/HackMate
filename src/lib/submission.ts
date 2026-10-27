@@ -41,36 +41,72 @@ function seedFor(item: string, limit: string | null): Seed {
   return { ...base, kind: "check", meta: null };
 }
 
-/** First visit: build the checklist from the rules the AI extracted, plus the usual must-haves. */
-function seedChecklist(hackathonId: string) {
+/**
+ * What this hackathon asks you to hand in. When the rules list deliverables, the checklist is exactly those
+ * (plus submitting and adding teammates). Only when they list nothing do the usual items appear, and then
+ * as optional suggestions, so a hackathon that wants a PR link and a blog post never asks for a demo video.
+ */
+function seedsFor(hackathonId: string): Seed[] {
   const info = getDetails(hackathonId)?.info;
-  const seeds: Seed[] = (info?.deliverables ?? []).map((d) => seedFor(d.item, d.limit));
-  const has = (re: RegExp) => seeds.some((s) => re.test(s.label));
+  const fromRules: Seed[] = (info?.deliverables ?? []).map((d) => seedFor(d.item, d.limit));
   const limit = videoLimitSec(hackathonId);
-  for (const s of seeds) if (s.meta?.accept === "video" && limit) s.meta.limitSec = limit;
+  for (const s of fromRules) if (s.meta?.accept === "video" && limit) s.meta.limitSec = limit;
 
-  const defaults: Seed[] = [
-    // only required when the rules didn't spell out the deliverables themselves
-    !has(/github|repo|source/i) && { label: "Public GitHub repo with a README", detail: "Setup steps, screenshots, tech stack, team", kind: "link", required: seeds.length === 0, meta: null, origin: "default" },
-    !has(/video|demo/i) && { label: "Demo video", detail: limit ? `Max ${Math.round(limit / 6) / 10} min` : "Usually 2–3 minutes", kind: "link", required: true, meta: { accept: "video", ...(limit ? { limitSec: limit } : {}) }, origin: "default" },
-    !has(/deck|slides|ppt|presentation/i) && { label: "Pitch deck", detail: "5–10 slides: problem, solution, demo, tech, impact, team", kind: "link", required: false, meta: { accept: "pdf" }, origin: "default" },
+  const suggestions: Seed[] = fromRules.length
+    ? []
+    : [
+        { label: "Public GitHub repo with a README", detail: "Setup steps, screenshots, tech stack, team", kind: "link", required: false, meta: null, origin: "default" },
+        { label: "Demo video", detail: limit ? `Max ${Math.round(limit / 6) / 10} min` : "Usually 2–3 minutes", kind: "link", required: false, meta: { accept: "video", ...(limit ? { limitSec: limit } : {}) }, origin: "default" },
+        { label: "Pitch deck", detail: "5–10 slides: problem, solution, demo, tech, impact, team", kind: "link", required: false, meta: { accept: "pdf" }, origin: "default" },
+      ];
+  const always = [
     { label: "Project submitted on the hackathon platform", detail: "Before the submission deadline", kind: "check", required: true, meta: null, origin: "default" },
     (info?.teamSize.max ?? 1) > 1 && { label: "All teammates added to the submission", detail: null, kind: "check", required: true, meta: null, origin: "default" },
-    { label: "Tracks / sponsor prizes selected", detail: "Opt in to every prize you qualify for", kind: "check", required: false, meta: null, origin: "default" },
   ].filter(Boolean) as Seed[];
+  return [...fromRules, ...suggestions, ...always];
+}
 
+/** Whether the rules have been read and list deliverables yet. */
+const rulesKnown = (hackathonId: string) => (getDetails(hackathonId)?.info?.deliverables.length ?? 0) > 0;
+
+/** An item you haven't touched: not ticked, nothing attached, not one you added. Safe to replace. */
+const untouched = (i: ChecklistItem) => i.origin !== "custom" && !i.done && !i.value && !i.file;
+
+function insertSeeds(hackathonId: string, seeds: Seed[], startSort: number) {
   const insert = db().prepare(
     "INSERT INTO checklist_items (hackathon_id, label, detail, kind, required, meta, origin, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
   );
-  [...seeds, ...defaults].forEach((s, i) =>
-    insert.run(hackathonId, s.label, s.detail, s.kind, s.required ? 1 : 0, s.meta ? JSON.stringify(s.meta) : null, s.origin, i),
+  seeds.forEach((s, i) =>
+    insert.run(hackathonId, s.label, s.detail, s.kind, s.required ? 1 : 0, s.meta ? JSON.stringify(s.meta) : null, s.origin, startSort + i),
   );
 }
 
+/**
+ * Re-derive the rule-based items: replaces the ones you haven't touched with what the rules ask for now,
+ * keeps your own items and anything ticked or attached, and doesn't duplicate what's already there.
+ */
+export function rebuildChecklist(hackathonId: string) {
+  const current = (db().prepare("SELECT * FROM checklist_items WHERE hackathon_id = ? ORDER BY sort, id").all(hackathonId) as Row[]).map(toItem);
+  const del = db().prepare("DELETE FROM checklist_items WHERE id = ?");
+  for (const i of current) if (untouched(i)) del.run(i.id);
+  const kept = new Set(current.filter((i) => !untouched(i)).map((i) => i.label.trim().toLowerCase()));
+  const fresh = seedsFor(hackathonId).filter((s) => !kept.has(s.label.trim().toLowerCase()));
+  // Rule items go first; whatever you kept follows in its old order.
+  insertSeeds(hackathonId, fresh, -fresh.length);
+}
+
 export function listChecklist(hackathonId: string): ChecklistItem[] {
-  const count = db().prepare("SELECT COUNT(*) AS n FROM checklist_items WHERE hackathon_id = ?").get(hackathonId) as { n: number };
-  if (count.n === 0) seedChecklist(hackathonId);
-  return (db().prepare("SELECT * FROM checklist_items WHERE hackathon_id = ? ORDER BY sort, id").all(hackathonId) as Row[]).map(toItem);
+  const read = () => (db().prepare("SELECT * FROM checklist_items WHERE hackathon_id = ? ORDER BY sort, id").all(hackathonId) as Row[]).map(toItem);
+  let items = read();
+  if (items.length === 0) {
+    insertSeeds(hackathonId, seedsFor(hackathonId), 0);
+    items = read();
+  } else if (rulesKnown(hackathonId) && !items.some((i) => i.origin === "rules") && items.every((i) => i.origin === "custom" || untouched(i))) {
+    // Built before the AI had read the rules: now that it has, swap the generic list for the real one.
+    rebuildChecklist(hackathonId);
+    items = read();
+  }
+  return items;
 }
 
 export function addChecklistItem(hackathonId: string, label: string, kind: ChecklistKind, required: boolean) {
@@ -87,7 +123,7 @@ export function itemHackathon(id: number): string | null {
 
 export function updateChecklistItem(
   id: number,
-  patch: { done?: boolean; value?: string | null; file?: string | null; mime?: string | null; meta?: ChecklistItem["meta"] },
+  patch: { done?: boolean; value?: string | null; file?: string | null; mime?: string | null; meta?: ChecklistItem["meta"]; label?: string; required?: boolean },
 ) {
   const cur = db().prepare("SELECT * FROM checklist_items WHERE id = ?").get(id) as Row | undefined;
   if (!cur) throw new Error("Item not found");
@@ -97,8 +133,11 @@ export function updateChecklistItem(
   // Attaching proof ticks the item off.
   if ((patch.value || patch.file) && patch.done === undefined) next.done = true;
   db()
-    .prepare("UPDATE checklist_items SET done = ?, value = ?, file = ?, mime = ?, meta = ? WHERE id = ?")
-    .run(next.done ? 1 : 0, next.value || null, next.file, next.mime, next.meta ? JSON.stringify({ ...item.meta, ...next.meta }) : null, id);
+    .prepare("UPDATE checklist_items SET done = ?, value = ?, file = ?, mime = ?, meta = ?, label = ?, required = ? WHERE id = ?")
+    .run(
+      next.done ? 1 : 0, next.value || null, next.file, next.mime, next.meta ? JSON.stringify({ ...item.meta, ...next.meta }) : null,
+      next.label.trim() || item.label, next.required ? 1 : 0, id,
+    );
 }
 
 export function deleteChecklistItem(id: number) {

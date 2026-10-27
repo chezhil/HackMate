@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Check, GripVertical, Pin, PinOff, TriangleAlert, Trophy } from "lucide-react";
+import { ArrowRight, Check, GripVertical, Pin, PinOff, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ClashList } from "@/components/ClashList";
@@ -11,21 +11,12 @@ import { useConfirm } from "@/components/ui/Confirm";
 import { Countdown } from "@/components/ui/Countdown";
 import { Badge, EmptyState, Kbd } from "@/components/ui/Feedback";
 import { useToast } from "@/components/ui/Toast";
-import type { Tone } from "@/components/ui/tone";
 import { SEVERITY_LABEL, SEVERITY_TONE } from "@/components/ClashList";
-import { toolByKey, toolHref } from "@/components/hackathonTools";
 import { worstSeverity, type Clash } from "@/lib/clashes";
 import { fmtDate, fmtRange, place } from "@/lib/format";
 import type { ResultKind, TrackedWithHackathon, TrackStatus } from "@/lib/types";
 import { RESULT_LABELS, SOURCE_LABELS, STATUSES } from "@/lib/types";
 
-const RESULT_TONE: Record<ResultKind, Tone> = {
-  won: "ok",
-  runner_up: "ok",
-  special_mention: "accent",
-  participated: "neutral",
-  not_selected: "neutral",
-};
 
 function clashesFor(id: string, clashes: Clash[]) {
   return clashes.filter((c) =>
@@ -37,15 +28,9 @@ function clashesFor(id: string, clashes: Clash[]) {
   );
 }
 
-const ORDER = STATUSES.map((s) => s.key);
-
-/** The tools you reach for most while a hackathon is on, with shorter labels for the narrow card. */
-const SHORTCUTS = [
-  { ...toolByKey("ask"), short: "Ask AI" },
-  { ...toolByKey("ideas"), short: "Ideas" },
-  { ...toolByKey("pitch"), short: "Pitch" },
-  { ...toolByKey("qa"), short: "Mock Q&A" },
-];
+/** The board ends at "Expecting results"; once results are in, a hackathon moves to the Results page. */
+const COLUMNS = STATUSES.filter((s) => s.key !== "results");
+const ORDER = COLUMNS.map((s) => s.key);
 const labelOf = (s: TrackStatus) => STATUSES.find((x) => x.key === s)!.label;
 
 interface Drag {
@@ -157,6 +142,9 @@ export function TrackerView() {
     };
   }, []);
 
+  const withResults = tracked.filter((t) => statusOf(t) === "results").length;
+  const onBoard = tracked.length - withResults;
+
   if (!loading && tracked.length === 0) {
     return (
       <EmptyState
@@ -182,11 +170,23 @@ export function TrackerView() {
           <ClashList clashes={clashes} />
         </section>
       )}
-      <p className="hidden text-xs text-muted md:block">
-        Drag a card to another column, or focus its <GripVertical aria-hidden className="inline size-3.5" /> handle and press <Kbd>←</Kbd> <Kbd>→</Kbd>.
-      </p>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        {STATUSES.map((s) => {
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="hidden text-xs text-muted md:block">
+          Drag a card to another column, or focus its <GripVertical aria-hidden className="inline size-3.5" /> handle and press <Kbd>←</Kbd> <Kbd>→</Kbd>.
+        </p>
+        {withResults > 0 && (
+          <Link href="/results" className="btn btn-sm">
+            {withResults} with results <ArrowRight aria-hidden className="size-3.5" />
+          </Link>
+        )}
+      </div>
+      {onBoard === 0 && (
+        <EmptyState icon={<Pin />} title="Nothing in progress" action={<Link href="/" className="btn btn-primary">Find hackathons</Link>}>
+          Everything you&apos;ve tracked has results. See them on the Results page, or pin something new.
+        </EmptyState>
+      )}
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {COLUMNS.map((s) => {
           const items = tracked.filter((t) => statusOf(t) === s.key);
           const target = drag && drag.over === s.key && drag.from !== s.key;
           return (
@@ -263,8 +263,12 @@ function TrackerCard({
   const [open, setOpen] = useState(false);
   const h = t.hackathon;
   const next = status === "results" ? undefined : t.deadlines.find((d) => !d.done && new Date(d.dueAt).getTime() > now);
-  const move = (s: TrackStatus, extra: Parameters<typeof updateTracked>[1] = {}) =>
-    updateTracked(t.hackathonId, { status: s, ...extra });
+  const toast = useToast();
+  const move = async (s: TrackStatus, extra: Parameters<typeof updateTracked>[1] = {}) => {
+    await updateTracked(t.hackathonId, { status: s, ...extra });
+    // Results leave the board, so say where the card went.
+    if (s === "results") toast({ message: `${h.title} moved to Results.`, tone: "info", duration: 3000 });
+  };
   const i = ORDER.indexOf(status);
   const worst = worstSeverity(clashes);
 
@@ -326,17 +330,11 @@ function TrackerCard({
 
       <StageActions t={t} move={move} />
 
-      {/* Straight to the AI tools for this hackathon. */}
-      <nav aria-label={`Tools for ${h.title}`} className="flex flex-wrap items-center gap-1.5 border-t border-border pt-2">
-        <Link href={`/hackathon/${hid(h.id)}`} className="btn btn-sm btn-primary">
+      <div className="border-t border-border pt-2">
+        <Link href={`/hackathon/${hid(h.id)}`} className="btn btn-sm btn-primary" title="Rules, Ask AI, ideas, pitch and Q&A tools">
           Open <ArrowRight aria-hidden className="size-3.5" />
         </Link>
-        {SHORTCUTS.map((tool) => (
-          <Link key={tool.key} href={toolHref(h.id, tool)} className="chip hover:bg-warn-soft" title={tool.blurb}>
-            <tool.Icon aria-hidden className="size-3" /> {tool.short}
-          </Link>
-        ))}
-      </nav>
+      </div>
 
       <div className="flex items-center justify-between gap-2 pt-1">
         <select
@@ -442,17 +440,8 @@ function StageActions({
         </form>
       );
     case "results":
-      return (
-        <div className="space-y-1">
-          {t.result && <Badge tone={RESULT_TONE[t.result]}>{t.result === "won" && <Trophy aria-hidden className="size-3" />}{RESULT_LABELS[t.result]}</Badge>}
-          {t.resultNotes && <p className="text-xs text-muted">{t.resultNotes}</p>}
-          {t.submissionUrl && (
-            <a href={t.submissionUrl} target="_blank" rel="noreferrer" className="block truncate text-xs text-accent hover:underline">
-              {t.submissionUrl}
-            </a>
-          )}
-        </div>
-      );
+      // Hackathons with results live on the Results page, not on the board.
+      return null;
   }
 }
 

@@ -174,7 +174,7 @@ export function HackathonView() {
           <a href={h.url} target="_blank" rel="noreferrer" className="btn">Open page ↗</a>
           {isTracked ? (
             <>
-              <Link href="/tracker" className="btn border-ok/40 bg-ok-soft text-ok">
+              <Link href={status === "results" ? "/results" : "/tracker"} className="btn border-ok/40 bg-ok-soft text-ok">
                 <Check aria-hidden className="size-4" /> {STATUSES.find((s) => s.key === status)?.label ?? "Tracking"}
               </Link>
               <button

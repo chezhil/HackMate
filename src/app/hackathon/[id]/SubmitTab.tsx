@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Video, X } from "lucide-react";
+import { FileText, Pencil, RefreshCw, Video, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CopyButton } from "@/components/CopyButton";
 import { Badge, CheckRow, CheckSummary } from "@/components/ui/Feedback";
@@ -36,7 +36,7 @@ export function SubmitTab({ id }: { id: string }) {
     call<{ items: ChecklistItem[] }>(`/api/h/${hid(id)}/checklist`).then((d) => setItems(d.items));
   }, [id]);
 
-  const patch = (item: ChecklistItem, body: { done?: boolean; value?: string | null }) =>
+  const patch = (item: ChecklistItem, body: { done?: boolean; value?: string | null; label?: string; required?: boolean }) =>
     call<{ items: ChecklistItem[] }>(`/api/checklist/${item.id}`, "PATCH", body).then((d) => setItems(d.items));
 
   const upload = async (item: ChecklistItem, file: File) => {
@@ -64,6 +64,7 @@ export function SubmitTab({ id }: { id: string }) {
     }
   };
 
+  const fromRules = items.some((i) => i.origin === "rules");
   const required = items.filter((i) => i.required);
   const ready = required.filter((i) => i.done || i.value || i.file).length;
 
@@ -76,11 +77,25 @@ export function SubmitTab({ id }: { id: string }) {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="font-bold">Submission checklist</h2>
-              <p className="text-sm text-muted">Built from this hackathon&apos;s rules. Attach links and files as proof.</p>
+              <p className="text-sm text-muted">
+                {fromRules
+                  ? "What this hackathon asks you to hand in. Attach links and files as proof; rename, mark optional or add your own."
+                  : "The rules haven't listed deliverables yet, so these are common suggestions. Rebuild once the rules are read."}
+              </p>
             </div>
-            <Badge tone={ready === required.length ? "ok" : "neutral"} className="shrink-0 tabular-nums">
-              {ready}/{required.length} required done
-            </Badge>
+            <div className="flex shrink-0 items-center gap-2">
+              <Badge tone={ready === required.length ? "ok" : "neutral"} className="tabular-nums">
+                {ready}/{required.length} required done
+              </Badge>
+              <button
+                type="button"
+                className="btn btn-sm"
+                title="Replace untouched items with what the rules ask for now. Your own items and anything ticked or attached stay."
+                onClick={async () => setItems((await call<{ items: ChecklistItem[] }>(`/api/h/${hid(id)}/checklist`, "POST", { action: "rebuild" })).items)}
+              >
+                <RefreshCw aria-hidden className="size-3.5" /> Rebuild from rules
+              </button>
+            </div>
           </div>
           {error && <p className="text-sm text-danger">{error}</p>}
           <ul className="divide-y divide-border">
@@ -149,7 +164,7 @@ function ChecklistRow({
 }: {
   item: ChecklistItem;
   checks: SubmissionCheck[];
-  onPatch: (b: { done?: boolean; value?: string | null }) => void;
+  onPatch: (b: { done?: boolean; value?: string | null; label?: string; required?: boolean }) => void;
   onUpload: (f: File) => void;
   onRemoveFile: () => void;
   onDelete: () => void;
@@ -157,6 +172,7 @@ function ChecklistRow({
   const confirm = useConfirm();
   const [value, setValue] = useState(item.value ?? "");
   const [uploading, setUploading] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const accept = item.meta?.accept ?? (item.kind === "file" ? "any" : undefined);
   const done = item.done || Boolean(item.value || item.file);
   const worst = checks.find((c) => c.status === "fail") ?? checks.find((c) => c.status === "warn");
@@ -166,10 +182,40 @@ function ChecklistRow({
       <div className="flex items-start gap-2">
         <input type="checkbox" className="mt-1" checked={done} onChange={(e) => onPatch({ done: e.target.checked })} />
         <div className="min-w-0 flex-1">
-          <div className={done ? "text-muted line-through" : "font-medium"}>
-            {item.label}
-            {!item.required && <span className="ml-1.5 text-xs text-muted no-underline">(optional)</span>}
-            {item.origin === "rules" && <Badge tone="accent" className="ml-1.5 no-underline">from rules</Badge>}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {renaming ? (
+              <input
+                autoFocus
+                className="input max-w-sm py-0.5 text-sm"
+                aria-label="Item name"
+                defaultValue={item.label}
+                onBlur={(e) => {
+                  setRenaming(false);
+                  if (e.target.value.trim() && e.target.value.trim() !== item.label) onPatch({ label: e.target.value.trim() });
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                  if (e.key === "Escape") setRenaming(false);
+                }}
+              />
+            ) : (
+              <span className={done ? "text-muted line-through" : "font-medium"}>{item.label}</span>
+            )}
+            <button
+              type="button"
+              onClick={() => onPatch({ required: !item.required })}
+              title={item.required ? "Required: click to make optional" : "Optional: click to make required"}
+              className={`rounded-md border-(length:--line) px-1.5 text-2xs font-semibold ${item.required ? "border-border bg-surface text-text" : "border-dashed border-border bg-transparent text-muted"}`}
+            >
+              {item.required ? "Required" : "Optional"}
+            </button>
+            {item.origin === "rules" && <Badge tone="accent">from rules</Badge>}
+            {item.origin === "default" && !item.required && <Badge>suggested</Badge>}
+            {!renaming && (
+              <button type="button" className="text-muted opacity-0 hover:text-text group-hover:opacity-100 focus-visible:opacity-100" title="Rename" onClick={() => setRenaming(true)}>
+                <Pencil aria-hidden className="size-3.5" /><span className="sr-only">Rename {item.label}</span>
+              </button>
+            )}
           </div>
           {item.detail && <div className="text-xs text-muted">{item.detail}</div>}
           {worst && <div className={`text-xs ${worst.status === "fail" ? "text-danger" : "text-warn"}`}>{worst.detail}</div>}

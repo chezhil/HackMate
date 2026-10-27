@@ -9,12 +9,17 @@ async function itemOr404(params: Ctx["params"]) {
   return { itemId, hackathonId: itemHackathon(itemId) };
 }
 
-/** JSON: { done?, value? } */
+/** JSON: { done?, value?, label?, required? } */
 export async function PATCH(req: Request, { params }: Ctx) {
   const { itemId, hackathonId } = await itemOr404(params);
   if (!hackathonId) return Response.json({ error: "Not found" }, { status: 404 });
-  const b = (await req.json()) as { done?: boolean; value?: string | null };
-  updateChecklistItem(itemId, { done: b.done, value: b.value === undefined ? undefined : b.value?.trim() || null });
+  const b = (await req.json()) as { done?: boolean; value?: string | null; label?: string; required?: boolean };
+  updateChecklistItem(itemId, {
+    done: b.done,
+    value: b.value === undefined ? undefined : b.value?.trim() || null,
+    label: typeof b.label === "string" ? b.label.slice(0, 200) : undefined,
+    required: typeof b.required === "boolean" ? b.required : undefined,
+  });
   return Response.json({ items: listChecklist(hackathonId) });
 }
 

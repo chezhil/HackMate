@@ -1,4 +1,4 @@
-import { addChecklistItem, listChecklist } from "@/lib/submission";
+import { addChecklistItem, listChecklist, rebuildChecklist } from "@/lib/submission";
 import type { ChecklistKind } from "@/lib/types";
 import { connection } from "next/server";
 
@@ -11,7 +11,11 @@ export async function GET(_req: Request, { params }: Ctx) {
 
 export async function POST(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
-  const b = (await req.json()) as { label?: string; kind?: ChecklistKind; required?: boolean };
+  const b = (await req.json()) as { label?: string; kind?: ChecklistKind; required?: boolean; action?: "rebuild" };
+  if (b.action === "rebuild") {
+    rebuildChecklist(id);
+    return Response.json({ items: listChecklist(id) });
+  }
   if (!b.label?.trim()) return Response.json({ error: "Name the item" }, { status: 400 });
   addChecklistItem(id, b.label.trim(), b.kind && ["check", "link", "file"].includes(b.kind) ? b.kind : "check", b.required ?? true);
   return Response.json({ items: listChecklist(id) });

@@ -1,8 +1,9 @@
 "use client";
 
-import { Trophy, X } from "lucide-react";
+import { Lightbulb, Trophy, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Badge, Banner, ScoreBadge } from "@/components/ui/Feedback";
+import { Badge, Banner, EmptyState, ScoreBadge } from "@/components/ui/Feedback";
+import { Segmented } from "@/components/ui/Tabs";
 import { scoreTone } from "@/components/ui/tone";
 import { useConfirm } from "@/components/ui/Confirm";
 import { call, hid } from "@/lib/client";
@@ -23,9 +24,14 @@ export function IdeasTab({ id }: { id: string }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState({ title: "", text: "" });
+  const [view, setView] = useState<"get" | "critique" | "mine">("get");
 
   useEffect(() => {
-    call<{ ideas: Idea[] }>(`/api/h/${hid(id)}/ideas`).then((d) => setIdeas(d.ideas), () => {});
+    call<{ ideas: Idea[] }>(`/api/h/${hid(id)}/ideas`).then((d) => {
+      setIdeas(d.ideas);
+      // Coming back to a hackathon you've worked on: open on your ideas rather than the generator.
+      if (d.ideas.length) setView("mine");
+    }, () => {});
     call<{ projects: WinnerProject[] }>(`/api/h/${hid(id)}/winners`).then((d) => setWinners(d.projects), () => setWinners([]));
   }, [id]);
 
@@ -51,6 +57,8 @@ export function IdeasTab({ id }: { id: string }) {
       const d = await call<{ ideas: Idea[] }>(`/api/h/${hid(id)}/ideas`, "POST", { action: "create", title, text });
       setIdeas(d.ideas);
       setDraft({ title: "", text: "" });
+      // The new idea and its critique show up in your list, apart from the tools that made it.
+      setView("mine");
       if (critique) {
         const created = d.ideas[0];
         const r = await call<{ idea: Idea }>(`/api/ideas/${created.id}`, "POST", { text });
@@ -61,8 +69,21 @@ export function IdeasTab({ id }: { id: string }) {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-main-side">
       <div className="space-y-4">
+        <div className="overflow-x-auto pb-1">
+          <Segmented
+            label="Ideas tools"
+            value={view}
+            onChange={setView}
+            options={[
+              { key: "get", label: "Get ideas" },
+              { key: "critique", label: "Critique an idea" },
+              { key: "mine", label: `My ideas${ideas.length ? ` (${ideas.length})` : ""}` },
+            ]}
+          />
+        </div>
         {error && <Banner tone="danger">{error}</Banner>}
 
+        {view === "get" && (
         <section className="card space-y-3 p-4">
           <div>
             <h2 className="font-bold">Get ideas</h2>
@@ -110,9 +131,14 @@ export function IdeasTab({ id }: { id: string }) {
             </div>
           )}
         </section>
+        )}
 
+        {view === "critique" && (
         <section className="card space-y-2 p-4">
-          <h2 className="font-bold">Your idea</h2>
+          <div>
+            <h2 className="font-bold">Critique an idea</h2>
+            <p className="text-sm text-muted">Get a score with positives, negatives, risks and fixes, judged against this hackathon&apos;s criteria.</p>
+          </div>
           <input className="input" placeholder="Name" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
           <textarea
             className="input min-h-24"
@@ -129,15 +155,30 @@ export function IdeasTab({ id }: { id: string }) {
             </button>
           </div>
         </section>
+        )}
 
-        {ideas.map((idea) => (
-          <IdeaCard
-            key={idea.id}
-            idea={idea}
-            onChange={(next) => setIdeas((list) => list.map((i) => (i.id === next.id ? next : i)))}
-            onDelete={() => call(`/api/ideas/${idea.id}`, "DELETE").then(() => setIdeas((list) => list.filter((i) => i.id !== idea.id)))}
-          />
-        ))}
+        {view === "mine" && (
+          <section className="space-y-3" aria-label="My ideas">
+            {ideas.length === 0 ? (
+              <EmptyState
+                icon={<Lightbulb />}
+                title="No ideas saved yet"
+                action={<button className="btn btn-primary" onClick={() => setView("get")}>Get ideas</button>}
+              >
+                Generate some or write your own; each one keeps every version and its score here.
+              </EmptyState>
+            ) : (
+              ideas.map((idea) => (
+                <IdeaCard
+                  key={idea.id}
+                  idea={idea}
+                  onChange={(next) => setIdeas((list) => list.map((i) => (i.id === next.id ? next : i)))}
+                  onDelete={() => call(`/api/ideas/${idea.id}`, "DELETE").then(() => setIdeas((list) => list.filter((i) => i.id !== idea.id)))}
+                />
+              ))
+            )}
+          </section>
+        )}
       </div>
 
       <aside className="space-y-2">

@@ -45,7 +45,7 @@ export const STATUSES: { key: TrackStatus; label: string }[] = [
   { key: "interested", label: "Pinned" },
   { key: "registered", label: "Registered" },
   { key: "building", label: "Building" },
-  { key: "submitted", label: "Submitted" },
+  { key: "submitted", label: "Expecting results" },
   { key: "results", label: "Results" },
 ];
 
@@ -215,6 +215,7 @@ export interface Teammate {
 
 export interface Standup {
   id: number;
+  kind: "voice" | "text";
   author: string | null;
   mime: string;
   durationSec: number | null;
