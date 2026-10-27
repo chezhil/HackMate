@@ -43,3 +43,7 @@ next-env.d.ts
 
 # local data
 /data/
+
+# reference screenshots for replica recon (never shipped)
+replica/screens/*
+!replica/screens/README.md

@@ -1,0 +1,107 @@
+feature,area,priority,original,clone,notes
+Filter by theme chips,discover,must,Devpost,yes,
+Filter online / in person / hybrid,discover,must,Devpost,yes,
+Filter by city with counts,discover,must,Luma,yes,select today; tiles are a separate row
+Filter by prize band,discover,must,Devpost,yes,
+Filter by date window and registration open,discover,must,Devpost,yes,
+Free entry only filter,discover,should,Devpost,yes,
+Hide hackathons that clash with my tracker,discover,should,HackMate,yes,HackMate's own
+Sort by soonest / registration closing / biggest prize,discover,must,Devpost,yes,
+List next to map (split / list / map),discover,must,Airbnb,yes,
+Map shows only filtered results,discover,must,Airbnb,yes,
+Hover a card highlights its pin and hover a pin highlights its card,discover,should,Airbnb,partial,click-to-select only today
+Search as I move the map (filter by map bounds),discover,should,Airbnb,no,Leaflet getBounds on moveend
+Pins show the prize amount,discover,could,Airbnb,no,own pin style; not Airbnb's
+Active filters as removable chips,discover,should,Airbnb,no,
+Clear all filters with count,discover,must,Airbnb,yes,
+Mobile filter sheet with live Show N button,discover,should,Airbnb,no,
+Filters kept in the URL (shareable + back button),discover,should,Airbnb,no,
+City tiles with counts as an empty-search landing,discover,could,Luma,no,
+Card shows cover / dates / place / prize / registration countdown,discover,must,Luma,yes,
+Eligibility filter (students only / open to all),discover,should,Devpost,no,needs eligibility from hackathon_details
+Length filter (24h / weekend / multi-week),discover,could,Devpost,no,unverified on Devpost; derive from starts/ends
+Saved searches with new-match alert,discover,could,Airbnb,no,reuse email reminders
+Feed failure banner with last good data,discover,must,HackMate,yes,
+Overview with tracks / prizes / judges / key dates,hackathon page,must,Devfolio,yes,
+Rule gotchas with the exact quote,hackathon page,must,HackMate,yes,
+Schedule as a timeline,hackathon page,should,Devfolio,partial,key dates exist as a list
+Tabs deep-linkable (?tab=submit),hackathon page,should,Devfolio,no,tab is React state today
+Ask AI answers only from the rules,hackathon page,must,Perplexity,yes,
+Numbered inline citations that open the rule passage,hackathon page,must,Perplexity,no,validate quotes against source_text
+Sources panel listing quoted passages,hackathon page,should,Perplexity,no,
+Suggested follow-up questions,hackathon page,should,Perplexity,no,
+Clear "not in the rules" answer state,hackathon page,must,Perplexity,partial,prompted but not a distinct UI state
+Peek a hackathon without leaving the list,hackathon page,could,Linear,no,Space to peek
+Board with a column per stage,tracker,must,Trello,yes,
+Drag cards between columns,tracker,must,Trello,no,needs keyboard alternative for a11y
+Keyboard: J/K move focus / S set status / Enter open,tracker,should,Linear,no,
+Command palette (Cmd+K),tracker,should,Linear,no,global; jump to hackathon or tab
+Reorder cards within a column,tracker,could,Trello,no,tracked.sort
+Stage action on each card (register / mark submitted / save result),tracker,must,HackMate,yes,
+Next deadline countdown on card,tracker,should,Linear,yes,
+Checklist and failing-check badge on card,tracker,should,Trello,no,from Submit tab
+Collapse or hide the Results column,tracker,could,Linear,no,
+Optimistic move with Undo toast,tracker,should,Linear,no,
+Active count badge in nav,tracker,must,Linear,yes,
+Month grid,calendar,must,Notion Calendar,yes,
+Multi-day event bars with stable colour,calendar,must,Notion Calendar,yes,
+Clash days highlighted,calendar,must,Notion Calendar,yes,
+Week / agenda view,calendar,should,Notion Calendar,no,
+Keyboard nav (T today / arrows / W M views),calendar,could,Notion Calendar,no,
+Compact upcoming deadlines list,calendar,must,Fantastical,yes,
+Live countdown under 24h,calendar,should,Cron,partial,relative time but not ticking
+Natural-language deadline entry,calendar,could,Fantastical,no,parse locally or with Groq
+Time zone shown on deadlines,calendar,should,Fantastical,no,online hackathons often run in US time
+Next up banner across the app,calendar,could,Cron,no,Cron menu-bar pattern
+iCal subscribe + .ics download,calendar,must,HackMate,yes,
+Email reminders at chosen lead times,calendar,must,HackMate,yes,
+Idea versions kept with score per version,ideas,must,Notion,yes,
+Diff between two idea versions,ideas,should,Notion,no,
+Restore an old idea version,ideas,should,Notion,no,
+Timed pitch script,pitch,must,Pitch.com,yes,
+Presenter mode with current / next section and timer,pitch,should,Pitch.com,no,
+Rehearsal over-time warning per section,pitch,should,Pitch.com,no,
+Mock Q&A with instant per-answer score and model answer,mock q&a,must,Duolingo,yes,
+Round result screen,mock q&a,should,Duolingo,partial,round score shown inline
+Practice streak across hackathons,mock q&a,could,Duolingo,no,derived from qa_turns
+Retry weak answers round,mock q&a,should,Duolingo,no,
+Spoken answers to mock judges,mock q&a,could,Duolingo,no,reuse standup audio + transcription
+Teammates against the team-size limit,team,must,Devfolio,yes,
+Looking-for-teammates post with share buttons,team,must,Wellfound,yes,
+Structured post fields (role sought / skills / commitment),team,should,Wellfound,partial,AI writes free text today
+Teammate profile card with skill chips,team,should,Discord,partial,skills is free text
+People I've hacked with directory searchable by skill,team,should,Discord,no,people table
+Skill-gap hint against tracks,team,could,Wellfound,no,
+Checklist built from the rules,submit,must,HackMate,yes,
+Pass / warn / fail per check,submit,must,Vercel,yes,
+Required vs optional items,submit,must,GitHub,yes,
+Summary bar (n failing / n warnings / n passing),submit,should,GitHub,partial,AI summary line only
+Last run time + re-run,submit,should,GitHub,partial,re-run exists; no timestamp
+Check run history,submit,could,Vercel,no,check_runs table
+LinkedIn / X / dev.to write-ups,submit,should,HackMate,yes,
+Stat tiles (done / win rate / prize money / scores),profile,must,Strava,yes,
+Daily activity heatmap,profile,should,GitHub,no,monthly bars today
+Weekly streak,profile,should,Strava,no,
+Personal records (best Q&A score / biggest prize),profile,could,Strava,no,
+Pinned projects (up to 6),profile,should,GitHub,no,
+Portfolio of finished hackathons,profile,must,Read.cv,yes,
+Save portfolio as PDF,profile,must,HackMate,yes,
+Public read-only portfolio page,profile,should,Read.cv,no,needs deploy + opt-in; never include private notes
+Prize status won / claimed / paid,prizes,must,Stripe,yes,
+Overdue flag on expected date,prizes,must,Stripe,yes,
+Totals won / paid / owed,prizes,must,Stripe,yes,
+Not received status,prizes,could,Stripe,no,Stripe 'failed' analogue
+Prize timeline (won -> claimed -> paid with dates),prizes,could,Stripe,partial,only paid_at stored
+Change prize status straight from the row,prizes,should,Stripe,yes,
+Certificate vault with pending auto rows,certificates,must,HackMate,yes,
+Wallet grid with issuer and issue date,certificates,should,Credly,partial,no issuer field
+Share link for a certificate,certificates,could,Credly,no,needs public deploy
+Teammate marketplace matching other users,team,could,Wellfound,skip,needs a user network; HackMate is single-user local
+Mirror project galleries and past winners publicly,hackathon page,could,Devpost,skip,data owned by Devfolio / Devpost; link out
+Verified badge issuance,certificates,could,Credly,skip,verification needs issuer signing
+Pay out prizes,prizes,could,Stripe,skip,HackMate tracks money; it doesn't move it
+Slide editor,pitch,could,Pitch.com,skip,a product of its own; roast decks made elsewhere
+Web-wide AI answers,hackathon page,could,Perplexity,skip,answers must stay inside the rules on purpose
+Commercial map tiles,discover,could,Airbnb,skip,licence + key; keep OpenStreetMap
+Brand assets (pins / mascot / sounds / fonts),all,could,Duolingo,skip,patterns only; HackMate's own tokens
+Live comparison against Read.cv / Polywork,profile,could,Read.cv,skip,both shut down in 2025; use Peerlist for a live look
