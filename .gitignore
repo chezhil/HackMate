@@ -47,3 +47,4 @@ next-env.d.ts
 # reference screenshots for replica recon (never shipped)
 replica/screens/*
 !replica/screens/README.md
+/.next-alt/

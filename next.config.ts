@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // A second dev server (e.g. port 3001) needs its own build folder; Next allows one server per folder.
+  distDir: process.env.HACKMATE_DIST_DIR || ".next",
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

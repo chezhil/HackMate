@@ -3,7 +3,8 @@ import { AiUnavailableError, generate, generateJson } from "./ai";
 import { db } from "./db";
 import { getDescription, getHackathon } from "./repo";
 import { fetchJson, fetchText, htmlToText, USER_AGENT } from "./sources/util";
-import type { ChatMessage, Hackathon, HackathonDetails, HackathonInfo, WinnerProject } from "./types";
+import { passagesBlock, relevantPassages, resolveCitations } from "./citations";
+import type { ChatMessage, Citation, Hackathon, HackathonDetails, HackathonInfo, WinnerProject } from "./types";
 
 const MAX_SOURCE_CHARS = 45_000;
 
@@ -144,34 +145,11 @@ export function buildDetails(id: string): Promise<HackathonDetails> {
 
 // ---------- Q&A chat ----------
 
-const STOPWORDS = new Set("a an the is are was be can i we my our to of in on for and or do does how what when where who which with it this that there any if about".split(" "));
-
-/**
- * The parts of the page most relevant to the question, so each chat request stays small enough
- * for Groq's free tier: paragraphs scored by how many of the question's words they contain.
- */
-function relevantExcerpt(text: string, question: string, maxChars = 7_000): string {
-  if (text.length <= maxChars) return text;
-  const terms = question.toLowerCase().match(/[a-z0-9]{3,}/g)?.filter((t) => !STOPWORDS.has(t)) ?? [];
-  const paras = text.split(/\n{2,}|\n(?=[•#-])/).map((p, i) => ({ p: p.trim(), i })).filter((x) => x.p.length > 20);
-  const scored = paras.map((x) => {
-    const lower = x.p.toLowerCase();
-    return { ...x, score: terms.reduce((n, t) => n + (lower.includes(t) ? 1 : 0), 0) + (x.i < 3 ? 0.5 : 0) };
-  });
-  const picked: typeof scored = [];
-  let used = 0;
-  for (const x of [...scored].sort((a, b) => b.score - a.score)) {
-    if (used + x.p.length > maxChars) continue;
-    picked.push(x);
-    used += x.p.length;
-  }
-  return picked.sort((a, b) => a.i - b.i).map((x) => x.p).join("\n\n");
-}
-
 export function listChat(id: string): ChatMessage[] {
-  return db()
-    .prepare("SELECT id, role, content, provider, created_at AS createdAt FROM chat_messages WHERE hackathon_id = ? ORDER BY id")
-    .all(id) as unknown as ChatMessage[];
+  const rows = db()
+    .prepare("SELECT id, role, content, provider, created_at AS createdAt, citations, not_found AS notFound FROM chat_messages WHERE hackathon_id = ? ORDER BY id")
+    .all(id) as unknown as (Omit<ChatMessage, "citations" | "notFound"> & { citations: string | null; notFound: number })[];
+  return rows.map((r) => ({ ...r, citations: r.citations ? (JSON.parse(r.citations) as Citation[]) : [], notFound: r.notFound === 1 }));
 }
 
 export function clearChat(id: string) {
@@ -184,11 +162,15 @@ export async function askQuestion(id: string, question: string): Promise<ChatMes
   const details = getDetails(id) ?? (await buildDetails(id));
   const history = listChat(id).slice(-10);
   const now = new Date().toISOString();
-  const res = await generate({
-    task: "chat",
-    system: `You are HackMate, helping someone decide on and prepare for one hackathon. Answer using ONLY the hackathon information below.
+  const passages = relevantPassages(getSourceText(id), question);
+  const system = `You are HackMate, helping someone decide on and prepare for one hackathon. Answer using ONLY the hackathon information below.
 If the answer isn't in it, say so plainly and suggest where to check (the hackathon page, organizers' Discord/email). Quote exact limits, dates and rules when they matter.
 Be brief: a direct answer first, then short bullets if useful. Current time: ${now}.
+
+Cite the page: after each claim that comes from a numbered passage, put its marker, e.g. "Teams can have up to 4 people [P3]."
+Only cite passages that really say it. Facts and extracted info have no markers; don't invent any.
+Reply as JSON: {"answer": "your answer with [P#] markers", "quotes": {"P3": "the exact sentence from P3 you relied on, copied word for word"}, "notFound": false}
+Set "notFound" to true when the information below doesn't answer the question.
 
 === FACTS ===
 ${factsBlock(h)}
@@ -196,14 +178,35 @@ ${factsBlock(h)}
 === EXTRACTED INFO ===
 ${details.info ? JSON.stringify(details.info) : "(not available)"}
 
-=== RELEVANT PAGE EXCERPTS ===
-${relevantExcerpt(getSourceText(id), question) || "(none)"}`,
-    messages: [...history.map((m) => ({ role: m.role, content: m.content })), { role: "user", content: question }],
-    temperature: 0.2,
-  });
-  const insert = db().prepare("INSERT INTO chat_messages (hackathon_id, role, content, provider, created_at) VALUES (?, ?, ?, ?, ?)");
-  insert.run(id, "user", question, null, now);
-  insert.run(id, "assistant", res.text.trim(), `${res.provider}:${res.model}`, new Date().toISOString());
+=== PAGE PASSAGES ===
+${passagesBlock(passages)}`;
+  // Past answers carry display markers ([1]); drop them so the model only ever sees and writes [P#].
+  const messages = [...history.map((m) => ({ role: m.role, content: m.content.replace(/\s*\[\d+\]/g, "") })), { role: "user" as const, content: question }];
+
+  let answer: string;
+  let quotes: Record<string, string> | undefined;
+  let notFound = false;
+  let res: { provider: string; model: string };
+  try {
+    const r = await generateJson<{ answer?: string; quotes?: Record<string, string>; notFound?: boolean }>({ task: "chat", system, messages, temperature: 0.2 });
+    if (!r.data.answer?.trim()) throw new Error("empty answer");
+    ({ answer, quotes } = { answer: r.data.answer, quotes: r.data.quotes });
+    notFound = r.data.notFound === true;
+    res = r;
+  } catch (e) {
+    if (e instanceof AiUnavailableError) throw e;
+    // The model didn't return usable JSON: ask again in plain text and keep any markers it used.
+    const r = await generate({ task: "chat", system, messages, temperature: 0.2 });
+    answer = r.text;
+    res = r;
+  }
+  const { content, citations } = resolveCitations(answer.trim(), quotes, passages);
+
+  const insert = db().prepare(
+    "INSERT INTO chat_messages (hackathon_id, role, content, provider, created_at, citations, not_found) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  );
+  insert.run(id, "user", question, null, now, null, 0);
+  insert.run(id, "assistant", content, `${res.provider}:${res.model}`, new Date().toISOString(), JSON.stringify(citations), notFound ? 1 : 0);
   return listChat(id);
 }
 

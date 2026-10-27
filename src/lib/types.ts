@@ -147,12 +147,25 @@ export interface WinnerProject {
   tags: string[];
 }
 
+/** A numbered source for an Ask AI answer: the rule text the claim rests on. */
+export interface Citation {
+  n: number;
+  /** The sentence the model quoted, checked against the page; or the start of the passage if it didn't match. */
+  quote: string;
+  /** The whole paragraph from the hackathon page. */
+  passage: string;
+  verified: boolean;
+}
+
 export interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
   provider: string | null;
   createdAt: string;
+  citations: Citation[];
+  /** The model said the rules don't answer this. */
+  notFound: boolean;
 }
 
 export interface IdeaCritique {

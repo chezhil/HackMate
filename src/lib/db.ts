@@ -244,6 +244,8 @@ const ADDED_COLUMNS: [table: string, column: string, type: string][] = [
   ["hackathons", "description", "TEXT"],
   ["hackathons", "team_min", "INTEGER"],
   ["hackathons", "team_max", "INTEGER"],
+  ["chat_messages", "citations", "TEXT"],
+  ["chat_messages", "not_found", "INTEGER NOT NULL DEFAULT 0"],
 ];
 
 function migrate(conn: DatabaseSync) {
@@ -253,7 +255,7 @@ function migrate(conn: DatabaseSync) {
   }
 }
 
-const globalForDb = globalThis as unknown as { hackmateDb?: DatabaseSync };
+const globalForDb = globalThis as unknown as { hackmateDb?: DatabaseSync; hackmateMigrated?: number };
 
 export function db(): DatabaseSync {
   if (!globalForDb.hackmateDb) {
@@ -261,8 +263,12 @@ export function db(): DatabaseSync {
     const conn = new DatabaseSync(path.join(DATA_DIR, "hackmate.db"));
     conn.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
     conn.exec(SCHEMA);
-    migrate(conn);
     globalForDb.hackmateDb = conn;
+  }
+  // The connection survives dev hot reloads, so re-run the column migration whenever the list grows.
+  if (globalForDb.hackmateMigrated !== ADDED_COLUMNS.length) {
+    migrate(globalForDb.hackmateDb);
+    globalForDb.hackmateMigrated = ADDED_COLUMNS.length;
   }
   return globalForDb.hackmateDb;
 }

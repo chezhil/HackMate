@@ -1,9 +1,10 @@
 "use client";
 
+import { BookOpen, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { call, hid } from "@/lib/client";
-import { Banner } from "@/components/ui/Feedback";
-import type { ChatMessage } from "@/lib/types";
+import { Badge, Banner } from "@/components/ui/Feedback";
+import type { ChatMessage, Citation } from "@/lib/types";
 import type { DetailsPayload } from "./HackathonView";
 
 const STARTERS = [
@@ -15,16 +16,98 @@ const STARTERS = [
   "Can I use code I wrote before the event?",
 ];
 
-/** Very small markdown: **bold**, `code`, and "- " bullets. Enough for chat answers. */
-function Rich({ text }: { text: string }) {
+/** The quoted rule behind one [n], or the paragraph it came from when the quote couldn't be matched. */
+function CitationBody({ c }: { c: Citation }) {
+  const [full, setFull] = useState(false);
+  return (
+    <>
+      <blockquote className="border-l-2 border-accent pl-2 text-text">“{c.quote}”</blockquote>
+      <p className="mt-1.5 flex items-center gap-1 text-muted">
+        {c.verified ? (
+          <><ShieldCheck aria-hidden className="size-3.5 text-ok" /> Quoted from the hackathon page</>
+        ) : (
+          <>From the hackathon page (exact sentence not matched)</>
+        )}
+      </p>
+      {c.passage !== c.quote && (
+        <button type="button" className="mt-1 text-accent hover:underline" onClick={() => setFull(!full)} aria-expanded={full}>
+          {full ? "Hide full passage" : "Show full passage"}
+        </button>
+      )}
+      {full && <p className="mt-1.5 whitespace-pre-line rounded-md bg-surface-2 p-2 text-text">{c.passage}</p>}
+    </>
+  );
+}
+
+/** Numbered source marker: opens a popover with the quote. Escape or a click elsewhere closes it. */
+function CitationChip({ c }: { c: Citation }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <span ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-label={`Source ${c.n}`}
+        className={`mx-0.5 rounded-md px-1 align-super text-2xs font-semibold tabular-nums ${open ? "bg-accent text-accent-text" : "bg-accent-soft text-accent hover:bg-accent hover:text-accent-text"}`}
+      >
+        {c.n}
+      </button>
+      {open && (
+        <span role="dialog" aria-label={`Source ${c.n}`} className="absolute left-0 top-full z-(--z-drawer) mt-1 block w-[min(20rem,80vw)] rounded-xl border border-border bg-surface p-3 text-xs shadow-pop">
+          <CitationBody c={c} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+function Sources({ citations }: { citations: Citation[] }) {
+  return (
+    <details className="mt-2 border-t border-border pt-2 text-xs">
+      <summary className="flex cursor-pointer items-center gap-1 text-muted hover:text-text">
+        <BookOpen aria-hidden className="size-3.5" /> {citations.length} source{citations.length > 1 ? "s" : ""} from the rules
+      </summary>
+      <ol className="mt-2 space-y-2">
+        {citations.map((c) => (
+          <li key={c.n} className="flex gap-2">
+            <span className="mt-0.5 shrink-0 rounded-md bg-accent-soft px-1 text-2xs font-semibold text-accent">{c.n}</span>
+            <div className="min-w-0"><CitationBody c={c} /></div>
+          </li>
+        ))}
+      </ol>
+    </details>
+  );
+}
+
+/** Very small markdown: **bold**, `code`, "- " bullets and [n] citations. Enough for chat answers. */
+function Rich({ text, citations = [] }: { text: string; citations?: Citation[] }) {
+  const byN = new Map(citations.map((c) => [c.n, c]));
   return (
     <div className="space-y-1.5">
       {text.split(/\n{2,}/).map((block, i) => {
         const lines = block.split("\n");
         const inline = (s: string) =>
-          s.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, j) =>
-            part.startsWith("**") ? <strong key={j}>{part.slice(2, -2)}</strong> : part.startsWith("`") ? <code key={j} className="rounded-md bg-surface-2 px-1 text-xs">{part.slice(1, -1)}</code> : part,
-          );
+          s.split(/(\*\*[^*]+\*\*|`[^`]+`|\[\d+\])/g).map((part, j) => {
+            if (part.startsWith("**")) return <strong key={j}>{part.slice(2, -2)}</strong>;
+            if (part.startsWith("`")) return <code key={j} className="rounded-md bg-surface-2 px-1 text-xs">{part.slice(1, -1)}</code>;
+            const c = /^\[(\d+)\]$/.test(part) ? byN.get(Number(part.slice(1, -1))) : undefined;
+            return c ? <CitationChip key={j} c={c} /> : part;
+          });
         if (lines.every((l) => /^\s*[-*•]\s/.test(l))) {
           return (
             <ul key={i} className="list-disc space-y-0.5 pl-5">
@@ -96,7 +179,15 @@ export function AskTab({ id, data }: { id: string; data: DetailsPayload }) {
                 m.role === "user" ? "bg-accent text-accent-text" : "bg-surface-2"
               }`}
             >
-              {m.role === "user" ? m.content : <Rich text={m.content} />}
+              {m.role === "user" ? (
+                m.content
+              ) : (
+                <>
+                  {m.notFound && <Badge tone="warn" className="mb-1.5">Not in the rules</Badge>}
+                  <Rich text={m.content} citations={m.citations} />
+                  {m.citations.length > 0 && <Sources citations={m.citations} />}
+                </>
+              )}
             </div>
           </div>
         ))}

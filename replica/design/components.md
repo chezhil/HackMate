@@ -111,6 +111,15 @@ Toast                                                     ui/Toast.tsx
   used on   S12 optimistic moves with Undo, S17 status changes (planned)
 ```
 
+Citation chip + Sources                                   app/hackathon/[id]/AskTab.tsx · data from lib/citations.ts
+  chip      superscript [n] button, accent-soft → accent when open, aria-label "Source n", aria-expanded
+  popover   quote (accent left rule) · "Quoted from the hackathon page" (ShieldCheck, ok) or
+            "exact sentence not matched" when the quote couldn't be verified · Show full passage toggle
+  close     Escape or a click outside; z --z-drawer, shadow-pop, rounded-xl
+  sources   <details> under the answer: "n sources from the rules", every citation with the same body
+  empty     "Not in the rules" warn Badge above the answer when the model says the rules don't cover it
+  used on   S04
+
 ## App components (existing, now on tokens)
 
 | component | variants / states | tokens it must use | screens |
@@ -137,8 +146,6 @@ Draggable board (S12)  card grabbed (shadow-pop, slight scale) · drop target co
                        keyboard: Space lifts, ←/→ change column, Space drops, Esc cancels · announces moves
                        via aria-live · every move gives a Toast with Undo
 Removable filter chips (S01)  chip-on + X button labelled "Remove <filter>" · "Clear all" at the end
-Citation chip (S04)    superscript [n] button (accent, rounded-md) · opens a popover with the quoted rule passage ·
-                       sources panel lists all quotes · keyboard reachable
 Peek drawer (S25)      right drawer, rounded-2xl left corners, --z-drawer, Esc closes, focus trapped
 Activity heatmap (S14) 7 rows × 53 weeks · 5 steps from surface-2 to accent · each cell has a title and an
                        aria-label count · legend "Less … More"
