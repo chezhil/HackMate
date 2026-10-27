@@ -24,7 +24,7 @@ interface LatLng {
 }
 
 /** Radius of the default "near me" view. */
-const NEAR_KM = 500;
+const NEAR_KM = 100;
 const LOC_KEY = "hackmate-loc";
 const LOC_MAX_AGE = 7 * 86_400_000;
 
@@ -106,7 +106,7 @@ export default function MapView({
   const youLayer = useRef<L.LayerGroup | null>(null);
   const [loc, setLoc] = useState<LatLng | null>(cachedLoc);
   const [locStatus, setLocStatus] = useState<"asking" | "ok" | "denied" | "unsupported">(() => (cachedLoc() ? "ok" : "asking"));
-  // "Near me" mode: the view stays on the 500 km around you instead of re-fitting to every filter change.
+  // "Near me" mode: the view stays on the area around you instead of re-fitting to every filter change.
   const near = useRef(loc != null);
   const choseAll = useRef(false);
   const cb = useRef({ onSelect, onHover, onBoundsChange, searchInMap });
@@ -224,7 +224,7 @@ export default function MapView({
     map.current?.fitBounds(L.latLng(l.lat, l.lng).toBounds(NEAR_KM * 2000), { padding: [10, 10], animate: false });
   }
 
-  // Draw a red "you are here" pin, and open the map on the 500 km around it while in near-me mode.
+  // Draw a red "you are here" pin, and open the map on the NEAR_KM around it while in near-me mode.
   useEffect(() => {
     const group = youLayer.current;
     if (!group || !loc) return;
