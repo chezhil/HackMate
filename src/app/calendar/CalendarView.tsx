@@ -96,7 +96,7 @@ export function CalendarView() {
   const sel = byDay.get(selected);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-main-side">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-main-side">
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-2xl font-semibold tracking-tight">{monthFmt.format(new Date(cursor.y, cursor.m, 1))}</h1>

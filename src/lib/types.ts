@@ -166,6 +166,8 @@ export interface ChatMessage {
   citations: Citation[];
   /** The model said the rules don't answer this. */
   notFound: boolean;
+  /** Up to three next questions the rules can answer. */
+  followUps: string[];
 }
 
 export interface IdeaCritique {

@@ -59,7 +59,7 @@ export function IdeasTab({ id }: { id: string }) {
     });
 
   return (
-    <div className="grid gap-4 lg:grid-cols-main-side">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-main-side">
       <div className="space-y-4">
         {error && <Banner tone="danger">{error}</Banner>}
 

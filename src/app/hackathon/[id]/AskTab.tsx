@@ -21,20 +21,21 @@ function CitationBody({ c }: { c: Citation }) {
   const [full, setFull] = useState(false);
   return (
     <>
-      <blockquote className="border-l-2 border-accent pl-2 text-text">“{c.quote}”</blockquote>
-      <p className="mt-1.5 flex items-center gap-1 text-muted">
+      {/* Spans only: this renders inside the answer's <p>, where block elements aren't allowed. */}
+      <q className="block border-l-2 border-accent pl-2 text-text">{c.quote}</q>
+      <span className="mt-1.5 flex items-center gap-1 text-muted">
         {c.verified ? (
           <><ShieldCheck aria-hidden className="size-3.5 text-ok" /> Quoted from the hackathon page</>
         ) : (
           <>From the hackathon page (exact sentence not matched)</>
         )}
-      </p>
+      </span>
       {c.passage !== c.quote && (
         <button type="button" className="mt-1 text-accent hover:underline" onClick={() => setFull(!full)} aria-expanded={full}>
           {full ? "Hide full passage" : "Show full passage"}
         </button>
       )}
-      {full && <p className="mt-1.5 whitespace-pre-line rounded-md bg-surface-2 p-2 text-text">{c.passage}</p>}
+      {full && <span className="mt-1.5 block whitespace-pre-line rounded-md bg-surface-2 p-2 text-text">{c.passage}</span>}
     </>
   );
 }
@@ -68,7 +69,12 @@ function CitationChip({ c }: { c: Citation }) {
         {c.n}
       </button>
       {open && (
-        <span role="dialog" aria-label={`Source ${c.n}`} className="absolute left-0 top-full z-(--z-drawer) mt-1 block w-[min(20rem,80vw)] rounded-xl border border-border bg-surface p-3 text-xs shadow-pop">
+        <span
+          role="dialog"
+          aria-label={`Source ${c.n}`}
+          // Anchored under the marker on wide screens; a sheet along the bottom on phones, so it never runs off the edge.
+          className="fixed inset-x-4 bottom-4 z-(--z-drawer) block rounded-xl border border-border bg-surface p-3 text-xs shadow-pop sm:absolute sm:inset-x-auto sm:bottom-auto sm:left-0 sm:top-full sm:mt-1 sm:w-80"
+        >
           <CitationBody c={c} />
         </span>
       )}
@@ -191,6 +197,13 @@ export function AskTab({ id, data }: { id: string; data: DetailsPayload }) {
             </div>
           </div>
         ))}
+        {!pending && messages.at(-1)?.role === "assistant" && (messages.at(-1)?.followUps.length ?? 0) > 0 && (
+          <div className="flex flex-wrap gap-1.5" aria-label="Suggested questions">
+            {messages.at(-1)!.followUps.map((q) => (
+              <button key={q} type="button" className="chip hover:border-accent hover:text-accent" onClick={() => ask(q)}>{q}</button>
+            ))}
+          </div>
+        )}
         {pending && (
           <>
             <div className="flex justify-end">

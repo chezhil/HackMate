@@ -68,7 +68,7 @@ export function SubmitTab({ id }: { id: string }) {
   const ready = required.filter((i) => i.done || i.value || i.file).length;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-main-side">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-main-side">
       <div className="space-y-4">
         <ProjectCard id={id} />
 

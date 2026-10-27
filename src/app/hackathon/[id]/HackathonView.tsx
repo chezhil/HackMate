@@ -1,10 +1,11 @@
 "use client";
 
-import { Check, Pin, Trophy } from "lucide-react";
+import { Check, CircleX, Pin, Trophy } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useHackmate } from "@/components/HackmateProvider";
+import { EmptyState, Skeleton } from "@/components/ui/Feedback";
 import { Tabs } from "@/components/ui/Tabs";
 import type { RuleAlert } from "@/lib/alerts";
 import { call, hid } from "@/lib/client";
@@ -46,12 +47,26 @@ const TABS = [
 
 type Tab = (typeof TABS)[number]["key"];
 
+const isTab = (v: string | null): v is Tab => TABS.some((t) => t.key === v);
+
 export function HackathonView() {
   const id = decodeURIComponent(useParams<{ id: string }>().id);
   const { trackedIds, tracked, track, untrack } = useHackmate();
   const [data, setData] = useState<DetailsPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("overview");
+  const params = useSearchParams();
+  // The tab lives in the URL (?tab=submit) so a link can open straight onto it.
+  const [tab, setTabState] = useState<Tab>(() => {
+    const t = params.get("tab");
+    return isTab(t) ? t : "overview";
+  });
+  const setTab = (t: Tab) => {
+    setTabState(t);
+    const url = new URL(window.location.href);
+    if (t === "overview") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", t);
+    window.history.replaceState(null, "", url);
+  };
 
   const load = useCallback(
     () =>
@@ -84,13 +99,29 @@ export function HackathonView() {
 
   if (error) {
     return (
-      <div className="card mx-auto max-w-lg p-8 text-center">
-        <p className="text-danger">{error}</p>
-        <Link href="/" className="btn mt-4">Back to Discover</Link>
+      <EmptyState level={1} icon={<CircleX />} title="Couldn't open this hackathon" action={<Link href="/" className="btn">Back to Discover</Link>}>
+        {error}
+      </EmptyState>
+    );
+  }
+  if (!data) {
+    return (
+      <div className="space-y-4" aria-busy="true" aria-label="Loading hackathon">
+        <div className="flex gap-4">
+          <Skeleton className="size-16 shrink-0" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-7 w-2/3" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        </div>
+        <Skeleton className="h-9" />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-main-side">
+          <Skeleton className="h-64" />
+          <Skeleton className="h-64" />
+        </div>
       </div>
     );
   }
-  if (!data) return <div className="h-64 animate-pulse rounded-xl bg-surface-2" />;
 
   const h = data.hackathon;
   const isTracked = trackedIds.has(id);
@@ -104,7 +135,7 @@ export function HackathonView() {
           {h.image && <img src={h.image} alt="" className="h-full w-full object-cover" />}
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-semibold tracking-tight">{h.title}</h1>
+          <h1 className="break-words text-2xl font-semibold tracking-tight">{h.title}</h1>
           <p className="text-sm text-muted">
             {fmtRange(h)} · <span className="capitalize">{h.mode}</span>
             {h.mode !== "online" && ` · ${place(h)}`} · {SOURCE_LABELS[h.source]}

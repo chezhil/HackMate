@@ -1,8 +1,11 @@
 "use client";
 
-import { Info, OctagonX, TriangleAlert } from "lucide-react";
+import { CircleCheck, Info, OctagonX, TriangleAlert } from "lucide-react";
 import { fmtDateTime, relative } from "@/lib/format";
-import { Badge, Banner } from "@/components/ui/Feedback";
+import { useHackmate } from "@/components/HackmateProvider";
+import { Countdown } from "@/components/ui/Countdown";
+import { Badge, Banner, Spinner } from "@/components/ui/Feedback";
+import type { Hackathon } from "@/lib/types";
 import type { DetailsPayload } from "./HackathonView";
 
 const LEVEL_STYLE = {
@@ -48,11 +51,11 @@ export function OverviewTab({ data, onRefresh }: { data: DetailsPayload; onRefre
   );
 
   return (
-    <div className="grid gap-4 lg:grid-cols-main-side">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-main-side">
       <div className="space-y-4">
         {building && (
           <div className="card flex items-center gap-3 p-4 text-sm">
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+            <Spinner className="text-accent" />
             Reading the full rules with AI. This can take up to a minute; the quick scan below is ready now.
           </div>
         )}
@@ -122,8 +125,8 @@ export function OverviewTab({ data, onRefresh }: { data: DetailsPayload; onRefre
               <ul className="space-y-1 text-sm">
                 {info.prizes.map((p, i) => (
                   <li key={i} className="flex justify-between gap-3">
-                    <span>{p.name}</span>
-                    {p.value && <span className="shrink-0 font-medium text-ok">{p.value}</span>}
+                    <span className="min-w-0">{p.name}</span>
+                    {p.value && <span className="max-w-[50%] break-words text-right font-medium text-ok">{p.value}</span>}
                   </li>
                 ))}
               </ul>
@@ -196,23 +199,9 @@ export function OverviewTab({ data, onRefresh }: { data: DetailsPayload; onRefre
           )}
         </Section>
 
-        {(info?.importantDates.length ?? 0) > 0 && (
-          <Section title="Key dates">
-            <ul className="space-y-1.5 text-sm">
-              {info!.importantDates.map((d, i) => {
-                const valid = !Number.isNaN(new Date(d.date).getTime());
-                return (
-                  <li key={i}>
-                    <span className="font-medium">{d.label}</span>
-                    <span className="block text-xs text-muted">
-                      {valid ? `${fmtDateTime(d.date)} · ${relative(d.date)}` : d.date}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </Section>
-        )}
+        <Section title="Schedule">
+          <Timeline h={h} dates={info?.importantDates ?? []} waiting={building} />
+        </Section>
 
         <div className="text-xs text-muted">
           {details && !building && (
@@ -227,5 +216,68 @@ export function OverviewTab({ data, onRefresh }: { data: DetailsPayload; onRefre
         </div>
       </aside>
     </div>
+  );
+}
+
+interface Milestone {
+  label: string;
+  at: number;
+  iso: string;
+}
+
+const dayOf = (t: number) => new Date(t).toDateString();
+
+/**
+ * Feed dates (registration, start, end) plus whatever dates the AI found in the rules, in order.
+ * Past steps are ticked off, the next one gets a live countdown. Works before the AI has read anything.
+ */
+function Timeline({ h, dates, waiting }: { h: Hackathon; dates: { label: string; date: string }[]; waiting: boolean }) {
+  const { now } = useHackmate();
+  const all: Milestone[] = [];
+  const add = (label: string, iso: string | null | undefined) => {
+    const at = iso ? new Date(iso).getTime() : NaN;
+    if (Number.isNaN(at)) return;
+    // The AI often restates a feed date; keep one entry per day when the labels share a word.
+    const word = label.toLowerCase().split(/\W+/).find((w) => w.length > 3);
+    if (all.some((m) => dayOf(m.at) === dayOf(at) && (!word || m.label.toLowerCase().includes(word)))) return;
+    all.push({ label, at, iso: new Date(at).toISOString() });
+  };
+  add("Registration closes", h.regEndsAt);
+  add("Hackathon starts", h.startsAt);
+  add("Hackathon ends", h.endsAt);
+  for (const d of dates) add(d.label, d.date);
+  const undated = dates.filter((d) => Number.isNaN(new Date(d.date).getTime()));
+  all.sort((a, b) => a.at - b.at);
+  const next = all.find((m) => m.at > now);
+
+  if (all.length === 0) return <Empty what="dates" waiting={waiting} />;
+  return (
+    <ol className="relative space-y-3 border-l border-border pl-4 text-sm">
+      {all.map((m) => {
+        const past = m.at <= now;
+        const isNext = m === next;
+        return (
+          <li key={`${m.label}${m.at}`} className="relative">
+            <span
+              aria-hidden
+              className={`absolute -left-[1.3rem] top-1 grid size-2.5 place-items-center rounded-full ring-4 ring-surface ${past ? "bg-muted" : isNext ? "bg-accent" : "bg-border-strong"}`}
+            />
+            <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 ${past ? "text-muted" : ""}`}>
+              <span className={isNext ? "font-semibold" : "font-medium"}>{m.label}</span>
+              {past && <CircleCheck aria-label="Done" className="size-3.5 text-ok" />}
+              {isNext && <Countdown to={m.iso} />}
+            </div>
+            <time dateTime={m.iso} className="block text-xs text-muted">{fmtDateTime(m.iso)}</time>
+          </li>
+        );
+      })}
+      {undated.map((d, i) => (
+        <li key={`u${i}`} className="relative text-muted">
+          <span aria-hidden className="absolute -left-[1.3rem] top-1 size-2.5 rounded-full bg-border ring-4 ring-surface" />
+          <span className="font-medium">{d.label}</span>
+          <span className="block text-xs">{d.date}</span>
+        </li>
+      ))}
+    </ol>
   );
 }

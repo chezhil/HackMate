@@ -147,9 +147,14 @@ export function buildDetails(id: string): Promise<HackathonDetails> {
 
 export function listChat(id: string): ChatMessage[] {
   const rows = db()
-    .prepare("SELECT id, role, content, provider, created_at AS createdAt, citations, not_found AS notFound FROM chat_messages WHERE hackathon_id = ? ORDER BY id")
-    .all(id) as unknown as (Omit<ChatMessage, "citations" | "notFound"> & { citations: string | null; notFound: number })[];
-  return rows.map((r) => ({ ...r, citations: r.citations ? (JSON.parse(r.citations) as Citation[]) : [], notFound: r.notFound === 1 }));
+    .prepare("SELECT id, role, content, provider, created_at AS createdAt, citations, not_found AS notFound, follow_ups AS followUps FROM chat_messages WHERE hackathon_id = ? ORDER BY id")
+    .all(id) as unknown as (Omit<ChatMessage, "citations" | "notFound" | "followUps"> & { citations: string | null; notFound: number; followUps: string | null })[];
+  return rows.map((r) => ({
+    ...r,
+    citations: r.citations ? (JSON.parse(r.citations) as Citation[]) : [],
+    notFound: r.notFound === 1,
+    followUps: r.followUps ? (JSON.parse(r.followUps) as string[]) : [],
+  }));
 }
 
 export function clearChat(id: string) {
@@ -169,8 +174,9 @@ Be brief: a direct answer first, then short bullets if useful. Current time: ${n
 
 Cite the page: after each claim that comes from a numbered passage, put its marker, e.g. "Teams can have up to 4 people [P3]."
 Only cite passages that really say it. Facts and extracted info have no markers; don't invent any.
-Reply as JSON: {"answer": "your answer with [P#] markers", "quotes": {"P3": "the exact sentence from P3 you relied on, copied word for word"}, "notFound": false}
+Reply as JSON: {"answer": "your answer with [P#] markers", "quotes": {"P3": "the exact sentence from P3 you relied on, copied word for word"}, "notFound": false, "followUps": ["..."]}
 Set "notFound" to true when the information below doesn't answer the question.
+"followUps": up to 3 short questions (under 60 characters) this person would likely ask next and that the information below can answer.
 
 === FACTS ===
 ${factsBlock(h)}
@@ -186,12 +192,16 @@ ${passagesBlock(passages)}`;
   let answer: string;
   let quotes: Record<string, string> | undefined;
   let notFound = false;
+  let followUps: string[] = [];
   let res: { provider: string; model: string };
   try {
-    const r = await generateJson<{ answer?: string; quotes?: Record<string, string>; notFound?: boolean }>({ task: "chat", system, messages, temperature: 0.2 });
+    const r = await generateJson<{ answer?: string; quotes?: Record<string, string>; notFound?: boolean; followUps?: unknown }>({ task: "chat", system, messages, temperature: 0.2 });
     if (!r.data.answer?.trim()) throw new Error("empty answer");
     ({ answer, quotes } = { answer: r.data.answer, quotes: r.data.quotes });
     notFound = r.data.notFound === true;
+    followUps = Array.isArray(r.data.followUps)
+      ? r.data.followUps.filter((q): q is string => typeof q === "string" && q.trim().length > 3).map((q) => q.trim().slice(0, 100)).slice(0, 3)
+      : [];
     res = r;
   } catch (e) {
     if (e instanceof AiUnavailableError) throw e;
@@ -203,10 +213,10 @@ ${passagesBlock(passages)}`;
   const { content, citations } = resolveCitations(answer.trim(), quotes, passages);
 
   const insert = db().prepare(
-    "INSERT INTO chat_messages (hackathon_id, role, content, provider, created_at, citations, not_found) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO chat_messages (hackathon_id, role, content, provider, created_at, citations, not_found, follow_ups) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
   );
-  insert.run(id, "user", question, null, now, null, 0);
-  insert.run(id, "assistant", content, `${res.provider}:${res.model}`, new Date().toISOString(), JSON.stringify(citations), notFound ? 1 : 0);
+  insert.run(id, "user", question, null, now, null, 0, null);
+  insert.run(id, "assistant", content, `${res.provider}:${res.model}`, new Date().toISOString(), JSON.stringify(citations), notFound ? 1 : 0, JSON.stringify(followUps));
   return listChat(id);
 }
 

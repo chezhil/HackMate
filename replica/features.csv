@@ -24,12 +24,12 @@ Saved searches with new-match alert,discover,could,Airbnb,no,reuse email reminde
 Feed failure banner with last good data,discover,must,HackMate,yes,
 Overview with tracks / prizes / judges / key dates,hackathon page,must,Devfolio,yes,
 Rule gotchas with the exact quote,hackathon page,must,HackMate,yes,
-Schedule as a timeline,hackathon page,should,Devfolio,partial,key dates exist as a list
-Tabs deep-linkable (?tab=submit),hackathon page,should,Devfolio,no,tab is React state today
+Schedule as a timeline,hackathon page,should,Devfolio,yes,"feed dates plus AI-found dates; past ticked, next gets a countdown"
+Tabs deep-linkable (?tab=submit),hackathon page,should,Devfolio,yes,
 Ask AI answers only from the rules,hackathon page,must,Perplexity,yes,
 Numbered inline citations that open the rule passage,hackathon page,must,Perplexity,yes,"quotes checked against the page; unmatched quotes fall back to the passage, marked unverified"
 Sources panel listing quoted passages,hackathon page,should,Perplexity,yes,collapsible list under each answer
-Suggested follow-up questions,hackathon page,should,Perplexity,no,
+Suggested follow-up questions,hackathon page,should,Perplexity,yes,"up to 3 per answer, from the same JSON call"
 "Clear ""not in the rules"" answer state",hackathon page,must,Perplexity,yes,model sets notFound; shown as a warn badge
 Peek a hackathon without leaving the list,hackathon page,could,Linear,no,Space to peek
 Board with a column per stage,tracker,must,Trello,yes,

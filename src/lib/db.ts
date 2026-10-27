@@ -246,6 +246,7 @@ const ADDED_COLUMNS: [table: string, column: string, type: string][] = [
   ["hackathons", "team_max", "INTEGER"],
   ["chat_messages", "citations", "TEXT"],
   ["chat_messages", "not_found", "INTEGER NOT NULL DEFAULT 0"],
+  ["chat_messages", "follow_ups", "TEXT"],
 ];
 
 function migrate(conn: DatabaseSync) {
