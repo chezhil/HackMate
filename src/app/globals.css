@@ -77,6 +77,10 @@ h1, h2, h3 {
   -webkit-box-decoration-break: clone;
   display: inline;
 }
+/* Calendar days borrowed from the previous or next month: hatched, so their events stay readable. */
+@utility cal-outside {
+  background-image: repeating-linear-gradient(135deg, var(--dot) 0 1.5px, transparent 1.5px 9px);
+}
 /* Clickable cards lift off the page on hover. */
 @utility card-lift {
   @apply transition-[transform,box-shadow] duration-(--dur-fast) hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-pop;

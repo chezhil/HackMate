@@ -22,6 +22,15 @@ interface DayItems {
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const monthFmt = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
 const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" });
+const shortMonth = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+
+/** Deadline chips on the app's one urgency scale: red inside 48 h (or overdue), amber inside 7 days. */
+const DEADLINE_CHIP: Record<ReturnType<typeof urgency>, string> = {
+  past: "border-danger bg-danger-soft text-danger",
+  soon: "border-danger bg-danger-soft text-danger",
+  near: "border-warn bg-surface text-warn",
+  later: "border-border bg-surface text-text",
+};
 
 /** Stable colour per tracked hackathon so its bar is recognisable across days. */
 const PALETTE = EVENT_COLORS;
@@ -135,21 +144,33 @@ export function CalendarView() {
               const deadlines = items?.deadlines ?? [];
               const shown = [...events.filter((e) => e.tracked), ...events.filter((e) => !e.tracked)].slice(0, 3);
               const hidden = events.length - shown.length;
+              const open = deadlines.filter(({ d: dl }) => !dl.done);
+              // Cell background, strongest first: clash, deadline, selected, a day borrowed from the next/previous month.
+              const bg = clash ? "bg-danger-soft" : open.length ? "bg-warn-soft" : selected === k ? "bg-accent-soft/60" : inMonth ? "" : "cal-outside";
               return (
                 <button
                   key={k}
                   onClick={() => setSelected(k)}
-                  className={`relative min-h-24 border-b border-r border-border p-1 text-left align-top transition hover:bg-surface-2 ${
-                    inMonth ? "" : "opacity-40"
-                  } ${selected === k ? "bg-accent-soft/60" : ""} ${clash ? "bg-danger-soft" : ""}`}
+                  aria-label={`${dayFmt.format(d)}${open.length ? `, ${open.length} deadline${open.length > 1 ? "s" : ""}` : ""}${clash ? ", clash" : ""}`}
+                  aria-pressed={selected === k}
+                  className={`relative min-h-24 border-b border-r border-border p-1 text-left align-top transition-colors hover:bg-surface-2 ${bg} ${
+                    selected === k ? "outline-(length:--line) -outline-offset-2 outline-accent" : ""
+                  }`}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-1">
                     <span
-                      className={`grid h-6 w-6 place-items-center rounded-full text-xs ${
-                        k === todayKey ? "bg-accent font-semibold text-accent-text" : ""
+                      className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs tabular-nums ${
+                        k === todayKey
+                          ? "bg-accent font-bold text-accent-text"
+                          : open.length
+                            ? "border-(length:--line) border-border bg-surface font-bold"
+                            : inMonth
+                              ? "font-medium"
+                              : "text-muted"
                       }`}
                     >
-                      {d.getDate()}
+                      {/* Borrowed days say which month they're from on the 1st, so Nov 1 never reads as Oct 1. */}
+                      {!inMonth && d.getDate() === 1 ? shortMonth.format(d) : d.getDate()}
                     </span>
                     {clash && <span className="text-danger" title="Clash"><TriangleAlert aria-hidden className="size-3" /><span className="sr-only">Clash</span></span>}
                   </div>
@@ -157,7 +178,9 @@ export function CalendarView() {
                     {deadlines.map(({ d: dl, h }) => (
                       <div
                         key={dl.id}
-                        className="truncate rounded-md border border-danger/40 px-1 text-2xs font-medium leading-4 text-danger"
+                        className={`truncate rounded-md border-(length:--line) px-1 text-2xs font-semibold leading-4 ${
+                          dl.done ? "border-border bg-surface text-muted line-through" : DEADLINE_CHIP[urgency(dl.dueAt, now)]
+                        }`}
                         title={`${dl.label} — ${h.title}`}
                       >
                         <Clock aria-hidden className="mr-0.5 inline size-2.5 align-[-1px]" />
@@ -181,6 +204,12 @@ export function CalendarView() {
             })}
           </div>
         </div>
+        <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted" aria-label="Calendar key">
+          <li className="flex items-center gap-1.5"><span className="size-3.5 rounded-sm border-(length:--line) border-border bg-warn-soft" /> Deadline</li>
+          <li className="flex items-center gap-1.5"><span className="size-3.5 rounded-sm border-(length:--line) border-border bg-danger-soft" /> Clash</li>
+          <li className="flex items-center gap-1.5"><span className="size-3.5 rounded-full bg-accent" /> Today</li>
+          <li className="flex items-center gap-1.5"><span className="cal-outside size-3.5 rounded-sm border-(length:--line) border-border" /> Another month</li>
+        </ul>
 
         <section className="card p-3">
           <h2 className="mb-2 text-sm font-bold uppercase tracking-wide">{dayFmt.format(new Date(selected + "T12:00:00"))}</h2>
