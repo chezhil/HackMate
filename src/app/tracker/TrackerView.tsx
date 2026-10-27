@@ -1,15 +1,16 @@
 "use client";
 
-import { Check, Pin, TriangleAlert, Trophy } from "lucide-react";
+import { Check, GripVertical, Pin, TriangleAlert, Trophy } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ClashList } from "@/components/ClashList";
 import { hid } from "@/lib/client";
 import { DeadlineEditor } from "@/components/DeadlineEditor";
 import { useHackmate } from "@/components/HackmateProvider";
 import { useConfirm } from "@/components/ui/Confirm";
 import { Countdown } from "@/components/ui/Countdown";
-import { Badge, EmptyState } from "@/components/ui/Feedback";
+import { Badge, EmptyState, Kbd } from "@/components/ui/Feedback";
+import { useToast } from "@/components/ui/Toast";
 import type { Tone } from "@/components/ui/tone";
 import type { Clash } from "@/lib/clashes";
 import { fmtDate, fmtRange, place } from "@/lib/format";
@@ -34,8 +35,116 @@ function clashesFor(id: string, clashes: Clash[]) {
   );
 }
 
+const ORDER = STATUSES.map((s) => s.key);
+const labelOf = (s: TrackStatus) => STATUSES.find((x) => x.key === s)!.label;
+
+interface Drag {
+  id: string;
+  from: TrackStatus;
+  title: string;
+  meta: string;
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  width: number;
+  over: TrackStatus | null;
+}
+
+/** Elements that keep their own click behaviour, so pressing on them never starts a drag. */
+const INTERACTIVE = "a, button, input, select, textarea, label, summary";
+
 export function TrackerView() {
-  const { tracked, clashes, loading } = useHackmate();
+  const { tracked, clashes, loading, updateTracked } = useHackmate();
+  const toast = useToast();
+  // Moves show at once; the server's answer replaces this when it arrives.
+  const [optimistic, setOptimistic] = useState<Record<string, TrackStatus>>({});
+  const [drag, setDrag] = useState<Drag | null>(null);
+  const [announce, setAnnounce] = useState("");
+  const dragRef = useRef<Drag | null>(null);
+  const press = useRef<{ id: string; x: number; y: number; el: HTMLElement; from: TrackStatus; title: string; meta: string } | null>(null);
+
+  const statusOf = (t: TrackedWithHackathon) => optimistic[t.hackathonId] ?? t.status;
+
+  const moveTo = async (t: TrackedWithHackathon, to: TrackStatus, opts: { undoable?: boolean; refocus?: boolean; force?: boolean } = {}) => {
+    const from = statusOf(t);
+    // Undo passes force: its copy of `t` is from before the move, so its status already looks like the target.
+    if (to === from && !opts.force) return;
+    setOptimistic((o) => ({ ...o, [t.hackathonId]: to }));
+    setAnnounce(`Moved ${t.hackathon.title} to ${labelOf(to)}`);
+    if (opts.refocus) requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-grip="${CSS.escape(t.hackathonId)}"]`)?.focus());
+    if (opts.undoable !== false) {
+      toast({ message: `Moved to ${labelOf(to)}`, tone: "info", undo: () => void moveRef.current(t, from, { undoable: false, force: true }) });
+    }
+    try {
+      await updateTracked(t.hackathonId, { status: to });
+    } finally {
+      setOptimistic((o) => {
+        const next = { ...o };
+        delete next[t.hackathonId];
+        return next;
+      });
+    }
+  };
+
+  // Pointer drag: works for mouse, pen and touch. Mouse can grab the whole card; touch uses the grip so the page still scrolls.
+  const onPointerDown = (e: React.PointerEvent<HTMLElement>, t: TrackedWithHackathon) => {
+    if (e.button !== 0) return;
+    const fromGrip = (e.target as HTMLElement).closest("[data-grip]");
+    if (!fromGrip && (e.pointerType !== "mouse" || (e.target as HTMLElement).closest(INTERACTIVE))) return;
+    const el = e.currentTarget;
+    press.current = { id: t.hackathonId, x: e.clientX, y: e.clientY, el, from: statusOf(t), title: t.hackathon.title, meta: `${fmtRange(t.hackathon)} · ${place(t.hackathon)}` };
+  };
+
+  // The window listeners below are set once; these refs let them see the latest data and move function.
+  const trackedRef = useRef(tracked);
+  const moveRef = useRef(moveTo);
+  useEffect(() => {
+    trackedRef.current = tracked;
+    moveRef.current = moveTo;
+  });
+
+  useEffect(() => {
+    const columnAt = (x: number, y: number) =>
+      ((document.elementFromPoint(x, y)?.closest("[data-status]") as HTMLElement | null)?.dataset.status as TrackStatus | undefined) ?? null;
+    const onMove = (e: PointerEvent) => {
+      const p = press.current;
+      if (!p) return;
+      if (!dragRef.current) {
+        if (Math.hypot(e.clientX - p.x, e.clientY - p.y) < 6) return;
+        const r = p.el.getBoundingClientRect();
+        dragRef.current = { id: p.id, from: p.from, title: p.title, meta: p.meta, x: e.clientX, y: e.clientY, dx: p.x - r.left, dy: p.y - r.top, width: r.width, over: null };
+        document.body.style.userSelect = "none";
+      }
+      e.preventDefault();
+      dragRef.current = { ...dragRef.current, x: e.clientX, y: e.clientY, over: columnAt(e.clientX, e.clientY) };
+      setDrag(dragRef.current);
+    };
+    const end = (drop: boolean) => {
+      const d = dragRef.current;
+      press.current = null;
+      dragRef.current = null;
+      document.body.style.userSelect = "";
+      setDrag(null);
+      if (drop && d?.over && d.over !== d.from) {
+        const t = trackedRef.current.find((x) => x.hackathonId === d.id);
+        if (t) void moveRef.current(t, d.over);
+      }
+    };
+    const onUp = () => end(true);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && dragRef.current && end(false);
+    window.addEventListener("pointermove", onMove, { passive: false });
+    const onCancel = () => end(false);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, []);
 
   if (!loading && tracked.length === 0) {
     return (
@@ -62,47 +171,118 @@ export function TrackerView() {
           <ClashList clashes={clashes} />
         </section>
       )}
+      <p className="hidden text-xs text-muted md:block">
+        Drag a card to another column, or focus its <GripVertical aria-hidden className="inline size-3.5" /> handle and press <Kbd>←</Kbd> <Kbd>→</Kbd>.
+      </p>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         {STATUSES.map((s) => {
-          const items = tracked.filter((t) => t.status === s.key);
+          const items = tracked.filter((t) => statusOf(t) === s.key);
+          const target = drag && drag.over === s.key && drag.from !== s.key;
           return (
-            <section key={s.key} className="min-w-0 rounded-xl bg-surface-2/60 p-2">
-              <h2 className="flex items-center justify-between px-1 pb-2 text-sm font-semibold">
+            <section
+              key={s.key}
+              data-status={s.key}
+              aria-label={`${s.label}, ${items.length}`}
+              className={`min-w-0 rounded-xl border-(length:--line) p-2 transition-colors duration-(--dur-fast) ${
+                target ? "border-accent bg-accent-soft" : drag ? "border-dashed border-border bg-surface-2/60" : "border-transparent bg-surface-2/60"
+              }`}
+            >
+              <h2 className="flex items-center justify-between px-1 pb-2 text-sm font-bold uppercase tracking-wide">
                 {s.label}
-                <span className="text-xs font-normal text-muted">{items.length}</span>
+                <span className="rounded-full border-(length:--line) border-border bg-surface px-1.5 text-xs tabular-nums">{items.length}</span>
               </h2>
               <div className="space-y-2">
                 {items.map((t) => (
-                  <TrackerCard key={t.hackathonId} t={t} clashes={clashesFor(t.hackathonId, clashes)} />
+                  <TrackerCard
+                    key={t.hackathonId}
+                    t={t}
+                    status={statusOf(t)}
+                    clashes={clashesFor(t.hackathonId, clashes)}
+                    dragging={drag?.id === t.hackathonId}
+                    onPointerDown={(e) => onPointerDown(e, t)}
+                    onStep={(dir) => {
+                      const i = ORDER.indexOf(statusOf(t)) + dir;
+                      if (i >= 0 && i < ORDER.length) void moveTo(t, ORDER[i], { refocus: true });
+                    }}
+                  />
                 ))}
-                {items.length === 0 && <p className="px-1 py-4 text-center text-xs text-muted">—</p>}
+                {target && <p className="rounded-lg border-(length:--line) border-dashed border-accent px-1 py-5 text-center text-xs font-semibold text-accent">Drop here</p>}
+                {items.length === 0 && !target && <p className="px-1 py-4 text-center text-xs text-muted">{drag ? "Drop here" : "—"}</p>}
               </div>
             </section>
           );
         })}
       </div>
+
+      {/* The tile that follows the pointer while dragging. */}
+      {drag && (
+        <div
+          aria-hidden
+          className="pointer-events-none fixed z-(--z-toast) rotate-2 rounded-xl border-(length:--line) border-border bg-surface p-3 text-sm shadow-pop"
+          style={{ left: drag.x - drag.dx, top: drag.y - drag.dy, width: drag.width }}
+        >
+          <div className="font-bold leading-snug">{drag.title}</div>
+          <div className="mt-1 text-xs text-muted">{drag.meta}</div>
+          <div className="mt-2 text-xs font-semibold text-accent">{drag.over && drag.over !== drag.from ? `→ ${labelOf(drag.over)}` : "Drag to a column"}</div>
+        </div>
+      )}
+      <p className="sr-only" aria-live="polite">{announce}</p>
     </div>
   );
 }
 
-function TrackerCard({ t, clashes }: { t: TrackedWithHackathon; clashes: Clash[] }) {
+function TrackerCard({
+  t,
+  status,
+  clashes,
+  dragging,
+  onPointerDown,
+  onStep,
+}: {
+  t: TrackedWithHackathon;
+  /** Includes a move that's still saving. */
+  status: TrackStatus;
+  clashes: Clash[];
+  dragging: boolean;
+  onPointerDown: (e: React.PointerEvent<HTMLElement>) => void;
+  onStep: (dir: -1 | 1) => void;
+}) {
   const { updateTracked, untrack, now } = useHackmate();
   const confirm = useConfirm();
   const [open, setOpen] = useState(false);
   const h = t.hackathon;
-  const next = t.status === "results" ? undefined : t.deadlines.find((d) => !d.done && new Date(d.dueAt).getTime() > now);
-  const move = (status: TrackStatus, extra: Parameters<typeof updateTracked>[1] = {}) =>
-    updateTracked(t.hackathonId, { status, ...extra });
+  const next = status === "results" ? undefined : t.deadlines.find((d) => !d.done && new Date(d.dueAt).getTime() > now);
+  const move = (s: TrackStatus, extra: Parameters<typeof updateTracked>[1] = {}) =>
+    updateTracked(t.hackathonId, { status: s, ...extra });
+  const i = ORDER.indexOf(status);
 
   return (
-    <article className="card space-y-2 p-3 text-sm">
+    <article
+      onPointerDown={onPointerDown}
+      className={`card card-lift space-y-2 p-3 text-sm md:cursor-grab ${dragging ? "border-dashed opacity-40 shadow-none" : ""}`}
+    >
       <div className="flex items-start justify-between gap-2">
-        <Link href={`/hackathon/${hid(h.id)}`} className="font-medium leading-snug hover:underline">
+        <Link href={`/hackathon/${hid(h.id)}`} className="min-w-0 break-words font-bold leading-snug hover:underline">
           {h.title}
         </Link>
-        {clashes.length > 0 && (
-          <Badge tone="danger" className="shrink-0 py-1"><TriangleAlert aria-hidden className="size-3" /><span className="sr-only">Has clashes</span></Badge>
-        )}
+        <div className="flex shrink-0 items-center gap-1">
+          {clashes.length > 0 && (
+            <Badge tone="danger" className="py-1"><TriangleAlert aria-hidden className="size-3" /><span className="sr-only">Has clashes</span></Badge>
+          )}
+          <button
+            type="button"
+            data-grip={t.hackathonId}
+            className="grid size-7 cursor-grab touch-none place-items-center rounded-md border-(length:--line) border-border bg-surface text-muted hover:bg-warn-soft hover:text-text active:cursor-grabbing"
+            aria-label={`Move ${h.title}. Now in ${labelOf(status)}. Use left and right arrow keys to change column.`}
+            title="Drag, or use ← → to move"
+            onKeyDown={(e) => {
+              if (e.key === "ArrowLeft" && i > 0) { e.preventDefault(); onStep(-1); }
+              if (e.key === "ArrowRight" && i < ORDER.length - 1) { e.preventDefault(); onStep(1); }
+            }}
+          >
+            <GripVertical aria-hidden className="size-4" />
+          </button>
+        </div>
       </div>
       <div className="text-xs text-muted">
         {fmtRange(h)} · {place(h)} · {SOURCE_LABELS[h.source]}
@@ -119,7 +299,7 @@ function TrackerCard({ t, clashes }: { t: TrackedWithHackathon; clashes: Clash[]
       <div className="flex items-center justify-between gap-2 pt-1">
         <select
           className="input w-auto py-0.5 text-xs"
-          value={t.status}
+          value={status}
           onChange={(e) => move(e.target.value as TrackStatus)}
           aria-label="Status"
         >

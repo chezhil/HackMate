@@ -131,6 +131,27 @@ h1, h2, h3 {
   outline-offset: 1px;
 }
 
+/* "You are here": a red teardrop map pin with an ink outline, a hard shadow and a white centre. */
+.hm-you {
+  position: absolute;
+  left: 2px;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  background: var(--danger);
+  border: var(--line) solid var(--border);
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: -2px 2px 0 0 var(--border);
+}
+.hm-you > span {
+  position: absolute;
+  inset: 6px;
+  border-radius: 999px;
+  background: var(--on-event);
+  border: var(--line) solid var(--border);
+}
+
 /* Popups: an outlined card with a hard shadow and the tip drawn in ink. */
 .hm-map .leaflet-popup-content-wrapper {
   background: var(--surface);

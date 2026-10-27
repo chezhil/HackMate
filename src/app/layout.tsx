@@ -6,6 +6,7 @@ import { HackmateProvider } from "@/components/HackmateProvider";
 import { Nav } from "@/components/Nav";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { ConfirmProvider } from "@/components/ui/Confirm";
+import { ToastProvider } from "@/components/ui/Toast";
 import { themeScript } from "@/lib/themeScript";
 import "./globals.css";
 
@@ -42,8 +43,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           <HackmateProvider>
             <ConfirmProvider>
-              <Nav />
-              <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">{children}</main>
+              <ToastProvider>
+                <Nav />
+                <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">{children}</main>
+              </ToastProvider>
             </ConfirmProvider>
           </HackmateProvider>
         </Suspense>
