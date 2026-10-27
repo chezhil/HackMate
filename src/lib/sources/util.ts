@@ -43,6 +43,27 @@ export function stripHtml(html: string | null | undefined, max = 240): string | 
   return text.length > max ? text.slice(0, max - 1) + "…" : text;
 }
 
+/** Readable plain text from an HTML page or fragment, keeping paragraph and list breaks. */
+export function htmlToText(html: string, max = 60_000): string {
+  const text = html
+    .replace(/<(script|style|noscript|svg|head)[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<li[^>]*>/gi, "\n• ")
+    .replace(/<(br|\/p|\/div|\/h[1-6]|\/li|\/tr|\/section|\/article)[^>]*>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&rsquo;|&lsquo;/g, "'")
+    .replace(/&ndash;|&mdash;/g, "–")
+    .replace(/&#?\w+;/g, "")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n\s*\n\s*(\n\s*)+/g, "\n\n")
+    .trim();
+  return text.length > max ? text.slice(0, max) : text;
+}
+
 export async function fetchText(url: string, init?: RequestInit): Promise<string> {
   const res = await fetch(url, {
     ...init,

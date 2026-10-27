@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { findClashes, type Clash } from "@/lib/clashes";
+import { call } from "@/lib/client";
 import type { DeadlineKind, Hackathon, ResultKind, TrackedWithHackathon, TrackStatus } from "@/lib/types";
 
 interface SyncReport {
@@ -42,16 +43,6 @@ const Ctx = createContext<HackmateState | null>(null);
 
 type ListResponse = { hackathons: Hackathon[]; tracked: TrackedWithHackathon[]; lastSync: SyncReport };
 
-async function call<T>(url: string, method = "GET", body?: unknown): Promise<T> {
-  const res = await fetch(url, {
-    method,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
-  return data as T;
-}
 
 export function HackmateProvider({ children }: { children: React.ReactNode }) {
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);

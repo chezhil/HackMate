@@ -1,6 +1,6 @@
 import type { Hackathon, Mode } from "../types";
 import { inferThemes } from "../themes";
-import { fetchJson, iso, stripHtml, titleCase, toUsd } from "./util";
+import { fetchJson, htmlToText, iso, stripHtml, titleCase, toUsd } from "./util";
 
 interface UnstopItem {
   id: number;
@@ -21,7 +21,12 @@ interface UnstopItem {
     lat: number | string | null;
     lng: number | string | null;
   } | null;
-  regnRequirements?: { start_regn_dt: string | null; end_regn_dt: string | null } | null;
+  regnRequirements?: {
+    start_regn_dt: string | null;
+    end_regn_dt: string | null;
+    min_team_size?: number | null;
+    max_team_size?: number | null;
+  } | null;
   workfunction?: { name: string }[];
   required_skills?: { skill_name: string }[];
   filters?: { name: string; type: string }[];
@@ -80,5 +85,8 @@ function normalize(it: UnstopItem): Hackathon {
     entryFee: it.isPaid ? "paid" : "free",
     themes: inferThemes(it.title, tags.join(" ")),
     organizer: it.organisation?.name ?? null,
+    teamMin: it.regnRequirements?.min_team_size ?? null,
+    teamMax: it.regnRequirements?.max_team_size ?? null,
+    description: it.details ? htmlToText(it.details) : null,
   };
 }

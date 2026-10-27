@@ -33,6 +33,10 @@ export interface Hackathon {
   entryFee: "free" | "paid" | null;
   themes: string[];
   organizer: string | null;
+  teamMin: number | null;
+  teamMax: number | null;
+  /** Full description text from the feed. Only set by the source adapters; not sent in list responses. */
+  description?: string | null;
 }
 
 export type TrackStatus = "interested" | "registered" | "building" | "submitted" | "results";
@@ -107,3 +111,100 @@ export const LEAD_OPTIONS: { minutes: number; label: string }[] = [
   { minutes: 3 * 60, label: "3 hours before" },
   { minutes: 60, label: "1 hour before" },
 ];
+
+/** Structured facts the AI pulls out of a hackathon's page. Every field may be empty. */
+export interface HackathonInfo {
+  summary: string;
+  teamSize: { min: number | null; max: number | null; soloAllowed: boolean | null; notes: string | null };
+  eligibility: string[];
+  deliverables: { item: string; limit: string | null }[];
+  alerts: { level: "critical" | "warning" | "info"; text: string }[];
+  ipTerms: string | null;
+  judges: { name: string; title: string | null }[];
+  judgingCriteria: { name: string; weight: string | null; description: string | null }[];
+  tracks: { name: string; description: string | null }[];
+  prizes: { name: string; value: string | null }[];
+  importantDates: { label: string; date: string }[];
+  rules: string[];
+  pastWinners: { name: string; description: string | null; year: string | null }[];
+}
+
+export interface HackathonDetails {
+  hackathonId: string;
+  sourceChars: number;
+  info: HackathonInfo | null;
+  provider: string | null;
+  error: string | null;
+  fetchedAt: string;
+}
+
+export interface WinnerProject {
+  name: string;
+  tagline: string | null;
+  hackathon: string | null;
+  prizes: string[];
+  url: string;
+  tags: string[];
+}
+
+export interface ChatMessage {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  provider: string | null;
+  createdAt: string;
+}
+
+export interface IdeaCritique {
+  score: number; // 1–10
+  verdict: string;
+  positives: string[];
+  negatives: string[];
+  risks: string[];
+  suggestions: string[];
+  criteriaFit: { criterion: string; score: number; note: string }[];
+}
+
+export interface IdeaVersion {
+  id: number;
+  text: string;
+  critique: IdeaCritique | null;
+  provider: string | null;
+  createdAt: string;
+}
+
+export interface Idea {
+  id: number;
+  hackathonId: string;
+  title: string;
+  createdAt: string;
+  versions: IdeaVersion[];
+}
+
+export interface IdeaSuggestion {
+  title: string;
+  pitch: string;
+  whyItCouldWin: string;
+  track: string | null;
+  stack: string[];
+}
+
+export interface Teammate {
+  id: number;
+  name: string;
+  role: string | null;
+  skills: string | null;
+  contact: string | null;
+  confirmed: boolean;
+}
+
+export interface Standup {
+  id: number;
+  author: string | null;
+  mime: string;
+  durationSec: number | null;
+  transcript: string | null;
+  summary: { done: string[]; next: string[]; blockers: string[] } | null;
+  error: string | null;
+  createdAt: string;
+}

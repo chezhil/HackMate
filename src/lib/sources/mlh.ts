@@ -69,5 +69,7 @@ function normalize(e: MlhEvent): Hackathon {
     entryFee: "free",
     themes: inferThemes(e.name, (e.customFields?.hackathon_focus ?? []).join(" ")),
     organizer: "Major League Hacking",
+    teamMin: null,
+    teamMax: null,
   };
 }

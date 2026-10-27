@@ -96,5 +96,7 @@ function normalize(c: WmdCard): Hackathon {
     entryFee: "free",
     themes: inferThemes(c.title, c.prize),
     organizer: "WeMakeDevs",
+    teamMin: null,
+    teamMax: null,
   };
 }

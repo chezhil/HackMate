@@ -4,7 +4,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
 
-const DATA_DIR = path.join(process.cwd(), "data");
+export const DATA_DIR = path.join(process.cwd(), "data");
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS hackathons (
@@ -85,7 +85,86 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- AI-extracted rules, judges, deliverables etc. One row per hackathon, rebuilt on demand.
+CREATE TABLE IF NOT EXISTS hackathon_details (
+  hackathon_id TEXT PRIMARY KEY REFERENCES hackathons(id),
+  source_text TEXT NOT NULL,
+  info TEXT,
+  provider TEXT,
+  error TEXT,
+  fetched_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
+  role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  provider TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS past_winners (
+  hackathon_id TEXT PRIMARY KEY REFERENCES hackathons(id),
+  projects TEXT NOT NULL,
+  fetched_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ideas (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
+  title TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS idea_versions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  idea_id INTEGER NOT NULL REFERENCES ideas(id) ON DELETE CASCADE,
+  text TEXT NOT NULL,
+  critique TEXT,
+  provider TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS teammates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
+  name TEXT NOT NULL,
+  role TEXT,
+  skills TEXT,
+  contact TEXT,
+  confirmed INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS standups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
+  author TEXT,
+  file TEXT NOT NULL,
+  mime TEXT NOT NULL,
+  duration_sec REAL,
+  transcript TEXT,
+  summary TEXT,
+  error TEXT,
+  created_at TEXT NOT NULL
+);
 `;
+
+// Columns added after the first release; CREATE TABLE IF NOT EXISTS won't add them to an existing DB.
+const ADDED_COLUMNS: [table: string, column: string, type: string][] = [
+  ["hackathons", "description", "TEXT"],
+  ["hackathons", "team_min", "INTEGER"],
+  ["hackathons", "team_max", "INTEGER"],
+];
+
+function migrate(conn: DatabaseSync) {
+  for (const [table, column, type] of ADDED_COLUMNS) {
+    const cols = conn.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+    if (!cols.some((c) => c.name === column)) conn.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+  }
+}
 
 const globalForDb = globalThis as unknown as { hackmateDb?: DatabaseSync };
 
@@ -95,6 +174,7 @@ export function db(): DatabaseSync {
     const conn = new DatabaseSync(path.join(DATA_DIR, "hackmate.db"));
     conn.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
     conn.exec(SCHEMA);
+    migrate(conn);
     globalForDb.hackmateDb = conn;
   }
   return globalForDb.hackmateDb;

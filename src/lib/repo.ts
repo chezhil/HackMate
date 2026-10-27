@@ -37,6 +37,8 @@ function toHackathon(r: Row): Hackathon {
     entryFee: (r.entry_fee as Hackathon["entryFee"]) ?? null,
     themes: JSON.parse((r.themes as string) || "[]"),
     organizer: (r.organizer as string) ?? null,
+    teamMin: (r.team_min as number) ?? null,
+    teamMax: (r.team_max as number) ?? null,
   };
 }
 
@@ -71,8 +73,9 @@ function toDeadline(r: Row): Deadline {
 export function upsertHackathons(list: Hackathon[], seenAt: string) {
   const stmt = db().prepare(`
     INSERT INTO hackathons (id, source, title, tagline, url, image, mode, city, state, country, venue, lat, lng,
-      starts_at, ends_at, reg_starts_at, reg_ends_at, prize_text, prize_usd, entry_fee, themes, organizer, last_seen_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      starts_at, ends_at, reg_starts_at, reg_ends_at, prize_text, prize_usd, entry_fee, themes, organizer, last_seen_at,
+      description, team_min, team_max)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       title = excluded.title, tagline = excluded.tagline, url = excluded.url, image = excluded.image,
       mode = excluded.mode, city = excluded.city, state = excluded.state, country = excluded.country,
@@ -83,7 +86,8 @@ export function upsertHackathons(list: Hackathon[], seenAt: string) {
       starts_at = excluded.starts_at, ends_at = excluded.ends_at,
       reg_starts_at = excluded.reg_starts_at, reg_ends_at = excluded.reg_ends_at,
       prize_text = excluded.prize_text, prize_usd = excluded.prize_usd, entry_fee = excluded.entry_fee,
-      themes = excluded.themes, organizer = excluded.organizer, last_seen_at = excluded.last_seen_at
+      themes = excluded.themes, organizer = excluded.organizer, last_seen_at = excluded.last_seen_at,
+      description = excluded.description, team_min = excluded.team_min, team_max = excluded.team_max
   `);
   db().exec("BEGIN");
   try {
@@ -92,6 +96,7 @@ export function upsertHackathons(list: Hackathon[], seenAt: string) {
         h.id, h.source, h.title, h.tagline, h.url, h.image, h.mode, h.city, h.state, h.country, h.venue,
         h.lat, h.lng, h.startsAt, h.endsAt, h.regStartsAt, h.regEndsAt, h.prizeText, h.prizeUsd,
         h.entryFee, JSON.stringify(h.themes), h.organizer, seenAt,
+        h.description ?? null, h.teamMin, h.teamMax,
       );
     }
     db().exec("COMMIT");
@@ -112,6 +117,11 @@ export function listHackathons(): Hackathon[] {
     )
     .all(cutoff)
     .map(toHackathon);
+}
+
+export function getDescription(id: string): string | null {
+  const r = db().prepare("SELECT description FROM hackathons WHERE id = ?").get(id) as { description: string | null } | undefined;
+  return r?.description ?? null;
 }
 
 export function getHackathon(id: string): Hackathon | null {

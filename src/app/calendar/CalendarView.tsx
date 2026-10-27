@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
+import { hid } from "@/lib/client";
 import { CalendarSync } from "@/components/CalendarSync";
 import { ClashList } from "@/components/ClashList";
 import { useHackmate } from "@/components/HackmateProvider";
@@ -191,7 +193,7 @@ export function CalendarView() {
               {sel.events.map(({ h, tracked: isTracked }) => (
                 <li key={h.id} className="flex items-center gap-2">
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: isTracked ? colorOf(h.id) : "var(--border)" }} />
-                  <a href={h.url} target="_blank" rel="noreferrer" className="hover:underline">{h.title}</a>
+                  <Link href={`/hackathon/${hid(h.id)}`} className="hover:underline">{h.title}</Link>
                   {!isTracked && <span className="text-xs text-muted">(not tracked)</span>}
                 </li>
               ))}

@@ -18,6 +18,20 @@ Each stage has its own action: register link, project link on submit, result and
 - Calendar sync via a private iCal feed: one-click subscribe for Google, Apple and Outlook, or a one-time `.ics` download.
 - Email reminders before each deadline (1 week / 3 days / 1 day / 3 hours / 1 hour — your pick), batched into one email.
 
+**Hackathon pages**: click any hackathon to open its page:
+- **Overview**: the AI reads the full rules once and pulls out the summary, team size, deliverables
+  (deck, video length…), eligibility, IP terms, judges, judging criteria, tracks, prizes and key dates.
+  A built-in rule scanner also flags gotchas (solo-only, video/slide limits, IP terms, students-only…)
+  with the exact quote, and it works even without an AI key.
+- **Ask AI**: ask questions about that hackathon. Answers come only from its rules.
+- **Ideas**: guidelines and idea suggestions based on its tracks, criteria and past winners. Write your
+  own idea and get a score with positives, negatives, risks and fixes, then edit and re-critique as many
+  times as you like. Every version and its score are kept.
+- **Past winners**: prize-winning Devfolio projects from earlier editions and similar themes.
+- **Team**: add teammates (confirmed or invited) against the team-size limit, and write a "looking for
+  teammates" post to share on X, LinkedIn, Reddit, WhatsApp, Discord or the platform's team finder.
+- **Standups**: record voice notes; each is transcribed and split into done / next / blockers.
+
 ## Running it
 
 Needs Node 22.5+ (uses the built-in `node:sqlite`).
@@ -31,6 +45,18 @@ Open http://localhost:3000. The first load pulls all four feeds (a few seconds).
 or on demand with **Refresh feeds**. Map coordinates are filled in from OpenStreetMap in the background.
 
 Data lives in `data/hackmate.db` (SQLite, git-ignored).
+
+### AI keys
+
+Add these to `.env.local` (see `.env.example`):
+
+- `GROQ_API_KEY`: chat answers, idea suggestions and critiques, teammate posts. Fast, with a generous
+  free tier (about 8k tokens a minute, so requests are trimmed to fit).
+- `GEMINI_API_KEY`: reads each hackathon's full rules once (cached) and listens to voice notes.
+  Its free tier is rate-limited, so it's only used for those.
+
+If one provider is missing, overloaded or rate-limited, the other takes over (voice notes fall back to
+Groq's Whisper). Models are picked automatically from what your key can access.
 
 ### Email reminders
 
@@ -57,4 +83,4 @@ reported on the Discover page, and the others keep working. Adapters live in `sr
 
 ## Stack
 
-Next.js 16 (App Router) · React 19 · Tailwind CSS 4 · SQLite (`node:sqlite`) · Leaflet + OpenStreetMap · Nodemailer
+Next.js 16 (App Router) · React 19 · Tailwind CSS 4 · SQLite (`node:sqlite`) · Leaflet + OpenStreetMap · Nodemailer · Groq + Gemini

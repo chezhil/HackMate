@@ -1,0 +1,33 @@
+import { AiUnavailableError } from "@/lib/ai";
+import { createIdea, listIdeas, suggestIdeas } from "@/lib/planning";
+import { connection } from "next/server";
+
+type Ctx = { params: Promise<{ id: string }> };
+
+const fail = (e: unknown) =>
+  Response.json({ error: (e as Error).message }, { status: e instanceof AiUnavailableError ? 503 : 500 });
+
+export async function GET(_req: Request, { params }: Ctx) {
+  await connection();
+  return Response.json({ ideas: listIdeas(decodeURIComponent((await params).id)) });
+}
+
+/**
+ * { action: "suggest", interests? } → AI guidelines + idea seeds (not saved)
+ * { action: "create", title, text } → save an idea you'll iterate on
+ */
+export async function POST(req: Request, { params }: Ctx) {
+  const id = decodeURIComponent((await params).id);
+  const body = (await req.json()) as { action: string; interests?: string; title?: string; text?: string };
+  try {
+    if (body.action === "suggest") return Response.json(await suggestIdeas(id, body.interests?.slice(0, 500) ?? ""));
+    if (body.action === "create") {
+      if (!body.text?.trim()) return Response.json({ error: "Describe the idea first" }, { status: 400 });
+      createIdea(id, body.title ?? "", body.text.trim());
+      return Response.json({ ideas: listIdeas(id) });
+    }
+    return Response.json({ error: "Unknown action" }, { status: 400 });
+  } catch (e) {
+    return fail(e);
+  }
+}

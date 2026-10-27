@@ -13,6 +13,10 @@ interface DevfolioSource {
   state: string | null;
   country: string | null;
   location: string | null;
+  desc?: string | null;
+  team_min?: number | null;
+  team_size?: number | null;
+  prizes?: { name: string; desc: string | null }[];
   starts_at: string | null;
   ends_at: string | null;
   themes?: { name: string }[];
@@ -73,5 +77,13 @@ function normalize(s: DevfolioSource): Hackathon {
     entryFee: "free",
     themes: inferThemes(s.name, s.tagline, themeNames.join(" ")),
     organizer: s.hosted_by?.name ?? null,
+    teamMin: s.team_min ?? null,
+    teamMax: s.team_size ?? null,
+    description: [
+      s.desc,
+      s.prizes?.length ? `## Prizes\n${s.prizes.map((p) => `- ${p.name}${p.desc ? `: ${p.desc}` : ""}`).join("\n")}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n\n") || null,
   };
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ClashList } from "@/components/ClashList";
+import { hid } from "@/lib/client";
 import { DeadlineEditor } from "@/components/DeadlineEditor";
 import { useHackmate } from "@/components/HackmateProvider";
 import type { Clash } from "@/lib/clashes";
@@ -88,9 +89,9 @@ function TrackerCard({ t, clashes }: { t: TrackedWithHackathon; clashes: Clash[]
   return (
     <article className="card space-y-2 p-3 text-sm">
       <div className="flex items-start justify-between gap-2">
-        <a href={h.url} target="_blank" rel="noreferrer" className="font-medium leading-snug hover:underline">
+        <Link href={`/hackathon/${hid(h.id)}`} className="font-medium leading-snug hover:underline">
           {h.title}
-        </a>
+        </Link>
         {clashes.length > 0 && (
           <span className="shrink-0 rounded bg-danger-soft px-1.5 py-0.5 text-xs text-danger" title="Has clashes">⚠</span>
         )}

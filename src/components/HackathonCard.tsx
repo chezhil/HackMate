@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { hid } from "@/lib/client";
 import { fmtDate, fmtRange, place, relative } from "@/lib/format";
 import { useHackmate } from "./HackmateProvider";
 import type { Hackathon } from "@/lib/types";
@@ -45,8 +47,18 @@ export function HackathonCard({
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <h3 className="line-clamp-2 font-medium leading-snug">
-            <a href={h.url} target="_blank" rel="noreferrer" className="hover:underline" onClick={(e) => e.stopPropagation()}>
+            <Link href={`/hackathon/${hid(h.id)}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
               {h.title}
+            </Link>
+            <a
+              href={h.url}
+              target="_blank"
+              rel="noreferrer"
+              className="ml-1.5 text-xs text-muted hover:text-accent"
+              title="Open on the hackathon's site"
+              onClick={(e) => e.stopPropagation()}
+            >
+              ↗
             </a>
           </h3>
           <button
