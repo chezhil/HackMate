@@ -15,7 +15,7 @@ import { SEVERITY_LABEL, SEVERITY_TONE } from "@/components/ClashList";
 import { worstSeverity, type Clash } from "@/lib/clashes";
 import { fmtDate, fmtRange, place } from "@/lib/format";
 import type { ResultKind, TrackedWithHackathon, TrackStatus } from "@/lib/types";
-import { RESULT_LABELS, SOURCE_LABELS, STATUSES } from "@/lib/types";
+import { SOURCE_LABELS, STATUSES } from "@/lib/types";
 
 
 function clashesFor(id: string, clashes: Clash[]) {
@@ -384,8 +384,6 @@ function StageActions({
   move: (s: TrackStatus, extra?: { submissionUrl?: string | null; result?: ResultKind | null; resultNotes?: string | null }) => Promise<void>;
 }) {
   const [url, setUrl] = useState(t.submissionUrl ?? "");
-  const [result, setResult] = useState<ResultKind>(t.result ?? "participated");
-  const [resultNotes, setResultNotes] = useState(t.resultNotes ?? "");
   const h = t.hackathon;
 
   switch (t.status) {
@@ -417,27 +415,19 @@ function StageActions({
         </form>
       );
     case "submitted":
+      // Results, prizes, certificate and notes are all recorded on the Wrap-up tab; choosing a result there
+      // moves the hackathon to the Results page.
       return (
-        <form
-          className="space-y-1.5"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void move("results", { result, resultNotes: resultNotes.trim() || null });
-          }}
-        >
+        <div className="space-y-1.5">
           {t.submissionUrl && (
             <a href={t.submissionUrl} target="_blank" rel="noreferrer" className="block truncate text-xs text-accent hover:underline">
               {t.submissionUrl}
             </a>
           )}
-          <select className="input py-1 text-xs" value={result} onChange={(e) => setResult(e.target.value as ResultKind)}>
-            {(Object.keys(RESULT_LABELS) as ResultKind[]).map((r) => (
-              <option key={r} value={r}>{RESULT_LABELS[r]}</option>
-            ))}
-          </select>
-          <input className="input py-1 text-xs" placeholder="Prize, track, feedback…" value={resultNotes} onChange={(e) => setResultNotes(e.target.value)} />
-          <button className="btn btn-sm w-full" type="submit">Save result</button>
-        </form>
+          <Link href={`/hackathon/${hid(h.id)}?tab=wrapup`} className="btn btn-primary btn-sm w-full">
+            Wrap up <ArrowRight aria-hidden className="size-3.5" />
+          </Link>
+        </div>
       );
     case "results":
       // Hackathons with results live on the Results page, not on the board.
