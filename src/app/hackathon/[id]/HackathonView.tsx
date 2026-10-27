@@ -229,7 +229,6 @@ function toolTitle(tab: Tab, section: PitchSection) {
 function ToolStrip({ active, section, onGo }: { active: Tab; section: PitchSection; onGo: (t: Tab, s?: PitchSection) => void }) {
   return (
     <nav aria-label="What you can do here" className="space-y-2">
-      <h2 className="text-xs font-bold uppercase tracking-wider">What you can do here</h2>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {TOOL_GROUPS.map((g) => (
           <div key={g.label} className="min-w-0">
