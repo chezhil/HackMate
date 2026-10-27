@@ -1,9 +1,10 @@
 "use client";
 
-import { ArrowRight, Award, ChevronRight, Inbox, Search, Trophy } from "lucide-react";
+import { ArrowRight, Award, ChevronRight, Inbox, PinOff, Search, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useHackmate } from "@/components/HackmateProvider";
+import { useConfirm } from "@/components/ui/Confirm";
 import { Badge, Banner, EmptyState, Skeleton } from "@/components/ui/Feedback";
 import { ChipToggle } from "@/components/ui/Form";
 import type { Tone } from "@/components/ui/tone";
@@ -48,7 +49,18 @@ function ResultBadge({ result }: { result: ResultKind | null }) {
 }
 
 export function ResultsView() {
-  const { tracked, loading } = useHackmate();
+  const { tracked, loading, untrack } = useHackmate();
+  const confirm = useConfirm();
+
+  // Results have left the Tracker, so this is where you take one off your list for good.
+  const remove = async (t: TrackedWithHackathon) => {
+    const ok = await confirm({
+      title: "Remove this hackathon?",
+      body: `${t.hackathon.title} leaves Results, along with its result, deadlines and notes. Prizes and certificates stay in your Profile.`,
+      confirmLabel: "Remove",
+    });
+    if (ok) await untrack(t.hackathonId);
+  };
   const [prizes, setPrizes] = useState<Prize[] | null>(null);
   const [certs, setCerts] = useState<Certificate[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -132,9 +144,14 @@ export function ResultsView() {
                     </li>
                   ))}
                 </ul>
-                <Link href={`/hackathon/${hid(t.hackathonId)}?tab=wrapup`} className="btn btn-sm btn-primary">
-                  Wrap up <ArrowRight aria-hidden className="size-3.5" />
-                </Link>
+                <div className="flex flex-wrap gap-1.5">
+                  <Link href={`/hackathon/${hid(t.hackathonId)}?tab=wrapup`} className="btn btn-sm btn-primary">
+                    Wrap up <ArrowRight aria-hidden className="size-3.5" />
+                  </Link>
+                  <button type="button" className="btn btn-sm" onClick={() => remove(t)}>
+                    <PinOff aria-hidden className="size-3.5" /> Remove
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -183,10 +200,10 @@ export function ResultsView() {
                     const paid = paidTotal(prizes!.filter((p) => p.hackathonId === t.hackathonId));
                     const cert = certs!.some((c) => c.hackathonId === t.hackathonId && c.status === "received");
                     return (
-                      <li key={t.hackathonId}>
+                      <li key={t.hackathonId} className="group flex items-center">
                         <Link
                           href={`/hackathon/${hid(t.hackathonId)}?tab=wrapup`}
-                          className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm hover:bg-surface-2"
+                          className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm hover:bg-surface-2"
                         >
                           <span className="min-w-0 flex-1 truncate font-semibold">{t.hackathon.title}</span>
                           <span className="text-xs text-muted tabular-nums">{fmtDate(new Date(endOf(t)).toISOString())}</span>
@@ -194,6 +211,14 @@ export function ResultsView() {
                           {paid && <span className="text-xs font-semibold text-ok">{paid}</span>}
                           {cert && <span title="Certificate received"><Award aria-hidden className="size-4 text-accent" /><span className="sr-only">Certificate received</span></span>}
                         </Link>
+                        <button
+                          type="button"
+                          className="mr-2 grid size-7 shrink-0 place-items-center rounded-md text-muted opacity-0 hover:bg-danger-soft hover:text-danger group-hover:opacity-100 focus-visible:opacity-100"
+                          title="Remove"
+                          onClick={() => remove(t)}
+                        >
+                          <PinOff aria-hidden className="size-4" /><span className="sr-only">Remove {t.hackathon.title}</span>
+                        </button>
                       </li>
                     );
                   })}
