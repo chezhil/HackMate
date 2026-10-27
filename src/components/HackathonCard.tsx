@@ -22,17 +22,23 @@ export function HackathonCard({
   tracked,
   clashesWith,
   selected,
+  highlighted,
   onTrack,
   onUntrack,
   onSelect,
+  onHover,
 }: {
   h: Hackathon;
   tracked: boolean;
   clashesWith: Hackathon[];
   selected?: boolean;
+  /** Its pin is hovered on the map. */
+  highlighted?: boolean;
   onTrack: () => void;
   onUntrack: () => void;
   onSelect?: () => void;
+  /** Hover or keyboard focus, so the map can light up the matching pin. */
+  onHover?: (id: string | null) => void;
 }) {
   const { now } = useHackmate();
   const regOpen = h.regEndsAt && new Date(h.regEndsAt).getTime() > now;
@@ -40,7 +46,11 @@ export function HackathonCard({
     <article
       id={`h-${h.id}`}
       onClick={onSelect}
-      className={`card flex gap-3 p-3 transition ${selected ? "ring-2 ring-accent" : ""} ${onSelect ? "cursor-pointer hover:border-muted" : ""}`}
+      onMouseEnter={onHover && (() => onHover(h.id))}
+      onMouseLeave={onHover && (() => onHover(null))}
+      onFocus={onHover && (() => onHover(h.id))}
+      onBlur={onHover && ((e) => !e.currentTarget.contains(e.relatedTarget as Node) && onHover(null))}
+      className={`card flex gap-3 p-3 transition-colors duration-(--dur-fast) ${selected ? "ring-2 ring-accent" : highlighted ? "border-accent" : ""} ${onSelect ? "cursor-pointer hover:border-muted" : ""}`}
     >
       <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-surface-2">
         {h.image && (
@@ -50,7 +60,7 @@ export function HackathonCard({
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="line-clamp-2 font-medium leading-snug">
+          <h3 className="line-clamp-2 min-w-0 break-words font-medium leading-snug" title={h.title}>
             <Link href={`/hackathon/${hid(h.id)}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
               {h.title}
             </Link>
@@ -62,7 +72,7 @@ export function HackathonCard({
               title="Open on the hackathon's site"
               onClick={(e) => e.stopPropagation()}
             >
-              ↗
+              ↗<span className="sr-only">Open on the hackathon&apos;s site</span>
             </a>
           </h3>
           <button
@@ -84,7 +94,7 @@ export function HackathonCard({
           <span>·</span>
           <span>{SOURCE_LABELS[h.source]}</span>
         </div>
-        {h.tagline && h.tagline !== h.prizeText && <p className="mt-1 line-clamp-1 text-sm text-muted">{h.tagline}</p>}
+        {h.tagline && h.tagline !== h.prizeText && <p className="mt-1 line-clamp-1 break-words text-sm text-muted">{h.tagline}</p>}
         <div className="mt-2 flex flex-wrap gap-1.5">
           {h.prizeText && <span className="chip border-ok/30 text-ok"><Trophy aria-hidden className="size-3" /> {h.prizeText}</span>}
           {h.entryFee === "paid" && <span className="chip border-warn/30 text-warn">Paid entry</span>}

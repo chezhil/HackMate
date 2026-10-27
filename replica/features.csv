@@ -9,17 +9,17 @@ Hide hackathons that clash with my tracker,discover,should,HackMate,yes,HackMate
 Sort by soonest / registration closing / biggest prize,discover,must,Devpost,yes,
 List next to map (split / list / map),discover,must,Airbnb,yes,
 Map shows only filtered results,discover,must,Airbnb,yes,
-Hover a card highlights its pin and hover a pin highlights its card,discover,should,Airbnb,partial,click-to-select only today
-Search as I move the map (filter by map bounds),discover,should,Airbnb,no,Leaflet getBounds on moveend
-Pins show the prize amount,discover,could,Airbnb,no,own pin style; not Airbnb's
-Active filters as removable chips,discover,should,Airbnb,no,
+Hover a card highlights its pin and hover a pin highlights its card,discover,should,Airbnb,yes,hover and keyboard focus both sync; pins restyle without moving the map
+Search as I move the map (filter by map bounds),discover,should,Airbnb,yes,checkbox on the map; list narrows to the view; own empty state
+Pins show the prize amount,discover,could,Airbnb,no,deferred: 170+ labelled pins overlap badly without clustering
+Active filters as removable chips,discover,should,Airbnb,yes,
 Clear all filters with count,discover,must,Airbnb,yes,
-Mobile filter sheet with live Show N button,discover,should,Airbnb,no,
-Filters kept in the URL (shareable + back button),discover,should,Airbnb,no,
+Mobile filter sheet with live Show N button,discover,should,Airbnb,yes,Dialog under md; search stays outside the sheet
+Filters kept in the URL (shareable + back button),discover,should,Airbnb,yes,only non-default values; replaceState so typing adds no history entries
 City tiles with counts as an empty-search landing,discover,could,Luma,no,
 Card shows cover / dates / place / prize / registration countdown,discover,must,Luma,yes,
-Eligibility filter (students only / open to all),discover,should,Devpost,no,needs eligibility from hackathon_details
-Length filter (24h / weekend / multi-week),discover,could,Devpost,no,unverified on Devpost; derive from starts/ends
+Eligibility filter (students only / open to all),discover,should,Devpost,no,eligibility is only known for hackathons whose rules the AI has read; needs a feed-level field first
+Length filter (24h / weekend / multi-week),discover,could,Devpost,yes,derived from start and end dates
 Saved searches with new-match alert,discover,could,Airbnb,no,reuse email reminders
 Feed failure banner with last good data,discover,must,HackMate,yes,
 Overview with tracks / prizes / judges / key dates,hackathon page,must,Devfolio,yes,

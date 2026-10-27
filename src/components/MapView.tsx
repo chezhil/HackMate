@@ -14,6 +14,12 @@ import { SOURCE_LABELS } from "@/lib/types";
 
 const COLORS = { tracked: "var(--ok)", hybrid: "var(--warn)", offline: "var(--accent)" };
 
+export interface MapBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
 
 /** Hackathons in the same city share coordinates; nudge them apart so every marker is clickable. */
 function spread(list: Hackathon[]) {
@@ -39,24 +45,38 @@ function popupHtml(h: Hackathon) {
   </div>`;
 }
 
+const RADIUS = { base: 7, hover: 9, selected: 10 };
+
 export default function MapView({
   hackathons,
   trackedIds,
   selectedId,
+  hoverId,
   onSelect,
+  onHover,
+  searchInMap = false,
+  onSearchInMap,
+  onBoundsChange,
 }: {
   hackathons: Hackathon[];
   trackedIds: Set<string>;
   selectedId?: string | null;
+  hoverId?: string | null;
   onSelect?: (id: string) => void;
+  onHover?: (id: string | null) => void;
+  /** When on, the map stops re-fitting to the results and reports its bounds as you pan and zoom. */
+  searchInMap?: boolean;
+  onSearchInMap?: (on: boolean) => void;
+  onBoundsChange?: (b: MapBounds | null) => void;
 }) {
   const wrapper = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const layer = useRef<L.LayerGroup | null>(null);
-  const onSelectRef = useRef(onSelect);
+  const markers = useRef(new Map<string, L.CircleMarker>());
+  const cb = useRef({ onSelect, onHover, onBoundsChange, searchInMap });
   useEffect(() => {
-    onSelectRef.current = onSelect;
-  }, [onSelect]);
+    cb.current = { onSelect, onHover, onBoundsChange, searchInMap };
+  }, [onSelect, onHover, onBoundsChange, searchInMap]);
 
   // Create the map (fresh element each time the component is shown).
   useEffect(() => {
@@ -69,46 +89,92 @@ export default function MapView({
     }).addTo(m);
     layer.current = L.layerGroup().addTo(m);
     map.current = m;
+    const report = () => {
+      if (!cb.current.searchInMap) return;
+      const b = m.getBounds();
+      cb.current.onBoundsChange?.({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() });
+    };
+    m.on("moveend", report);
+    const live = markers.current;
     return () => {
+      m.off("moveend", report);
       m.remove();
       el.remove();
       map.current = null;
       layer.current = null;
+      live.clear();
     };
   }, []);
+
+  // Turning "search as I move" on reports the current view at once; turning it off clears it.
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+    if (!searchInMap) {
+      cb.current.onBoundsChange?.(null);
+      return;
+    }
+    const b = m.getBounds();
+    cb.current.onBoundsChange?.({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() });
+  }, [searchInMap]);
 
   const located = hackathons.filter((h) => h.lat != null && h.lng != null);
   const key = located.map((h) => `${h.id}${trackedIds.has(h.id) ? "+" : ""}`).join("|");
 
-  // Draw markers and fit the view whenever the set of hackathons changes.
+  // Runs after the map effect above (effects run in order), so the map exists here.
+  // Rebuild markers when the set of hackathons changes; re-fit the view unless the user is steering it.
   useEffect(() => {
     const m = map.current;
     const group = layer.current;
     if (!m || !group) return;
     group.clearLayers();
-    const markers = spread(located);
+    markers.current.clear();
+    const placed = spread(located);
     // Leaflet writes SVG attributes, which can't hold var(), so resolve the theme tokens here.
     const pin = { tracked: cssVar("ok"), hybrid: cssVar("warn"), offline: cssVar("accent") };
-    for (const { h, pos } of markers) {
-      L.circleMarker(pos, {
-        radius: h.id === selectedId ? 10 : 7,
+    for (const { h, pos } of placed) {
+      const marker = L.circleMarker(pos, {
+        radius: RADIUS.base,
         color: cssVar("surface"),
         weight: 2,
         fillColor: trackedIds.has(h.id) ? pin.tracked : h.mode === "hybrid" ? pin.hybrid : pin.offline,
         fillOpacity: 0.9,
       })
         .bindPopup(popupHtml(h))
-        .on("click", () => onSelectRef.current?.(h.id))
+        .on("click", () => cb.current.onSelect?.(h.id))
+        .on("mouseover", () => cb.current.onHover?.(h.id))
+        .on("mouseout", () => cb.current.onHover?.(null))
         .addTo(group);
+      markers.current.set(h.id, marker);
     }
-    if (markers.length === 1) m.setView(markers[0].pos, 9);
-    else if (markers.length > 1) m.fitBounds(markers.map((x) => x.pos), { padding: [30, 30], maxZoom: 9 });
+    if (!cb.current.searchInMap) {
+      if (placed.length === 1) m.setView(placed[0].pos, 9);
+      else if (placed.length > 1) m.fitBounds(placed.map((x) => x.pos), { padding: [30, 30], maxZoom: 9 });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` captures the marker set
-  }, [key, selectedId]);
+  }, [key]);
+
+  // Hover and selection only restyle markers; the view stays where the user left it.
+  useEffect(() => {
+    const ring = cssVar("text");
+    const edge = cssVar("surface");
+    for (const [id, marker] of markers.current) {
+      const on = id === selectedId || id === hoverId;
+      marker.setRadius(id === selectedId ? RADIUS.selected : id === hoverId ? RADIUS.hover : RADIUS.base);
+      marker.setStyle({ color: on ? ring : edge, weight: on ? 3 : 2 });
+      if (on) marker.bringToFront();
+    }
+  }, [selectedId, hoverId, key]);
 
   return (
     <div ref={wrapper} className="relative h-full min-h-[360px] overflow-hidden rounded-xl border border-border">
-      <div className="pointer-events-none absolute bottom-2 left-2 z-[500] flex gap-3 rounded-lg bg-surface/90 px-2.5 py-1.5 text-xs text-muted shadow-pop">
+      {onSearchInMap && (
+        <label className="absolute left-1/2 top-2 z-[500] flex -translate-x-1/2 cursor-pointer items-center gap-2 rounded-lg bg-surface px-3 py-1.5 text-xs font-medium shadow-pop">
+          <input type="checkbox" checked={searchInMap} onChange={(e) => onSearchInMap(e.target.checked)} />
+          Search as I move the map
+        </label>
+      )}
+      <div className="pointer-events-none absolute bottom-2 left-2 z-[500] flex flex-wrap gap-3 rounded-lg bg-surface/90 px-2.5 py-1.5 text-xs text-muted shadow-pop">
         <Legend color={COLORS.offline} label="In person" />
         <Legend color={COLORS.hybrid} label="Hybrid" />
         <Legend color={COLORS.tracked} label="Tracking" />
