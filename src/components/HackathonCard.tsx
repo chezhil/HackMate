@@ -74,7 +74,7 @@ export function HackathonCard({
           </button>
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-          <span className={`rounded px-1.5 py-0.5 font-medium capitalize ${MODE_STYLE[h.mode]}`}>{h.mode}</span>
+          <span className={`rounded-md px-1.5 py-0.5 font-medium capitalize ${MODE_STYLE[h.mode]}`}>{h.mode}</span>
           {h.mode !== "online" && <span>{place(h)} ·</span>}
           <span>{fmtRange(h)}</span>
           <span>·</span>

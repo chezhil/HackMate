@@ -85,7 +85,7 @@ export function TeamTab({ id, data }: { id: string; data: DetailsPayload }) {
               <div>
                 <span className="font-medium">{t.name}</span>
                 {t.role && <span className="text-muted"> · {t.role}</span>}
-                {!t.confirmed && <span className="ml-2 rounded bg-warn-soft px-1.5 text-xs text-warn">invited</span>}
+                {!t.confirmed && <span className="ml-2 rounded-md bg-warn-soft px-1.5 text-xs text-warn">invited</span>}
                 {t.skills && <div className="text-xs text-muted">{t.skills}</div>}
                 {t.contact && <div className="text-xs text-muted">{t.contact}</div>}
               </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SOFT, scoreTone } from "@/components/ui/tone";
 import { call, hid } from "@/lib/client";
 import { relative } from "@/lib/format";
 import type { Idea, IdeaSuggestion, IdeaVersion, WinnerProject } from "@/lib/types";
@@ -10,9 +11,7 @@ interface Suggestions {
   ideas: IdeaSuggestion[];
 }
 
-function scoreColor(score: number) {
-  return score >= 8 ? "bg-ok-soft text-ok" : score >= 5 ? "bg-warn-soft text-warn" : "bg-danger-soft text-danger";
-}
+const scoreColor = (score: number) => SOFT[scoreTone(score)];
 
 export function IdeasTab({ id }: { id: string }) {
   const [ideas, setIdeas] = useState<Idea[]>([]);
@@ -189,7 +188,7 @@ function IdeaCard({ idea, onChange, onDelete }: { idea: Idea; onChange: (i: Idea
         </div>
         <div className="flex items-center gap-1.5">
           {scored.map((v, i) => (
-            <span key={v.id} className={`rounded px-1.5 py-0.5 text-xs font-medium ${scoreColor(v.critique!.score)}`} title={`v${i + 1}`}>
+            <span key={v.id} className={`rounded-md px-1.5 py-0.5 text-xs font-medium ${scoreColor(v.critique!.score)}`} title={`v${i + 1}`}>
               {v.critique!.score}
             </span>
           ))}

@@ -93,7 +93,7 @@ function TrackerCard({ t, clashes }: { t: TrackedWithHackathon; clashes: Clash[]
           {h.title}
         </Link>
         {clashes.length > 0 && (
-          <span className="shrink-0 rounded bg-danger-soft px-1.5 py-0.5 text-xs text-danger" title="Has clashes">⚠</span>
+          <span className="shrink-0 rounded-md bg-danger-soft px-1.5 py-0.5 text-xs text-danger" title="Has clashes">⚠</span>
         )}
       </div>
       <div className="text-xs text-muted">
@@ -209,7 +209,7 @@ function StageActions({
     case "results":
       return (
         <div className="space-y-1">
-          {t.result && <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${RESULT_STYLE[t.result]}`}>{t.result === "won" ? "🏆 " : ""}{RESULT_LABELS[t.result]}</span>}
+          {t.result && <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${RESULT_STYLE[t.result]}`}>{t.result === "won" ? "🏆 " : ""}{RESULT_LABELS[t.result]}</span>}
           {t.resultNotes && <p className="text-xs text-muted">{t.resultNotes}</p>}
           {t.submissionUrl && (
             <a href={t.submissionUrl} target="_blank" rel="noreferrer" className="block truncate text-xs text-accent hover:underline">

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useHackmate } from "@/components/HackmateProvider";
+import { Tabs } from "@/components/ui/Tabs";
 import type { RuleAlert } from "@/lib/alerts";
 import { call, hid } from "@/lib/client";
 import { fmtRange, place } from "@/lib/format";
@@ -125,19 +126,7 @@ export function HackathonView() {
         </div>
       </header>
 
-      <nav className="flex gap-1 overflow-x-auto border-b border-border">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm ${
-              tab === t.key ? "border-accent font-medium text-text" : "border-transparent text-muted hover:text-text"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      <Tabs tabs={TABS} value={tab} onChange={setTab} label="Hackathon sections" />
 
       {tab === "overview" && <OverviewTab data={data} onRefresh={refresh} />}
       {tab === "ask" && <AskTab id={id} data={data} />}

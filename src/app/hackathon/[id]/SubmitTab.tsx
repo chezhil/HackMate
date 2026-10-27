@@ -2,16 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { CopyButton } from "@/components/CopyButton";
+import { CheckRow, CheckSummary } from "@/components/ui/Feedback";
 import { ProjectCard } from "@/components/ProjectCard";
 import { call, hid } from "@/lib/client";
 import type { AiOutput, ChecklistItem, ChecklistKind, SubmissionCheck, Writeup } from "@/lib/types";
-
-const STATUS_STYLE: Record<SubmissionCheck["status"], { icon: string; cls: string }> = {
-  fail: { icon: "✕", cls: "border-danger/40 bg-danger-soft text-danger" },
-  warn: { icon: "!", cls: "border-warn/40 bg-warn-soft text-warn" },
-  info: { icon: "i", cls: "border-border bg-surface-2 text-text" },
-  pass: { icon: "✓", cls: "border-ok/40 bg-ok-soft text-ok" },
-};
 
 const ACCEPT = { image: "image/*", video: "video/*", pdf: "application/pdf", any: "image/*,video/*,application/pdf" };
 
@@ -129,14 +123,10 @@ export function SubmitTab({ id }: { id: string }) {
           <button className="btn btn-primary w-full" onClick={verify} disabled={verifying}>{verifying ? "Checking…" : result ? "Check again" : "Check submission"}</button>
           {result && (
             <div className="space-y-2">
+              <CheckSummary statuses={result.checks.map((c) => c.status)} />
               {result.summary && <p className="text-sm font-medium">{result.summary}</p>}
               <ul className="space-y-1.5">
-                {result.checks.map((c, i) => (
-                  <li key={i} className={`flex gap-2 rounded-lg border px-2.5 py-1.5 text-sm ${STATUS_STYLE[c.status].cls}`}>
-                    <span className="w-3 shrink-0 text-center font-bold">{STATUS_STYLE[c.status].icon}</span>
-                    <span><span className="font-medium">{c.label}:</span> <span className="text-text">{c.detail}</span></span>
-                  </li>
-                ))}
+                {result.checks.map((c, i) => <CheckRow key={i} status={c.status} label={c.label} detail={c.detail} />)}
               </ul>
             </div>
           )}
@@ -176,7 +166,7 @@ function ChecklistRow({
           <div className={done ? "text-muted line-through" : "font-medium"}>
             {item.label}
             {!item.required && <span className="ml-1.5 text-xs text-muted no-underline">(optional)</span>}
-            {item.origin === "rules" && <span className="ml-1.5 rounded bg-accent-soft px-1 text-[10px] text-accent no-underline">from rules</span>}
+            {item.origin === "rules" && <span className="ml-1.5 rounded-md bg-accent-soft px-1 text-2xs text-accent no-underline">from rules</span>}
           </div>
           {item.detail && <div className="text-xs text-muted">{item.detail}</div>}
           {worst && <div className={`text-xs ${worst.status === "fail" ? "text-danger" : "text-warn"}`}>{worst.detail}</div>}
@@ -217,7 +207,7 @@ function ChecklistRow({
         <div className="ml-6 flex items-center gap-2">
           {item.mime?.startsWith("image/") ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <a href={`/api/files/${item.file}`} target="_blank" rel="noreferrer"><img src={`/api/files/${item.file}`} alt={item.label} className="h-16 rounded border border-border object-cover" /></a>
+            <a href={`/api/files/${item.file}`} target="_blank" rel="noreferrer"><img src={`/api/files/${item.file}`} alt={item.label} className="h-16 rounded-md border border-border object-cover" /></a>
           ) : (
             <a href={`/api/files/${item.file}`} target="_blank" rel="noreferrer" className="text-xs text-accent hover:underline">
               {item.mime?.startsWith("video/") ? "🎬 Video" : "📄 File"} attached

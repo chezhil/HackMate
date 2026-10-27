@@ -39,7 +39,7 @@ export function WrapUpTab({ id }: { id: string }) {
               <button
                 key={r}
                 onClick={() => updateTracked(id, { status: "results", result: r })}
-                className={`chip ${t?.result === r ? "border-accent bg-accent-soft text-accent" : "hover:text-text"}`}
+                className={`chip ${t?.result === r ? "chip-on" : "hover:text-text"}`}
               >
                 {r === "won" ? "🏆 " : ""}{RESULT_LABELS[r]}
               </button>

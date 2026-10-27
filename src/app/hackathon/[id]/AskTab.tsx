@@ -22,7 +22,7 @@ function Rich({ text }: { text: string }) {
         const lines = block.split("\n");
         const inline = (s: string) =>
           s.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, j) =>
-            part.startsWith("**") ? <strong key={j}>{part.slice(2, -2)}</strong> : part.startsWith("`") ? <code key={j} className="rounded bg-surface-2 px-1 text-xs">{part.slice(1, -1)}</code> : part,
+            part.startsWith("**") ? <strong key={j}>{part.slice(2, -2)}</strong> : part.startsWith("`") ? <code key={j} className="rounded-md bg-surface-2 px-1 text-xs">{part.slice(1, -1)}</code> : part,
           );
         if (lines.every((l) => /^\s*[-*•]\s/.test(l))) {
           return (

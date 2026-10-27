@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CertificateList, type CertData } from "@/components/CertificateList";
 import { money, PrizeList } from "@/components/PrizeList";
+import { CountPill } from "@/components/ui/Feedback";
+import { Tabs } from "@/components/ui/Tabs";
 import { call, hid } from "@/lib/client";
 import { fmtDate, fmtRange } from "@/lib/format";
 import type { Certificate, Prize, Profile, Project, Retro, Stats, TrackedWithHackathon } from "@/lib/types";
@@ -51,20 +53,16 @@ export function ProfileView() {
   return (
     <div className="space-y-4">
       <ProfileHeader profile={data.profile} onSaved={(profile) => setData({ ...data, profile })} />
-      <nav className="flex gap-1 overflow-x-auto border-b border-border print:hidden">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm ${tab === t.key ? "border-accent font-medium" : "border-transparent text-muted hover:text-text"}`}
-          >
-            {t.label}
-            {t.key === "certificates" && data.stats.certificates.pending > 0 && (
-              <span className="ml-1.5 rounded-full bg-warn-soft px-1.5 text-xs text-warn">{data.stats.certificates.pending}</span>
-            )}
-          </button>
-        ))}
-      </nav>
+      <Tabs
+        tabs={TABS.map((t) => ({
+          ...t,
+          badge: t.key === "certificates" && data.stats.certificates.pending > 0 ? <CountPill tone="warn" label="Pending certificates">{data.stats.certificates.pending}</CountPill> : undefined,
+        }))}
+        value={tab}
+        onChange={setTab}
+        label="Profile sections"
+        className="print:hidden"
+      />
       {tab === "stats" && <StatsTab stats={data.stats} />}
       {tab === "portfolio" && <PortfolioTab entries={data.portfolio} />}
       {tab === "certificates" && (
@@ -192,7 +190,7 @@ function MonthChart({ months }: { months: Stats["byMonth"] }) {
       ) : (
         <div className="relative">
           <div className="flex h-40 gap-1.5 border-b border-border pl-6">
-            <div className="absolute inset-y-0 left-0 flex w-5 flex-col-reverse justify-between pb-0 text-right text-[10px] text-muted" style={{ height: "10rem" }}>
+            <div className="absolute inset-y-0 left-0 flex w-5 flex-col-reverse justify-between pb-0 text-right text-2xs text-muted" style={{ height: "10rem" }}>
               {ticks.map((t) => <span key={t} className="-translate-y-1/2 leading-none">{t}</span>)}
             </div>
             {months.map((m, i) => (
@@ -216,7 +214,7 @@ function MonthChart({ months }: { months: Stats["byMonth"] }) {
             ))}
           </div>
           <div className="flex gap-1.5 pl-6 pt-1">
-            {months.map((m) => <div key={m.month} className="flex-1 text-center text-[10px] text-muted">{monthLabel(m.month)}</div>)}
+            {months.map((m) => <div key={m.month} className="flex-1 text-center text-2xs text-muted">{monthLabel(m.month)}</div>)}
           </div>
         </div>
       )}
@@ -309,7 +307,7 @@ function PortfolioTab({ entries }: { entries: PortfolioEntry[] }) {
                 {p.tagline && <p className="text-sm text-muted">{p.tagline}</p>}
               </div>
               {t.result && (
-                <span className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${t.result === "won" || t.result === "runner_up" ? "bg-ok-soft text-ok" : "bg-surface-2 text-muted"}`}>
+                <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${t.result === "won" || t.result === "runner_up" ? "bg-ok-soft text-ok" : "bg-surface-2 text-muted"}`}>
                   {t.result === "won" ? "🏆 " : ""}{RESULT_LABELS[t.result]}
                 </span>
               )}

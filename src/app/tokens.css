@@ -1,0 +1,145 @@
+/* Generated from replica/design/tokens.json by replica/design/build-tokens.mjs. Do not edit by hand. */
+
+:root {
+  color-scheme: light;
+  --bg: #f7f7f4;
+  --surface: #ffffff;
+  --surface-2: #f0efea;
+  --border: #e3e1d9;
+  --border-strong: #8a887f;
+  --text: #1c1c19;
+  --muted: #6b6a62;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-soft: #eceafe;
+  --accent-text: #ffffff;
+  --danger: #c81e1e;
+  --danger-soft: #fdecec;
+  --warn: #a34b07;
+  --warn-soft: #fdf3e2;
+  --ok: #137a3a;
+  --ok-soft: #e7f6ec;
+  --focus: #4f46e5;
+  --on-event: #ffffff;
+  --event-1: #4f46e5;
+  --event-2: #0e7490;
+  --event-3: #a21caf;
+  --event-4: #c2410c;
+  --event-5: #15803d;
+  --event-6: #be185d;
+  --event-7: #6d28d9;
+  --event-8: #0f766e;
+  --pop-shadow: 0 8px 24px rgba(16,16,12,.12), 0 2px 6px rgba(16,16,12,.08);
+  --scrim: rgba(16,16,12,.45);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --ease: cubic-bezier(.2,.8,.2,1);
+  --z-map: 0;
+  --z-sticky: 1000;
+  --z-drawer: 1100;
+  --z-dialog: 1200;
+  --z-toast: 1300;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #111110;
+    --surface: #1a1a18;
+    --surface-2: #242421;
+    --border: #33322e;
+    --border-strong: #77756c;
+    --text: #ecebe6;
+    --muted: #9c9a90;
+    --accent: #8b85ff;
+    --accent-hover: #a39eff;
+    --accent-soft: #26244a;
+    --accent-text: #0f0e1f;
+    --danger: #f87171;
+    --danger-soft: #3a1c1c;
+    --warn: #fbbf24;
+    --warn-soft: #3a2d14;
+    --ok: #4ade80;
+    --ok-soft: #16301f;
+    --focus: #8b85ff;
+    --on-event: #ffffff;
+    --event-1: #4f46e5;
+    --event-2: #0e7490;
+    --event-3: #a21caf;
+    --event-4: #c2410c;
+    --event-5: #15803d;
+    --event-6: #be185d;
+    --event-7: #6d28d9;
+    --event-8: #0f766e;
+    --pop-shadow: 0 8px 24px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.4);
+    --scrim: rgba(0,0,0,.6);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111110;
+  --surface: #1a1a18;
+  --surface-2: #242421;
+  --border: #33322e;
+  --border-strong: #77756c;
+  --text: #ecebe6;
+  --muted: #9c9a90;
+  --accent: #8b85ff;
+  --accent-hover: #a39eff;
+  --accent-soft: #26244a;
+  --accent-text: #0f0e1f;
+  --danger: #f87171;
+  --danger-soft: #3a1c1c;
+  --warn: #fbbf24;
+  --warn-soft: #3a2d14;
+  --ok: #4ade80;
+  --ok-soft: #16301f;
+  --focus: #8b85ff;
+  --on-event: #ffffff;
+  --event-1: #4f46e5;
+  --event-2: #0e7490;
+  --event-3: #a21caf;
+  --event-4: #c2410c;
+  --event-5: #15803d;
+  --event-6: #be185d;
+  --event-7: #6d28d9;
+  --event-8: #0f766e;
+  --pop-shadow: 0 8px 24px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.4);
+  --scrim: rgba(0,0,0,.6);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-focus: var(--focus);
+  --color-on-event: var(--on-event);
+  --color-event-1: var(--event-1);
+  --color-event-2: var(--event-2);
+  --color-event-3: var(--event-3);
+  --color-event-4: var(--event-4);
+  --color-event-5: var(--event-5);
+  --color-event-6: var(--event-6);
+  --color-event-7: var(--event-7);
+  --color-event-8: var(--event-8);
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 0.875rem;
+  --shadow-pop: var(--pop-shadow);
+  --font-sans: var(--font-geist-sans), system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}

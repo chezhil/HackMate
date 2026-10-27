@@ -1,0 +1,94 @@
+  AAA   15.91:1  light-text               on light-bg             
+  AAA   17.08:1  light-text               on light-surface        
+  AAA   14.83:1  light-text               on light-surface-2      
+  AAA   14.45:1  light-text               on light-accent-soft    
+  AAA   14.95:1  light-text               on light-danger-soft    
+  AAA   15.53:1  light-text               on light-warn-soft      
+  AAA   15.28:1  light-text               on light-ok-soft        
+  AA     5.06:1  light-muted              on light-bg             
+  AA     5.44:1  light-muted              on light-surface        
+  AA     4.72:1  light-muted              on light-surface-2      
+  AA     4.60:1  light-muted              on light-accent-soft    
+  AA     4.76:1  light-muted              on light-danger-soft    
+  AA     4.94:1  light-muted              on light-warn-soft      
+  AA     4.86:1  light-muted              on light-ok-soft        
+  AA     5.86:1  light-accent             on light-bg             
+  AA     6.29:1  light-accent             on light-surface        
+  AA     5.46:1  light-accent             on light-surface-2      
+  AA     5.32:1  light-accent             on light-accent-soft    
+  AA     5.35:1  light-danger             on light-bg             
+  AA     5.74:1  light-danger             on light-surface        
+  AA     4.98:1  light-danger             on light-surface-2      
+  AA     5.02:1  light-danger             on light-danger-soft    
+  AA     5.49:1  light-warn               on light-bg             
+  AA     5.89:1  light-warn               on light-surface        
+  AA     5.11:1  light-warn               on light-surface-2      
+  AA     5.35:1  light-warn               on light-warn-soft      
+  AA     5.05:1  light-ok                 on light-bg             
+  AA     5.42:1  light-ok                 on light-surface        
+  AA     4.71:1  light-ok                 on light-surface-2      
+  AA     4.85:1  light-ok                 on light-ok-soft        
+  AA     6.29:1  light-accent-text        on light-accent         
+  AAA    7.90:1  light-accent-text        on light-accent-hover   
+  AA     6.29:1  light-on-event           on light-event-1        
+  AA     5.36:1  light-on-event           on light-event-2        
+  AA     6.32:1  light-on-event           on light-event-3        
+  AA     5.18:1  light-on-event           on light-event-4        
+  AA     5.02:1  light-on-event           on light-event-5        
+  AA     6.04:1  light-on-event           on light-event-6        
+  AAA    7.10:1  light-on-event           on light-event-7        
+  AA     5.47:1  light-on-event           on light-event-8        
+  PASS   3.31:1  light-border-strong      on light-bg             ui
+  PASS   3.55:1  light-border-strong      on light-surface        ui
+  PASS   3.09:1  light-border-strong      on light-surface-2      ui
+  PASS   5.86:1  light-focus              on light-bg             ui
+  PASS   6.29:1  light-focus              on light-surface        ui
+  PASS   5.46:1  light-focus              on light-surface-2      ui
+  AAA   15.83:1  dark-text                on dark-bg              
+  AAA   14.60:1  dark-text                on dark-surface         
+  AAA   13.04:1  dark-text                on dark-surface-2       
+  AAA   12.27:1  dark-text                on dark-accent-soft     
+  AAA   12.91:1  dark-text                on dark-danger-soft     
+  AAA   11.24:1  dark-text                on dark-warn-soft       
+  AAA   11.91:1  dark-text                on dark-ok-soft         
+  AA     6.69:1  dark-muted               on dark-bg              
+  AA     6.17:1  dark-muted               on dark-surface         
+  AA     5.51:1  dark-muted               on dark-surface-2       
+  AA     5.19:1  dark-muted               on dark-accent-soft     
+  AA     5.46:1  dark-muted               on dark-danger-soft     
+  AA     4.75:1  dark-muted               on dark-warn-soft       
+  AA     5.04:1  dark-muted               on dark-ok-soft         
+  AA     6.20:1  dark-accent              on dark-bg              
+  AA     5.72:1  dark-accent              on dark-surface         
+  AA     5.11:1  dark-accent              on dark-surface-2       
+  AA     4.81:1  dark-accent              on dark-accent-soft     
+  AA     6.83:1  dark-danger              on dark-bg              
+  AA     6.30:1  dark-danger              on dark-surface         
+  AA     5.63:1  dark-danger              on dark-surface-2       
+  AA     5.57:1  dark-danger              on dark-danger-soft     
+  AAA   11.32:1  dark-warn                on dark-bg              
+  AAA   10.44:1  dark-warn                on dark-surface         
+  AAA    9.32:1  dark-warn                on dark-surface-2       
+  AAA    8.04:1  dark-warn                on dark-warn-soft       
+  AAA   10.84:1  dark-ok                  on dark-bg              
+  AAA   10.00:1  dark-ok                  on dark-surface         
+  AAA    8.93:1  dark-ok                  on dark-surface-2       
+  AAA    8.16:1  dark-ok                  on dark-ok-soft         
+  AA     6.25:1  dark-accent-text         on dark-accent          
+  AAA    8.06:1  dark-accent-text         on dark-accent-hover    
+  AA     6.29:1  dark-on-event            on dark-event-1         
+  AA     5.36:1  dark-on-event            on dark-event-2         
+  AA     6.32:1  dark-on-event            on dark-event-3         
+  AA     5.18:1  dark-on-event            on dark-event-4         
+  AA     5.02:1  dark-on-event            on dark-event-5         
+  AA     6.04:1  dark-on-event            on dark-event-6         
+  AAA    7.10:1  dark-on-event            on dark-event-7         
+  AA     5.47:1  dark-on-event            on dark-event-8         
+  PASS   4.09:1  dark-border-strong       on dark-bg              ui
+  PASS   3.77:1  dark-border-strong       on dark-surface         ui
+  PASS   3.37:1  dark-border-strong       on dark-surface-2       ui
+  PASS   6.20:1  dark-focus               on dark-bg              ui
+  PASS   5.72:1  dark-focus               on dark-surface         ui
+  PASS   5.11:1  dark-focus               on dark-surface-2       ui
+
+  92 pairs, 0 failing AA

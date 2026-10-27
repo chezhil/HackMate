@@ -3,6 +3,7 @@
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useRef } from "react";
+import { cssVar } from "@/components/ui/tone";
 import { fmtRange, place } from "@/lib/format";
 import type { Hackathon } from "@/lib/types";
 import { SOURCE_LABELS } from "@/lib/types";
@@ -11,7 +12,8 @@ import { SOURCE_LABELS } from "@/lib/types";
 // re-runs their effects when you come back, and react-leaflet can't re-attach to its old container.
 // Here every effect run builds the map in a brand-new element and fully tears it down on cleanup.
 
-const COLORS = { tracked: "#16a34a", hybrid: "#d97706", offline: "#4f46e5" };
+const COLORS = { tracked: "var(--ok)", hybrid: "var(--warn)", offline: "var(--accent)" };
+
 
 /** Hackathons in the same city share coordinates; nudge them apart so every marker is clickable. */
 function spread(list: Hackathon[]) {
@@ -85,12 +87,14 @@ export default function MapView({
     if (!m || !group) return;
     group.clearLayers();
     const markers = spread(located);
+    // Leaflet writes SVG attributes, which can't hold var(), so resolve the theme tokens here.
+    const pin = { tracked: cssVar("ok"), hybrid: cssVar("warn"), offline: cssVar("accent") };
     for (const { h, pos } of markers) {
       L.circleMarker(pos, {
         radius: h.id === selectedId ? 10 : 7,
-        color: "#fff",
+        color: cssVar("surface"),
         weight: 2,
-        fillColor: trackedIds.has(h.id) ? COLORS.tracked : h.mode === "hybrid" ? COLORS.hybrid : COLORS.offline,
+        fillColor: trackedIds.has(h.id) ? pin.tracked : h.mode === "hybrid" ? pin.hybrid : pin.offline,
         fillOpacity: 0.9,
       })
         .bindPopup(popupHtml(h))
@@ -104,7 +108,7 @@ export default function MapView({
 
   return (
     <div ref={wrapper} className="relative h-full min-h-[360px] overflow-hidden rounded-xl border border-border">
-      <div className="pointer-events-none absolute bottom-2 left-2 z-[500] flex gap-3 rounded-lg bg-surface/90 px-2.5 py-1.5 text-xs text-muted shadow">
+      <div className="pointer-events-none absolute bottom-2 left-2 z-[500] flex gap-3 rounded-lg bg-surface/90 px-2.5 py-1.5 text-xs text-muted shadow-pop">
         <Legend color={COLORS.offline} label="In person" />
         <Legend color={COLORS.hybrid} label="Hybrid" />
         <Legend color={COLORS.tracked} label="Tracking" />

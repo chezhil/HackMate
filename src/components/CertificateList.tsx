@@ -107,7 +107,7 @@ export function CertificateList({ data, onChange, hackathonId }: { data: CertDat
                   href={c.file ? `/api/files/${c.file}` : (c.url ?? "#")}
                   target="_blank"
                   rel="noreferrer"
-                  className="grid h-14 w-20 shrink-0 place-items-center overflow-hidden rounded bg-surface-2 text-2xl"
+                  className="grid h-14 w-20 shrink-0 place-items-center overflow-hidden rounded-md bg-surface-2 text-2xl"
                 >
                   {c.file && c.mime?.startsWith("image/") ? (
                     // eslint-disable-next-line @next/next/no-img-element

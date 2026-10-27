@@ -6,6 +6,7 @@ import { hid } from "@/lib/client";
 import { CalendarSync } from "@/components/CalendarSync";
 import { ClashList } from "@/components/ClashList";
 import { useHackmate } from "@/components/HackmateProvider";
+import { EVENT_COLORS } from "@/components/ui/tone";
 import { clashKeyDays, dayKey, eventDays } from "@/lib/clashes";
 import { fmtDateTime, relative, urgency } from "@/lib/format";
 import type { Deadline, Hackathon } from "@/lib/types";
@@ -20,7 +21,7 @@ const monthFmt = new Intl.DateTimeFormat(undefined, { month: "long", year: "nume
 const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" });
 
 /** Stable colour per tracked hackathon so its bar is recognisable across days. */
-const PALETTE = ["#4f46e5", "#0891b2", "#c026d3", "#ea580c", "#16a34a", "#db2777", "#7c3aed", "#0d9488"];
+const PALETTE = EVENT_COLORS;
 
 function monthGrid(year: number, month: number) {
   const first = new Date(year, month, 1);
@@ -153,7 +154,7 @@ export function CalendarView() {
                     {deadlines.map(({ d: dl, h }) => (
                       <div
                         key={dl.id}
-                        className="truncate rounded border border-danger/40 px-1 text-[10px] font-medium leading-4 text-danger"
+                        className="truncate rounded-md border border-danger/40 px-1 text-2xs font-medium leading-4 text-danger"
                         title={`${dl.label} — ${h.title}`}
                       >
                         ⏰ {dl.label.replace(/ (closes|due)$/i, "")}
@@ -162,14 +163,14 @@ export function CalendarView() {
                     {shown.map(({ h, tracked: isTracked }) => (
                       <div
                         key={h.id}
-                        className={`truncate rounded px-1 text-[10px] leading-4 ${isTracked ? "text-white" : "bg-surface-2 text-muted"}`}
+                        className={`truncate rounded-md px-1 text-2xs leading-4 ${isTracked ? "text-on-event" : "bg-surface-2 text-muted"}`}
                         style={isTracked ? { background: colorOf(h.id) } : undefined}
                         title={h.title}
                       >
                         {h.title}
                       </div>
                     ))}
-                    {hidden > 0 && <div className="px-1 text-[10px] text-muted">+{hidden} more</div>}
+                    {hidden > 0 && <div className="px-1 text-2xs text-muted">+{hidden} more</div>}
                   </div>
                 </button>
               );

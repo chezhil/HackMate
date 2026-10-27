@@ -107,7 +107,7 @@ export function SettingsView() {
                 <button
                   key={o.minutes}
                   onClick={() => toggleLead(o.minutes)}
-                  className={`chip ${on ? "border-accent bg-accent-soft text-accent" : "hover:text-text"}`}
+                  className={`chip ${on ? "chip-on" : "hover:text-text"}`}
                 >
                   {on ? "✓ " : ""}{o.label}
                 </button>
@@ -150,7 +150,7 @@ export function SettingsView() {
               <li key={e.id} className="py-2 text-sm">
                 <details>
                   <summary className="flex cursor-pointer flex-wrap items-center gap-2">
-                    <span className={`rounded px-1.5 text-xs ${e.delivered ? "bg-ok-soft text-ok" : "bg-surface-2 text-muted"}`}>
+                    <span className={`rounded-md px-1.5 text-xs ${e.delivered ? "bg-ok-soft text-ok" : "bg-surface-2 text-muted"}`}>
                       {e.delivered ? "sent" : "logged"}
                     </span>
                     <span className="font-medium">{e.subject}</span>

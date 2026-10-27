@@ -3,15 +3,16 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useHackmate } from "./HackmateProvider";
+import { SOFT } from "./ui/tone";
 import { call, hid } from "@/lib/client";
 import { fmtDate } from "@/lib/format";
 import type { Prize, PrizeStatus } from "@/lib/types";
 import { PRIZE_STATUS_LABELS } from "@/lib/types";
 
 const STATUS_STYLE: Record<PrizeStatus, string> = {
-  won: "bg-warn-soft text-warn",
-  claimed: "bg-accent-soft text-accent",
-  paid: "bg-ok-soft text-ok",
+  won: SOFT.warn,
+  claimed: SOFT.accent,
+  paid: SOFT.ok,
 };
 const NEXT: Record<PrizeStatus, PrizeStatus | null> = { won: "claimed", claimed: "paid", paid: null };
 const CURRENCIES = ["INR", "USD", "EUR", "GBP"];

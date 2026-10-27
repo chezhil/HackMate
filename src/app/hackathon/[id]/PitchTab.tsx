@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CopyButton } from "@/components/CopyButton";
 import { ProjectCard } from "@/components/ProjectCard";
+import { SOFT, scoreTone as toneOf } from "@/components/ui/tone";
 import { call, hid } from "@/lib/client";
 import { relative } from "@/lib/format";
 import type { AiOutput, DeckRoast, PitchScript, QaTurn, VideoScript } from "@/lib/types";
@@ -18,9 +19,7 @@ const SECTIONS: { key: Section; label: string }[] = [
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 
-function scoreTone(n: number) {
-  return n >= 8 ? "bg-ok-soft text-ok" : n >= 5 ? "bg-warn-soft text-warn" : "bg-danger-soft text-danger";
-}
+const scoreTone = (n: number) => SOFT[toneOf(n)];
 
 export function PitchTab({ id }: { id: string }) {
   const [section, setSection] = useState<Section>("pitch");
@@ -363,7 +362,7 @@ function QaSection({ id }: { id: string }) {
               {t.grade && (
                 <div className="space-y-2">
                   <div className="flex items-start gap-2">
-                    <span className={`shrink-0 rounded px-2 py-0.5 text-xs font-semibold ${scoreTone(t.grade.score)}`}>{t.grade.score}/10</span>
+                    <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold ${scoreTone(t.grade.score)}`}>{t.grade.score}/10</span>
                     <p>{t.grade.feedback}</p>
                   </div>
                   {t.grade.missed.length > 0 && (

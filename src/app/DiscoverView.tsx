@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { HackathonCard } from "@/components/HackathonCard";
 import { useHackmate } from "@/components/HackmateProvider";
+import { Segmented } from "@/components/ui/Tabs";
 import { clashesWithTracked } from "@/lib/clashes";
 import { relative } from "@/lib/format";
 import { THEMES } from "@/lib/themes";
@@ -33,6 +34,12 @@ const WHEN_OPTIONS = [
 type When = (typeof WHEN_OPTIONS)[number]["value"];
 type Sort = "soonest" | "prize" | "regClosing";
 type View = "split" | "list" | "map";
+
+const VIEWS: { key: View; label: string }[] = [
+  { key: "split", label: "Split" },
+  { key: "list", label: "List" },
+  { key: "map", label: "Map" },
+];
 
 function startOf(h: Hackathon) {
   return new Date(h.startsAt ?? h.endsAt ?? 0).getTime();
@@ -118,17 +125,7 @@ export function DiscoverView() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex rounded-lg border border-border p-0.5 text-sm">
-            {(["split", "list", "map"] as View[]).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={`rounded-md px-2.5 py-1 capitalize ${view === v ? "bg-surface-2 font-medium" : "text-muted"}`}
-              >
-                {v}
-              </button>
-            ))}
-          </div>
+          <Segmented options={VIEWS} value={view} onChange={setView} label="Layout" />
           <button className="btn" onClick={syncNow} disabled={syncing}>
             {syncing ? "Syncing…" : "↻ Refresh feeds"}
           </button>
@@ -173,7 +170,7 @@ export function DiscoverView() {
             <button
               key={t}
               onClick={() => toggle(themes, t, setThemes)}
-              className={`chip ${themes.has(t) ? "border-accent bg-accent-soft text-accent" : "hover:text-text"}`}
+              className={`chip ${themes.has(t) ? "chip-on" : "hover:text-text"}`}
             >
               {t}
             </button>
@@ -185,7 +182,7 @@ export function DiscoverView() {
               <button
                 key={s}
                 onClick={() => toggle(sources, s, setSources)}
-                className={`chip ${sources.has(s) ? "border-accent bg-accent-soft text-accent" : "hover:text-text"}`}
+                className={`chip ${sources.has(s) ? "chip-on" : "hover:text-text"}`}
               >
                 {SOURCE_LABELS[s]}
               </button>
