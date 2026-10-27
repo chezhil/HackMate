@@ -84,7 +84,8 @@ export function TrackerView() {
     setAnnounce(`Moved ${t.hackathon.title} to ${labelOf(to)}`);
     if (opts.refocus) requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-grip="${CSS.escape(t.hackathonId)}"]`)?.focus());
     if (opts.undoable !== false) {
-      toast({ message: `Moved to ${labelOf(to)}`, tone: "info", undo: () => void moveRef.current(t, from, { undoable: false, force: true }) });
+      // Brief on purpose: the card moving is the main feedback; the toast is a quick confirmation with Undo.
+      toast({ message: `Moved to ${labelOf(to)}`, tone: "info", duration: 1000, undo: () => void moveRef.current(t, from, { undoable: false, force: true }) });
     }
     try {
       await updateTracked(t.hackathonId, { status: to });

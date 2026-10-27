@@ -8,13 +8,15 @@ interface ToastItem {
   message: string;
   tone: "info" | "error";
   undo?: () => void;
+  /** How long it stays, in ms. Defaults below. */
+  duration?: number;
 }
 
 const ToastContext = createContext<(t: Omit<ToastItem, "id">) => void>(() => {});
 
 export const useToast = () => useContext(ToastContext);
 
-/** Bottom-left stack. Toasts with Undo stay 8 s, others 4 s; errors stay until dismissed. */
+/** Bottom-left stack. Toasts with Undo stay 8 s, others 4 s, unless they pass a duration; errors stay until dismissed. */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
   const next = useRef(0);
@@ -24,7 +26,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     (t: Omit<ToastItem, "id">) => {
       const id = ++next.current;
       setItems((xs) => [...xs.slice(-2), { ...t, id }]);
-      if (t.tone !== "error") setTimeout(() => dismiss(id), t.undo ? 8000 : 4000);
+      if (t.tone !== "error") setTimeout(() => dismiss(id), t.duration ?? (t.undo ? 8000 : 4000));
     },
     [dismiss],
   );
