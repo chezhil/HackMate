@@ -105,7 +105,7 @@ export function StandupsTab({ id }: { id: string }) {
     <div className="mx-auto max-w-3xl space-y-4">
       <section className="card flex flex-wrap items-center gap-3 p-4">
         <div className="flex-1">
-          <h2 className="font-semibold">Voice standup</h2>
+          <h2 className="font-bold">Voice standup</h2>
           <p className="text-sm text-muted">Say what you did, what&apos;s next and what&apos;s blocking you. It gets transcribed and summarised.</p>
         </div>
         <select className="input w-auto" value={author} onChange={(e) => setAuthor(e.target.value)} disabled={recording}>

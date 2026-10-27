@@ -23,7 +23,7 @@ function LevelIcon({ level }: { level: keyof typeof LEVEL_ICON }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="card p-4">
-      <h2 className="mb-2 text-sm font-semibold">{title}</h2>
+      <h2 className="mb-2 text-sm font-bold uppercase tracking-wide">{title}</h2>
       {children}
     </section>
   );

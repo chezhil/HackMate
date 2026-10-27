@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Space_Grotesk } from "next/font/google";
 import { Suspense } from "react";
 import { HackmateProvider } from "@/components/HackmateProvider";
 import { Nav } from "@/components/Nav";
@@ -7,9 +7,11 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import { ConfirmProvider } from "@/components/ui/Confirm";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Chunky grotesque for the neobrutalist look; Geist Mono stays for code and numbers.
+const display = Space_Grotesk({
+  variable: "--font-display",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const geistMono = Geist_Mono({
@@ -24,7 +26,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="en" className={`${display.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         {/* Everything below reads the clock and live data on the client, so nothing is prerendered. */}
         <Suspense

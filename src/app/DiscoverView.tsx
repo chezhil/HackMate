@@ -92,7 +92,7 @@ export function DiscoverView() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">Discover hackathons</h1>
+          <h1 className="page-title">Discover hackathons</h1>
           <p className="text-sm text-muted" aria-live="polite">
             {loading ? "Pulling feeds from Unstop, Devfolio, MLH and WeMakeDevs…" : `${shown.length} of ${hackathons.length} upcoming`}
             {lastSync && ` · updated ${relative(lastSync.at)}`}

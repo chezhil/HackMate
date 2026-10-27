@@ -72,7 +72,7 @@ export function TeamTab({ id, data }: { id: string; data: DetailsPayload }) {
     <div className="grid gap-4 lg:grid-cols-2">
       <section className="card space-y-3 p-4">
         <div className="flex items-baseline justify-between">
-          <h2 className="font-semibold">Your team</h2>
+          <h2 className="font-bold">Your team</h2>
           <span className={`text-sm ${max && size > max ? "text-danger" : min && size < min ? "text-warn" : "text-muted"}`}>
             {size}{max ? ` / ${max}` : ""} people{min && size < min ? ` · need at least ${min}` : ""}
             {max && size > max ? " · over the limit" : ""}
@@ -123,7 +123,7 @@ export function TeamTab({ id, data }: { id: string; data: DetailsPayload }) {
 
       <section className="card space-y-3 p-4">
         <div>
-          <h2 className="font-semibold">Find teammates</h2>
+          <h2 className="font-bold">Find teammates</h2>
           <p className="text-sm text-muted">Write a short &ldquo;looking for teammates&rdquo; post, then share it where people are looking.</p>
         </div>
         <input className="input" placeholder="Looking for (e.g. a designer and a backend dev)" value={post.lookingFor} onChange={(e) => setPost({ ...post, lookingFor: e.target.value })} />

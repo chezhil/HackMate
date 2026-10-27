@@ -31,7 +31,7 @@ function useRoving<K extends string>(options: readonly Option<K>[], value: K, on
 export function Tabs<K extends string>({ tabs, value, onChange, label, className = "" }: { tabs: readonly Option<K>[]; value: K; onChange: (k: K) => void; label: string; className?: string }) {
   const { refs, onKeyDown } = useRoving(tabs, value, onChange);
   return (
-    <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className={`flex gap-1 overflow-x-auto border-b border-border ${className}`}>
+    <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className={`flex gap-1 overflow-x-auto border-b-(length:--line) border-border ${className}`}>
       {tabs.map((t, i) => (
         <button
           key={t.key}
@@ -41,8 +41,8 @@ export function Tabs<K extends string>({ tabs, value, onChange, label, className
           aria-selected={value === t.key}
           tabIndex={value === t.key ? 0 : -1}
           onClick={() => onChange(t.key)}
-          className={`-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm transition-colors duration-(--dur-fast) ${
-            value === t.key ? "border-accent font-medium text-text" : "border-transparent text-muted hover:text-text"
+          className={`-mb-px whitespace-nowrap border-b-4 px-3 py-2 text-sm font-semibold transition-colors duration-(--dur-fast) ${
+            value === t.key ? "border-accent text-text" : "border-transparent text-muted hover:border-border hover:text-text"
           }`}
         >
           {t.label}
@@ -57,7 +57,7 @@ export function Tabs<K extends string>({ tabs, value, onChange, label, className
 export function Segmented<K extends string>({ options, value, onChange, label }: { options: readonly Option<K>[]; value: K; onChange: (k: K) => void; label: string }) {
   const { refs, onKeyDown } = useRoving(options, value, onChange);
   return (
-    <div role="radiogroup" aria-label={label} onKeyDown={onKeyDown} className="flex rounded-lg border border-border p-0.5 text-sm">
+    <div role="radiogroup" aria-label={label} onKeyDown={onKeyDown} className="flex rounded-lg border-(length:--line) border-border bg-surface p-0.5 text-sm shadow-hard-sm">
       {options.map((o, i) => (
         <button
           key={o.key}
@@ -67,7 +67,7 @@ export function Segmented<K extends string>({ options, value, onChange, label }:
           aria-checked={value === o.key}
           tabIndex={value === o.key ? 0 : -1}
           onClick={() => onChange(o.key)}
-          className={`rounded-md px-2.5 py-1 ${value === o.key ? "bg-surface-2 font-medium text-text" : "text-muted hover:text-text"}`}
+          className={`rounded-md px-2.5 py-0.5 font-semibold ${value === o.key ? "bg-accent text-accent-text" : "text-muted hover:text-text"}`}
         >
           {o.label}
         </button>

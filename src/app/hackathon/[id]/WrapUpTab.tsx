@@ -34,7 +34,7 @@ export function WrapUpTab({ id }: { id: string }) {
     <div className="grid gap-4 lg:grid-cols-2">
       <div className="space-y-4">
         <section className="card space-y-3 p-4">
-          <h2 className="font-semibold">Result</h2>
+          <h2 className="font-bold">Result</h2>
           <div className="flex flex-wrap gap-1.5">
             {(Object.keys(RESULT_LABELS) as ResultKind[]).map((r) => (
               <button
@@ -57,12 +57,12 @@ export function WrapUpTab({ id }: { id: string }) {
         </section>
 
         <section className="card space-y-3 p-4">
-          <h2 className="font-semibold">Prizes</h2>
+          <h2 className="font-bold">Prizes</h2>
           <PrizeList prizes={prizes} onChange={setPrizes} hackathonId={id} />
         </section>
 
         <section className="card space-y-3 p-4">
-          <h2 className="font-semibold">Certificates</h2>
+          <h2 className="font-bold">Certificates</h2>
           <CertificateList data={certs} onChange={setCerts} hackathonId={id} />
         </section>
       </div>
@@ -115,7 +115,7 @@ function RetroEditor({ id }: { id: string }) {
     <section className="card space-y-3 p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className="font-semibold">Retro notes</h2>
+          <h2 className="font-bold">Retro notes</h2>
           <p className="text-sm text-muted">Your own notes on how it went. Draft them from your standups, idea critiques and mock Q&A.</p>
         </div>
         <button className="btn btn-sm" onClick={draft} disabled={drafting}>{!drafting && <Sparkles aria-hidden className="size-3.5" />}{drafting ? "Drafting…" : "Draft from my activity"}</button>

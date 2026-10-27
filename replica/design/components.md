@@ -11,6 +11,7 @@ Live sheet: **`/design`** (light / dark / system toggle). Code: `src/components/
 
 | | rule |
 | --- | --- |
+| Style | **Neobrutalist.** Ink outlines (`--line`, 2px, in the border colour, which equals the text colour) on cards, controls, badges, chips and pills; hard offset shadows with no blur (`shadow-hard-sm` controls, `shadow-hard` cards, `shadow-pop` floating layers); buttons lift on hover and press into their shadow on click; flat loud fills; small radii; cream page with a dotted grid; Space Grotesk. Page titles use `page-title` (heavy, with a highlighter swipe); clickable cards use `card-lift`. |
 | Colour | Roles only (`bg-surface`, `text-muted`, `bg-danger-soft`…). No raw hex or Tailwind palette colours (`text-white`, `#16a34a`) in components. Status colour always comes from `ui/tone.ts`. |
 | Themes | Light and dark from `tokens.json`. Follows the OS by default; `<html data-theme="light|dark">` overrides it. `color-scheme` is set, so native selects, date pickers and scrollbars follow the theme. |
 | Type | Geist (SIL OFL). Body and controls are `text-sm`. Meta is `text-xs`. Page title is `text-2xl font-semibold tracking-tight`. Numbers use `tabular-nums`. `text-2xs` (11px) is the floor: no `text-[10px]`. |

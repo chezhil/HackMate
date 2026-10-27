@@ -71,13 +71,13 @@ export function SettingsView() {
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <div className="flex items-end justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <h1 className="page-title">Settings</h1>
         {status && <span className="text-sm text-muted">{status}</span>}
       </div>
 
       <section className="card space-y-4 p-4">
         <div>
-          <h2 className="font-semibold">Email reminders</h2>
+          <h2 className="font-bold">Email reminders</h2>
           <p className="text-sm text-muted">
             HackMate checks every 5 minutes and emails you before each deadline on your tracked hackathons.
           </p>

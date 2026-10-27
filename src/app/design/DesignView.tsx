@@ -26,7 +26,7 @@ const TYPE = [
   ["text-base", "base · 16/24 · long AI output"],
   ["text-lg font-semibold", "lg · 18/28 · card titles"],
   ["text-xl font-semibold", "xl · 20/28 · empty states"],
-  ["text-2xl font-semibold tracking-tight", "2xl · 24/32 · page titles"],
+  ["page-title", "page title · 30/36 · marker swipe"],
   ["text-3xl font-semibold tabular-nums", "3xl · 30/36 · 12 wins"],
 ] as const;
 
@@ -39,7 +39,7 @@ const TABS = [
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="card space-y-3 p-4">
-      <h2 className="text-sm font-semibold">{title}</h2>
+      <h2 className="text-sm font-bold uppercase tracking-wide">{title}</h2>
       {children}
     </section>
   );
@@ -61,7 +61,7 @@ export function DesignView() {
       <div className="space-y-4">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Design system</h1>
+            <h1 className="page-title">Design system</h1>
             <p className="text-sm text-muted">Tokens from replica/design/tokens.json. Every pair here passes WCAG AA in both themes.</p>
           </div>
           <div role="radiogroup" aria-label="Theme" className="flex rounded-lg border border-border p-0.5">

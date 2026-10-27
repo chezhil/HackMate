@@ -50,9 +50,9 @@ export function HackathonCard({
       onMouseLeave={onHover && (() => onHover(null))}
       onFocus={onHover && (() => onHover(h.id))}
       onBlur={onHover && ((e) => !e.currentTarget.contains(e.relatedTarget as Node) && onHover(null))}
-      className={`card flex gap-3 p-3 transition-colors duration-(--dur-fast) ${selected ? "ring-2 ring-accent" : highlighted ? "border-accent" : ""} ${onSelect ? "cursor-pointer hover:border-muted" : ""}`}
+      className={`card flex gap-3 p-3 ${selected ? "bg-accent-soft" : highlighted ? "bg-warn-soft" : ""} ${onSelect ? "card-lift cursor-pointer" : "card-lift"}`}
     >
-      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-surface-2">
+      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border-(length:--line) border-border bg-surface-2">
         {h.image && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={h.image} alt="" className="h-full w-full object-cover" loading="lazy" />
@@ -60,7 +60,7 @@ export function HackathonCard({
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="line-clamp-2 min-w-0 break-words font-medium leading-snug" title={h.title}>
+          <h3 className="line-clamp-2 min-w-0 break-words font-bold leading-snug" title={h.title}>
             <Link href={`/hackathon/${hid(h.id)}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
               {h.title}
             </Link>

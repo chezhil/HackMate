@@ -135,7 +135,7 @@ export function HackathonView() {
           {h.image && <img src={h.image} alt="" className="h-full w-full object-cover" />}
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="break-words text-2xl font-semibold tracking-tight">{h.title}</h1>
+          <h1 className="page-title break-words">{h.title}</h1>
           <p className="text-sm text-muted">
             {fmtRange(h)} · <span className="capitalize">{h.mode}</span>
             {h.mode !== "online" && ` · ${place(h)}`} · {SOURCE_LABELS[h.source]}

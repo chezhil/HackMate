@@ -2,15 +2,22 @@
 /* Colour roles, type, shadows and z-layers. Edit replica/design/tokens.json, then run node replica/design/build-tokens.mjs. */
 @import "./tokens.css";
 
+/* Neobrutalist page: cream paper with a dotted grid behind everything. */
 body {
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image: radial-gradient(var(--dot) 1.2px, transparent 1.2px);
+  background-size: 22px 22px;
   color: var(--text);
   font-family: var(--font-sans);
 }
 
+h1, h2, h3 {
+  letter-spacing: -0.01em;
+}
+
 /* One focus style everywhere: keyboard focus only, never on mouse click. */
 :focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -23,55 +30,78 @@ body {
 }
 
 /* Component classes. Utilities passed alongside them (e.g. "btn btn-sm") still win.
-   Radius map: rounded-md badges · rounded-lg controls · rounded-xl cards · rounded-2xl dialogs · rounded-full chips. */
+   Radius map: rounded-md badges · rounded-lg controls · rounded-xl cards · rounded-2xl dialogs · rounded-full chips.
+   Every control is outlined in ink (--line) and sits on a hard shadow; pressing it pushes it into the shadow. */
 @utility btn {
-  @apply inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-sm font-medium whitespace-nowrap text-text transition-colors duration-(--dur-fast) hover:bg-surface-2 disabled:pointer-events-none disabled:opacity-50;
+  @apply inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border-(length:--line) border-border bg-surface px-3.5 text-sm font-semibold whitespace-nowrap text-text shadow-hard-sm transition-[transform,box-shadow,background-color] duration-(--dur-fast) hover:-translate-x-px hover:-translate-y-px hover:shadow-hard active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none;
 }
 @utility btn-primary {
-  @apply border-transparent bg-accent text-accent-text hover:bg-accent-hover;
+  @apply bg-accent text-accent-text hover:bg-accent-hover;
 }
 @utility btn-ghost {
-  @apply border-transparent bg-transparent text-muted hover:bg-surface-2 hover:text-text;
+  @apply border-transparent bg-transparent text-muted shadow-none hover:translate-none hover:bg-surface-2 hover:text-text hover:shadow-none active:translate-none;
 }
 @utility btn-danger {
-  @apply border-danger/40 bg-surface text-danger hover:bg-danger-soft;
+  @apply bg-danger-soft text-danger;
 }
 @utility btn-sm {
-  @apply h-7 px-2 text-xs;
+  @apply h-7 px-2.5 text-xs;
 }
 @utility btn-icon {
-  @apply w-8 px-0;
+  @apply w-9 px-0;
 }
 @utility input {
-  @apply w-full rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-sm text-text transition-colors duration-(--dur-fast) placeholder:text-muted hover:border-muted focus:border-accent focus:ring-1 focus:ring-accent focus-visible:outline-none disabled:opacity-50 aria-invalid:border-danger;
+  @apply w-full rounded-lg border-(length:--line) border-border-strong bg-surface px-3 py-1.5 text-sm text-text transition-shadow duration-(--dur-fast) placeholder:text-muted focus:shadow-hard-sm focus-visible:outline-none disabled:opacity-50 aria-invalid:border-danger aria-invalid:bg-danger-soft;
 }
 @utility card {
-  @apply rounded-xl border border-border bg-surface;
+  @apply rounded-xl border-(length:--line) border-border bg-surface shadow-hard;
 }
 @utility chip {
-  @apply inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted transition-colors duration-(--dur-fast);
+  @apply inline-flex items-center gap-1 rounded-full border-(length:--line) border-border bg-surface px-2.5 py-0.5 text-xs font-medium text-text transition-colors duration-(--dur-fast);
 }
 @utility chip-on {
-  @apply border-accent bg-accent-soft text-accent;
+  @apply bg-accent text-accent-text;
 }
 @utility label {
-  @apply mb-1 block text-xs font-medium uppercase tracking-wide text-muted;
+  @apply mb-1 block text-xs font-bold uppercase tracking-wider text-text;
 }
 /* Main column plus the fixed-width side panel used on Calendar, Overview, Ideas and Submit. */
 @utility grid-cols-main-side {
   grid-template-columns: minmax(0, 1fr) var(--side-panel);
 }
+/* Page titles: heavy, with a highlighter swipe behind the bottom half of the text. */
+@utility page-title {
+  @apply text-3xl font-bold tracking-tight;
+  background-image: linear-gradient(transparent 58%, var(--warn-soft) 58%, var(--warn-soft) 92%, transparent 92%);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  display: inline;
+}
+/* Clickable cards lift off the page on hover. */
+@utility card-lift {
+  @apply transition-[transform,box-shadow] duration-(--dur-fast) hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-pop;
+}
 @utility kbd {
-  @apply inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-border bg-surface-2 px-1 font-mono text-2xs text-muted;
+  @apply inline-flex h-5 min-w-5 items-center justify-center rounded-md border-(length:--line) border-border bg-surface px-1 font-mono text-2xs font-semibold text-text shadow-hard-sm;
 }
 
 .leaflet-container {
   background: var(--surface-2);
   font-family: inherit;
 }
-.leaflet-popup-content-wrapper,
-.leaflet-popup-tip {
+.leaflet-popup-content-wrapper {
   background: var(--surface);
   color: var(--text);
-  box-shadow: var(--pop-shadow);
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--hard-shadow);
+}
+.leaflet-popup-tip {
+  background: var(--surface);
+  box-shadow: none;
+}
+.leaflet-bar a {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
 }

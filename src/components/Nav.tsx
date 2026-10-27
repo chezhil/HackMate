@@ -18,10 +18,10 @@ export function Nav() {
   const { tracked, clashes, error } = useHackmate();
   const active = tracked.filter((t) => t.status !== "results").length;
   return (
-    <header className="sticky top-0 z-[1000] border-b border-border bg-bg/90 backdrop-blur">
+    <header className="sticky top-0 z-[1000] border-b-(length:--line) border-border bg-surface">
       <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-3 sm:gap-6">
         <Link href="/" className="flex items-center gap-2 text-base font-semibold tracking-tight">
-          <span className="grid h-7 w-7 place-items-center rounded-lg bg-accent text-sm text-accent-text">H</span>
+          <span className="grid h-8 w-8 -rotate-6 place-items-center rounded-lg border-(length:--line) border-border bg-warn-soft text-base font-bold text-text shadow-hard-sm">H</span>
           <span className="hidden sm:inline">HackMate</span>
         </Link>
         <nav className="flex gap-1 overflow-x-auto text-sm">
@@ -31,7 +31,7 @@ export function Nav() {
               <Link
                 key={l.href}
                 href={l.href}
-                className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 ${on ? "bg-surface-2 font-medium text-text" : "text-muted hover:text-text"}`}
+                className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border-(length:--line) px-3 py-1 font-semibold ${on ? "border-border bg-accent-soft text-text shadow-hard-sm" : "border-transparent text-muted hover:border-border hover:text-text"}`}
               >
                 {l.label}
                 {l.href === "/tracker" && active > 0 && (

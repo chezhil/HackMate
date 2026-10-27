@@ -181,8 +181,8 @@ export function AskTab({ id, data }: { id: string; data: DetailsPayload }) {
         {messages.map((m) => (
           <div key={m.id} className={m.role === "user" ? "flex justify-end" : ""}>
             <div
-              className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm ${
-                m.role === "user" ? "bg-accent text-accent-text" : "bg-surface-2"
+              className={`max-w-[85%] rounded-2xl border-(length:--line) border-border px-3.5 py-2 text-sm shadow-hard-sm ${
+                m.role === "user" ? "bg-accent text-accent-text" : "bg-surface"
               }`}
             >
               {m.role === "user" ? (

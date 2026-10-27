@@ -26,7 +26,17 @@ daily during a hackathon, so it must be fast to scan and calm to work in, never 
 Discover, Tracker (shows a count of active hackathons), Calendar (shows a red count of schedule clashes), Profile, Settings.
 On mobile the sections become a scrollable row or a bottom tab bar.
 
-**Visual direction (keep one):**
+**Visual direction: neobrutalist (chosen).** The app is already built this way, so match it:
+thick 2px black outlines on every card, button, input, badge and chip; hard offset shadows with no blur
+(2px on controls, 4px on cards, 6px on dialogs and popovers); buttons that press into their shadow when clicked;
+flat, loud fills (cobalt-blue primary, butter-yellow highlight, mint green, coral red, lavender for selection);
+small corner radii (4–10px); a cream page with a faint dotted grid; Space Grotesk, heavy for headings; page titles with
+a yellow highlighter swipe; a slightly tilted square logo mark. Dark mode: near-black page, cream outlines and cream shadows.
+Be playful in details (tilted stickers for empty states, chunky countdown pills), never at the cost of scanning speed.
+
+The older options below are kept for reference only.
+
+**Other directions considered:**
 
 - **A. Sharp and dense.** Cool neutral greys, a single strong accent, 13–14px body text, tight 8px spacing,
   thin 1px borders, almost no shadows, compact cards that fit many on screen. Think precise productivity tool.

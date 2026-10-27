@@ -75,7 +75,7 @@ export function SubmitTab({ id }: { id: string }) {
         <section className="card space-y-3 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h2 className="font-semibold">Submission checklist</h2>
+              <h2 className="font-bold">Submission checklist</h2>
               <p className="text-sm text-muted">Built from this hackathon&apos;s rules. Attach links and files as proof.</p>
             </div>
             <Badge tone={ready === required.length ? "ok" : "neutral"} className="shrink-0 tabular-nums">
@@ -119,7 +119,7 @@ export function SubmitTab({ id }: { id: string }) {
       <aside className="space-y-4">
         <section className="card space-y-3 p-4">
           <div>
-            <h2 className="font-semibold">Check my submission</h2>
+            <h2 className="font-bold">Check my submission</h2>
             <p className="text-sm text-muted">Checks the deadline, team size, that links open, that the repo is public with a README, video length, screenshots, and runs an AI review against the rules.</p>
           </div>
           <button className="btn btn-primary w-full" onClick={verify} disabled={verifying}>{verifying ? "Checking…" : result ? "Check again" : "Check submission"}</button>
@@ -267,7 +267,7 @@ function WriteupPanel({ id }: { id: string }) {
   return (
     <section className="card space-y-3 p-4">
       <div>
-        <h2 className="font-semibold">Write it up</h2>
+        <h2 className="font-bold">Write it up</h2>
         <p className="text-sm text-muted">Posts about your project. Many hackathons give prizes for the best one.</p>
       </div>
       <div className="flex rounded-lg border border-border p-0.5 text-xs">

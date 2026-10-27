@@ -16,7 +16,11 @@ const vars = (obj, indent) =>
 
 const { light, dark } = t.color;
 const shared = {
+  // Shadows are drawn in the border (ink) colour, so they flip with the theme on their own.
   "pop-shadow": t.shadow.pop,
+  "hard-shadow": t.shadow.hard,
+  "hard-sm-shadow": t.shadow["hard-sm"],
+  line: `${t["border-width"].line}px`,
   scrim: t.overlay.scrim,
   "dur-fast": t.motion.fast,
   "dur-base": t.motion.base,
@@ -24,7 +28,7 @@ const shared = {
   "side-panel": `${t.layout["side-panel"] / 16}rem`,
   ...Object.fromEntries(Object.entries(t.z).filter(([k]) => !k.startsWith("_")).map(([k, v]) => [`z-${k}`, v])),
 };
-const darkOnly = { "pop-shadow": t.shadow["pop-dark"], scrim: t.overlay["scrim-dark"] };
+const darkOnly = { scrim: t.overlay["scrim-dark"] };
 
 const theme = [
   ...Object.keys(light).map((k) => `  --color-${k}: var(--${k});`),
@@ -32,6 +36,13 @@ const theme = [
     .filter(([k]) => k === "2xs")
     .flatMap(([k, s]) => [`  --text-${k}: ${s.size / 16}rem;`, `  --text-${k}--line-height: ${s.line / 16}rem;`]),
   "  --shadow-pop: var(--pop-shadow);",
+  "  --shadow-hard: var(--hard-shadow);",
+  "  --shadow-hard-sm: var(--hard-sm-shadow);",
+  // Remap Tailwind's corner scale so existing rounded-md/lg/xl/2xl classes follow the tokens.
+  `  --radius-md: ${t.radius.sm / 16}rem;`,
+  `  --radius-lg: ${t.radius.md / 16}rem;`,
+  `  --radius-xl: ${t.radius.lg / 16}rem;`,
+  `  --radius-2xl: ${t.radius.xl / 16}rem;`,
   `  --font-sans: ${t.font.sans};`,
   `  --font-mono: ${t.font.mono};`,
 ].join("\n");

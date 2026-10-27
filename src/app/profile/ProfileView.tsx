@@ -137,7 +137,7 @@ function ProfileHeader({ profile, onSaved }: { profile: Profile; onSaved: (p: Pr
         {profile.name.trim()[0]?.toUpperCase() ?? "?"}
       </div>
       <div className="min-w-0 flex-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{profile.name}</h1>
+        <h1 className="page-title">{profile.name}</h1>
         {profile.headline && <p className="text-muted">{profile.headline}{profile.location && ` · ${profile.location}`}</p>}
         {profile.bio && <p className="mt-1 max-w-2xl text-sm">{profile.bio}</p>}
         {links.length > 0 && (
@@ -178,7 +178,7 @@ function MonthChart({ months }: { months: Stats["byMonth"] }) {
   return (
     <section className="card p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Hackathons finished per month</h2>
+        <h2 className="text-sm font-bold uppercase tracking-wide">Hackathons finished per month</h2>
         <button className="text-xs text-muted hover:text-text" onClick={() => setAsTable(!asTable)}>{asTable ? "Show chart" : "Show table"}</button>
       </div>
       {asTable ? (
@@ -227,7 +227,7 @@ function RankList({ title, rows }: { title: string; rows: { label: string; count
   const max = Math.max(1, ...rows.map((r) => r.count));
   return (
     <section className="card p-4">
-      <h2 className="mb-2 text-sm font-semibold">{title}</h2>
+      <h2 className="mb-2 text-sm font-bold uppercase tracking-wide">{title}</h2>
       {rows.length === 0 ? (
         <p className="text-sm text-muted">Nothing yet.</p>
       ) : (
@@ -267,7 +267,7 @@ function StatsTab({ stats }: { stats: Stats }) {
         <RankList title="Results" rows={resultRows} />
         <RankList title="Top themes" rows={stats.topThemes.map((t) => ({ label: t.theme, count: t.count }))} />
         <section className="card space-y-3 p-4 text-sm">
-          <h2 className="text-sm font-semibold">Practice</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wide">Practice</h2>
           <div>
             <div className="text-xs text-muted">Average idea critique score</div>
             <div className="text-xl font-semibold">{stats.avgIdeaScore ?? "—"}<span className="text-sm text-muted">/10</span></div>

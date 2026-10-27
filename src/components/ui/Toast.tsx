@@ -37,7 +37,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={t.id}
             role={t.tone === "error" ? "alert" : undefined}
-            className={`pointer-events-auto flex items-center gap-3 rounded-xl border bg-surface px-3 py-2 text-sm shadow-pop ${t.tone === "error" ? "border-danger/40 text-danger" : "border-border"}`}
+            className={`pointer-events-auto flex items-center gap-3 rounded-xl border-(length:--line) bg-surface px-3 py-2 text-sm font-medium shadow-pop ${t.tone === "error" ? "border-danger text-danger" : "border-border"}`}
           >
             <span className="min-w-0 flex-1">{t.message}</span>
             {t.undo && (

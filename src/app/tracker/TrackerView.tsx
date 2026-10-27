@@ -53,12 +53,12 @@ export function TrackerView() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Tracker</h1>
+        <h1 className="page-title">Tracker</h1>
         <p className="text-sm text-muted">Move each hackathon along as you register, build, submit and hear back.</p>
       </div>
       {clashes.length > 0 && (
         <section className="card p-3">
-          <h2 className="mb-2 text-sm font-semibold">Clashes</h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide">Clashes</h2>
           <ClashList clashes={clashes} />
         </section>
       )}

@@ -7,13 +7,13 @@ export function Spinner({ className = "" }: { className?: string }) {
 }
 
 export function Badge({ tone = "neutral", children, className = "", title }: { tone?: Tone; children: ReactNode; className?: string; title?: string }) {
-  return <span title={title} className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium ${SOFT[tone]} ${className}`}>{children}</span>;
+  return <span title={title} className={`inline-flex items-center gap-1 rounded-md border-(length:--line) border-border px-1.5 py-px text-xs font-semibold ${SOFT[tone]} ${className}`}>{children}</span>;
 }
 
 /** Small count next to a nav link or column title. */
 export function CountPill({ tone = "accent", children, label }: { tone?: Tone; children: ReactNode; label?: string }) {
   return (
-    <span className={`rounded-full px-1.5 text-xs tabular-nums ${SOFT[tone]}`} aria-label={label} title={label}>
+    <span className={`rounded-full border-(length:--line) border-border px-1.5 text-xs font-bold tabular-nums ${SOFT[tone]}`} aria-label={label} title={label}>
       {children}
     </span>
   );
@@ -22,7 +22,7 @@ export function CountPill({ tone = "accent", children, label }: { tone?: Tone; c
 export function ScoreBadge({ score, max = 10, size = "sm" }: { score: number; max?: number; size?: "sm" | "lg" }) {
   const tone = scoreTone((score / max) * 10);
   return (
-    <span className={`rounded-lg font-semibold tabular-nums ${SOFT[tone]} ${size === "lg" ? "px-2.5 py-1 text-lg" : "px-1.5 py-0.5 text-xs"}`}>
+    <span className={`rounded-lg border-(length:--line) border-border font-bold tabular-nums ${SOFT[tone]} ${size === "lg" ? "px-2.5 py-0.5 text-lg shadow-hard-sm" : "px-1.5 py-px text-xs"}`}>
       {Number.isInteger(score) ? score : score.toFixed(1)}/{max}
     </span>
   );
@@ -92,7 +92,7 @@ export function EmptyState({ icon, title, children, action, level = 2 }: { icon?
   const Heading = level === 1 ? "h1" : "h2";
   return (
     <div className="card mx-auto max-w-lg p-10 text-center">
-      {icon && <div className="mx-auto grid size-10 place-items-center rounded-xl bg-surface-2 text-muted [&>svg]:size-5">{icon}</div>}
+      {icon && <div className="mx-auto grid size-12 -rotate-3 place-items-center rounded-xl border-(length:--line) border-border bg-warn-soft text-text shadow-hard-sm [&>svg]:size-6">{icon}</div>}
       <Heading className="mt-3 text-xl font-semibold">{title}</Heading>
       {children && <p className="mt-1 text-sm text-muted">{children}</p>}
       {action && <div className="mt-4">{action}</div>}

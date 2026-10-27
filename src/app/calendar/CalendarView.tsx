@@ -99,7 +99,7 @@ export function CalendarView() {
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-main-side">
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">{monthFmt.format(new Date(cursor.y, cursor.m, 1))}</h1>
+          <h1 className="page-title">{monthFmt.format(new Date(cursor.y, cursor.m, 1))}</h1>
           <div className="flex items-center gap-2">
             <label className="flex items-center gap-1.5 text-sm text-muted">
               <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
@@ -183,7 +183,7 @@ export function CalendarView() {
         </div>
 
         <section className="card p-3">
-          <h2 className="mb-2 text-sm font-semibold">{dayFmt.format(new Date(selected + "T12:00:00"))}</h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide">{dayFmt.format(new Date(selected + "T12:00:00"))}</h2>
           {!sel || (sel.events.length === 0 && sel.deadlines.length === 0) ? (
             <p className="text-sm text-muted">Nothing on this day.</p>
           ) : (
@@ -209,7 +209,7 @@ export function CalendarView() {
 
       <aside className="space-y-4">
         <section className="card p-3">
-          <h2 className="mb-2 text-sm font-semibold">Upcoming deadlines</h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide">Upcoming deadlines</h2>
           {loading ? (
             <div className="space-y-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-12" />)}</div>
           ) : upcoming.length === 0 ? (
@@ -242,12 +242,12 @@ export function CalendarView() {
         </section>
 
         <section className="card p-3">
-          <h2 className="mb-2 text-sm font-semibold">Clashes</h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide">Clashes</h2>
           {loading ? <Skeleton className="h-10" /> : <ClashList clashes={clashes} />}
         </section>
 
         <section className="card p-3">
-          <h2 className="mb-2 text-sm font-semibold">Sync to your calendar</h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide">Sync to your calendar</h2>
           <CalendarSync />
         </section>
       </aside>

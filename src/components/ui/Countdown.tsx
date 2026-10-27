@@ -43,7 +43,7 @@ export function Countdown({ to, label }: { to: string; label?: string }) {
     <time
       dateTime={to}
       title={now == null ? undefined : new Date(target).toLocaleString()}
-      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium tabular-nums ${SOFT[tone]}`}
+      className={`inline-flex items-center gap-1 rounded-md border-(length:--line) border-border px-1.5 py-px text-xs font-semibold tabular-nums ${SOFT[tone]}`}
     >
       <Clock aria-hidden className="size-3" />
       {label && <span className="font-normal">{label}</span>}

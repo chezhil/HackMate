@@ -65,7 +65,7 @@ export function IdeasTab({ id }: { id: string }) {
 
         <section className="card space-y-3 p-4">
           <div>
-            <h2 className="font-semibold">Get ideas</h2>
+            <h2 className="font-bold">Get ideas</h2>
             <p className="text-sm text-muted">Based on this hackathon&apos;s tracks, judging criteria and what has won before.</p>
           </div>
           <div className="flex gap-2">
@@ -112,7 +112,7 @@ export function IdeasTab({ id }: { id: string }) {
         </section>
 
         <section className="card space-y-2 p-4">
-          <h2 className="font-semibold">Your idea</h2>
+          <h2 className="font-bold">Your idea</h2>
           <input className="input" placeholder="Name" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
           <textarea
             className="input min-h-24"
@@ -141,7 +141,7 @@ export function IdeasTab({ id }: { id: string }) {
       </div>
 
       <aside className="space-y-2">
-        <h2 className="text-sm font-semibold">Past winners</h2>
+        <h2 className="text-sm font-bold uppercase tracking-wide">Past winners</h2>
         <p className="text-xs text-muted">Prize-winning Devfolio projects from earlier editions and similar themes. The AI uses these too.</p>
         {winners === null && Array.from({ length: 4 }, (_, i) => <div key={i} className="h-16 animate-pulse rounded-lg bg-surface-2" />)}
         {winners?.length === 0 && <p className="text-sm text-muted">No past winners found.</p>}

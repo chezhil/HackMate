@@ -43,7 +43,7 @@ export function ProjectCard({ id, onSaved }: { id: string; onSaved?: (p: Project
     <section className="card p-4">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <h2 className="font-semibold">{project.name || "Your project"}</h2>
+          <h2 className="font-bold">{project.name || "Your project"}</h2>
           <p className="truncate text-sm text-muted">
             {project.tagline || (project.updatedAt ? "No one-liner yet" : "Fill this in once; the pitch, video script, checks and posts all use it.")}
           </p>
