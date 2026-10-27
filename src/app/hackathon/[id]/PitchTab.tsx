@@ -4,7 +4,7 @@ import { Flame, Timer } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CopyButton } from "@/components/CopyButton";
 import { ProjectCard } from "@/components/ProjectCard";
-import { SOFT, scoreTone as toneOf } from "@/components/ui/tone";
+import { ScoreBadge } from "@/components/ui/Feedback";
 import { call, hid } from "@/lib/client";
 import { relative } from "@/lib/format";
 import type { AiOutput, DeckRoast, PitchScript, QaTurn, VideoScript } from "@/lib/types";
@@ -20,7 +20,6 @@ const SECTIONS: { key: Section; label: string }[] = [
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 
-const scoreTone = (n: number) => SOFT[toneOf(n)];
 
 export function PitchTab({ id }: { id: string }) {
   const [section, setSection] = useState<Section>("pitch");
@@ -253,7 +252,7 @@ function RoastSection({ items, busy, onGenerate, onDelete }: SectionProps<DeckRo
           return (
             <article className="card space-y-4 p-4 text-sm">
               <div className="flex items-center gap-3">
-                <span className={`rounded-lg px-2.5 py-1 text-lg font-semibold ${scoreTone(r.score)}`}>{r.score}/10</span>
+                <ScoreBadge score={r.score} size="lg" />
                 <p className="font-medium">{r.verdict}</p>
               </div>
               {r.timing && <p className="flex items-center gap-1 text-xs text-muted"><Timer aria-hidden className="size-3.5" /> {r.timing}</p>}
@@ -345,7 +344,7 @@ function QaSection({ id }: { id: string }) {
           </button>
         )}
         {finished && avg !== null && (
-          <span className={`rounded-lg px-2.5 py-1 font-semibold ${scoreTone(avg)}`}>Round score {avg.toFixed(1)}/10</span>
+          <span className="flex items-center gap-2 font-semibold">Round score <ScoreBadge score={Number(avg.toFixed(1))} size="lg" /></span>
         )}
       </div>
       {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
@@ -363,7 +362,7 @@ function QaSection({ id }: { id: string }) {
               {t.grade && (
                 <div className="space-y-2">
                   <div className="flex items-start gap-2">
-                    <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold ${scoreTone(t.grade.score)}`}>{t.grade.score}/10</span>
+                    <span className="shrink-0"><ScoreBadge score={t.grade.score} /></span>
                     <p>{t.grade.feedback}</p>
                   </div>
                   {t.grade.missed.length > 0 && (

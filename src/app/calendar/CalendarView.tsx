@@ -7,9 +7,10 @@ import { hid } from "@/lib/client";
 import { CalendarSync } from "@/components/CalendarSync";
 import { ClashList } from "@/components/ClashList";
 import { useHackmate } from "@/components/HackmateProvider";
+import { Countdown } from "@/components/ui/Countdown";
 import { EVENT_COLORS } from "@/components/ui/tone";
 import { clashKeyDays, dayKey, eventDays } from "@/lib/clashes";
-import { fmtDateTime, relative, urgency } from "@/lib/format";
+import { fmtDateTime, urgency } from "@/lib/format";
 import type { Deadline, Hackathon } from "@/lib/types";
 
 interface DayItems {
@@ -222,11 +223,9 @@ export function CalendarView() {
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium">{d.label}</div>
                       <div className="truncate text-xs text-muted">{h.title}</div>
-                      <div className="text-xs">
-                        <span className={u === "soon" ? "font-medium text-danger" : u === "near" ? "text-warn" : "text-muted"}>
-                          {relative(d.dueAt)}
-                        </span>
-                        <span className="text-muted"> · {fmtDateTime(d.dueAt)}</span>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs">
+                        <Countdown to={d.dueAt} />
+                        <span className="text-muted">{fmtDateTime(d.dueAt)}</span>
                       </div>
                     </div>
                     <a href={googleTemplateLink(d, h)} target="_blank" rel="noreferrer" className="text-xs text-muted hover:text-accent" title="Add this one to Google Calendar">

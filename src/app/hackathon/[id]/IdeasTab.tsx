@@ -2,7 +2,8 @@
 
 import { Trophy, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { SOFT, scoreTone } from "@/components/ui/tone";
+import { Badge, ScoreBadge } from "@/components/ui/Feedback";
+import { scoreTone } from "@/components/ui/tone";
 import { useConfirm } from "@/components/ui/Confirm";
 import { call, hid } from "@/lib/client";
 import { relative } from "@/lib/format";
@@ -13,7 +14,6 @@ interface Suggestions {
   ideas: IdeaSuggestion[];
 }
 
-const scoreColor = (score: number) => SOFT[scoreTone(score)];
 
 export function IdeasTab({ id }: { id: string }) {
   const [ideas, setIdeas] = useState<Idea[]>([]);
@@ -191,9 +191,9 @@ function IdeaCard({ idea, onChange, onDelete }: { idea: Idea; onChange: (i: Idea
         </div>
         <div className="flex items-center gap-1.5">
           {scored.map((v, i) => (
-            <span key={v.id} className={`rounded-md px-1.5 py-0.5 text-xs font-medium ${scoreColor(v.critique!.score)}`} title={`v${i + 1}`}>
+            <Badge key={v.id} tone={scoreTone(v.critique!.score)} className="tabular-nums" title={`v${i + 1}`}>
               {v.critique!.score}
-            </span>
+            </Badge>
           ))}
           <button className="ml-1 text-muted hover:text-danger" title="Delete idea" onClick={async () => (await confirm({ title: "Delete this idea?", body: `"${idea.title}" and all its versions and scores are deleted.`, confirmLabel: "Delete idea" })) && onDelete()}><X aria-hidden className="size-3.5" /><span className="sr-only">Delete idea</span></button>
         </div>
@@ -244,7 +244,7 @@ function CritiqueView({ v }: { v: IdeaVersion }) {
   return (
     <div className="space-y-3 rounded-lg border border-border p-3 text-sm">
       <div className="flex items-center gap-3">
-        <span className={`rounded-lg px-2.5 py-1 text-lg font-semibold ${scoreColor(c.score)}`}>{c.score}/10</span>
+        <ScoreBadge score={c.score} size="lg" />
         <p>{c.verdict}</p>
       </div>
       <div className="grid gap-3 md:grid-cols-2">

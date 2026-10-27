@@ -77,10 +77,11 @@ Banner                                                    ui/Feedback.tsx
   used on   S01 feed failure, S02 AI not configured, S19 SMTP missing
 
 Countdown                                                 ui/Countdown.tsx
-  states    > 3 days neutral "9d 0h" · ≤ 3 days warn "2d 3h" · < 24 h danger "5h 12m", counts
-            seconds in the last hour · past → "Overdue"
+  states    on the app's one urgency scale (lib/format `urgency()`): > 7 days neutral "9d 0h" ·
+            ≤ 7 days warn "4d 11h" · < 48 h danger "11h 50m", counts seconds in the last hour ·
+            past → "Overdue". Done deadlines show no countdown.
   a11y      <time dateTime>, full local date in title; renders "…" on the server (no hydration mismatch)
-  used on   S01 card, S12 card, S13 upcoming list (planned)
+  used on   S01 card (registration closes), S12 card (next deadline), S13 upcoming list, DeadlineEditor
 
 Skeleton · Spinner · EmptyState · Kbd                     ui/Feedback.tsx
   EmptyState  icon tile, title (xl), one line of help (muted), one action
@@ -162,11 +163,15 @@ Done in this pass:
   The Tracker and solo-team empty states use `EmptyState`, which now takes `level={1}` for whole-page states.
   New `Stars` display for retro ratings.
 - All 6 `window.confirm` calls → `useConfirm()` (Dialog), with copy that says what each delete removes.
+- Hand-written badges → `Badge` (mode, result, invited, criteria weight, "from rules", required-done count,
+  outbox status, idea version scores, clash marker), score pills → `ScoreBadge`, nav counts → `CountPill`
+  with labels ("2 active", "3 clashes"). Mode and result colours are now `Tone` maps, not class strings.
+- Upcoming deadline text → `Countdown` on Discover cards, Tracker cards, the calendar's upcoming list and
+  DeadlineEditor. Past-time text ("updated 2h ago", "started 3 days ago") stays as `relative()`, and so do
+  the Overview key dates, which mix past and future.
 - Emoji kept on purpose: text that leaves the app (iCal event titles in `lib/ics.ts`, the Google Calendar link
   in CalendarView, the teammate post in `lib/team.ts`, the test email). Lucide can't render there.
   Arrows in link text (↗ → ←) stay as text.
 
 Still to do (not done here):
-- Remaining hand-rolled badges (`rounded-md px-1.5 … bg-*-soft text-*`) → `Badge`. Hand-rolled empty states → `EmptyState`.
-- Hand-written "Reg closes in…" / "Next: … in 2d" text → `Countdown`.
 - Long arbitrary grid templates (`grid-cols-[minmax(0,1fr)_380px]`, 5 variants) → one `--side-panel` width.

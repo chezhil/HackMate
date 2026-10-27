@@ -3,15 +3,18 @@
 import { Check, Pin, TriangleAlert, Trophy } from "lucide-react";
 import Link from "next/link";
 import { hid } from "@/lib/client";
-import { fmtDate, fmtRange, place, relative } from "@/lib/format";
+import { fmtRange, place } from "@/lib/format";
 import { useHackmate } from "./HackmateProvider";
+import { Countdown } from "./ui/Countdown";
+import { Badge } from "./ui/Feedback";
+import type { Tone } from "./ui/tone";
 import type { Hackathon } from "@/lib/types";
 import { SOURCE_LABELS } from "@/lib/types";
 
-const MODE_STYLE: Record<Hackathon["mode"], string> = {
-  online: "bg-accent-soft text-accent",
-  offline: "bg-surface-2 text-text",
-  hybrid: "bg-warn-soft text-warn",
+const MODE_TONE: Record<Hackathon["mode"], Tone> = {
+  online: "accent",
+  offline: "neutral",
+  hybrid: "warn",
 };
 
 export function HackathonCard({
@@ -75,7 +78,7 @@ export function HackathonCard({
           </button>
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-          <span className={`rounded-md px-1.5 py-0.5 font-medium capitalize ${MODE_STYLE[h.mode]}`}>{h.mode}</span>
+          <Badge tone={MODE_TONE[h.mode]} className="capitalize">{h.mode}</Badge>
           {h.mode !== "online" && <span>{place(h)} ·</span>}
           <span>{fmtRange(h)}</span>
           <span>·</span>
@@ -86,9 +89,7 @@ export function HackathonCard({
           {h.prizeText && <span className="chip border-ok/30 text-ok"><Trophy aria-hidden className="size-3" /> {h.prizeText}</span>}
           {h.entryFee === "paid" && <span className="chip border-warn/30 text-warn">Paid entry</span>}
           {regOpen && (
-            <span className="chip" title={fmtDate(h.regEndsAt)}>
-              Reg closes {relative(h.regEndsAt!, now)}
-            </span>
+            <Countdown to={h.regEndsAt!} label="Reg closes" />
           )}
           {h.themes.slice(0, 3).map((t) => (
             <span key={t} className="chip">{t}</span>

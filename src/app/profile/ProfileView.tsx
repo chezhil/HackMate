@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CertificateList, type CertData } from "@/components/CertificateList";
 import { money, PrizeList } from "@/components/PrizeList";
-import { CountPill, Stars } from "@/components/ui/Feedback";
+import { Badge, CountPill, Stars } from "@/components/ui/Feedback";
 import { Tabs } from "@/components/ui/Tabs";
 import { call, hid } from "@/lib/client";
 import { fmtDate, fmtRange } from "@/lib/format";
@@ -308,10 +308,10 @@ function PortfolioTab({ entries }: { entries: PortfolioEntry[] }) {
                 {p.tagline && <p className="text-sm text-muted">{p.tagline}</p>}
               </div>
               {t.result && (
-                <span className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ${t.result === "won" || t.result === "runner_up" ? "bg-ok-soft text-ok" : "bg-surface-2 text-muted"}`}>
+                <Badge tone={t.result === "won" || t.result === "runner_up" ? "ok" : "neutral"} className="shrink-0">
                   {t.result === "won" && <Trophy aria-hidden className="size-3" />}
                   {RESULT_LABELS[t.result]}
-                </span>
+                </Badge>
               )}
             </div>
             <p className="text-xs text-muted">

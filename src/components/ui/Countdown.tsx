@@ -2,7 +2,10 @@
 
 import { Clock } from "lucide-react";
 import { useSyncExternalStore } from "react";
+import { urgency } from "@/lib/format";
 import { SOFT, type Tone } from "./tone";
+
+const URGENCY_TONE: Record<ReturnType<typeof urgency>, Tone> = { past: "danger", soon: "danger", near: "warn", later: "neutral" };
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -28,13 +31,13 @@ function parts(ms: number) {
   return `${m}m ${String(s).padStart(2, "0")}s`;
 }
 
-/** Time left to a deadline. Neutral beyond 3 days, warn within 3, danger and counting seconds inside 24 h. */
+/** Time left to a deadline, on the app's one urgency scale: danger inside 48 h (seconds in the last hour), warn inside 7 days. */
 export function Countdown({ to, label }: { to: string; label?: string }) {
   const now = useNow();
   const target = new Date(to).getTime();
   const left = now == null ? null : target - now;
 
-  const tone: Tone = left == null ? "neutral" : left < DAY ? "danger" : left < 3 * DAY ? "warn" : "neutral";
+  const tone: Tone = now == null ? "neutral" : URGENCY_TONE[urgency(to, now)];
   const text = left == null ? "…" : left <= 0 ? "Overdue" : parts(left);
   return (
     <time

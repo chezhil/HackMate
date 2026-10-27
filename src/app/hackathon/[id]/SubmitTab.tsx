@@ -3,7 +3,7 @@
 import { FileText, Video, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CopyButton } from "@/components/CopyButton";
-import { CheckRow, CheckSummary } from "@/components/ui/Feedback";
+import { Badge, CheckRow, CheckSummary } from "@/components/ui/Feedback";
 import { useConfirm } from "@/components/ui/Confirm";
 import { ProjectCard } from "@/components/ProjectCard";
 import { call, hid } from "@/lib/client";
@@ -78,9 +78,9 @@ export function SubmitTab({ id }: { id: string }) {
               <h2 className="font-semibold">Submission checklist</h2>
               <p className="text-sm text-muted">Built from this hackathon&apos;s rules. Attach links and files as proof.</p>
             </div>
-            <span className={`rounded-lg px-2.5 py-1 text-sm font-medium ${ready === required.length ? "bg-ok-soft text-ok" : "bg-surface-2"}`}>
+            <Badge tone={ready === required.length ? "ok" : "neutral"} className="shrink-0 tabular-nums">
               {ready}/{required.length} required done
-            </span>
+            </Badge>
           </div>
           {error && <p className="text-sm text-danger">{error}</p>}
           <ul className="divide-y divide-border">
@@ -169,7 +169,7 @@ function ChecklistRow({
           <div className={done ? "text-muted line-through" : "font-medium"}>
             {item.label}
             {!item.required && <span className="ml-1.5 text-xs text-muted no-underline">(optional)</span>}
-            {item.origin === "rules" && <span className="ml-1.5 rounded-md bg-accent-soft px-1 text-2xs text-accent no-underline">from rules</span>}
+            {item.origin === "rules" && <Badge tone="accent" className="ml-1.5 no-underline">from rules</Badge>}
           </div>
           {item.detail && <div className="text-xs text-muted">{item.detail}</div>}
           {worst && <div className={`text-xs ${worst.status === "fail" ? "text-danger" : "text-warn"}`}>{worst.detail}</div>}

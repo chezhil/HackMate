@@ -8,18 +8,20 @@ import { hid } from "@/lib/client";
 import { DeadlineEditor } from "@/components/DeadlineEditor";
 import { useHackmate } from "@/components/HackmateProvider";
 import { useConfirm } from "@/components/ui/Confirm";
-import { EmptyState } from "@/components/ui/Feedback";
+import { Countdown } from "@/components/ui/Countdown";
+import { Badge, EmptyState } from "@/components/ui/Feedback";
+import type { Tone } from "@/components/ui/tone";
 import type { Clash } from "@/lib/clashes";
-import { fmtDate, fmtRange, place, relative } from "@/lib/format";
+import { fmtDate, fmtRange, place } from "@/lib/format";
 import type { ResultKind, TrackedWithHackathon, TrackStatus } from "@/lib/types";
 import { RESULT_LABELS, SOURCE_LABELS, STATUSES } from "@/lib/types";
 
-const RESULT_STYLE: Record<ResultKind, string> = {
-  won: "bg-ok-soft text-ok",
-  runner_up: "bg-ok-soft text-ok",
-  special_mention: "bg-accent-soft text-accent",
-  participated: "bg-surface-2 text-muted",
-  not_selected: "bg-surface-2 text-muted",
+const RESULT_TONE: Record<ResultKind, Tone> = {
+  won: "ok",
+  runner_up: "ok",
+  special_mention: "accent",
+  participated: "neutral",
+  not_selected: "neutral",
 };
 
 function clashesFor(id: string, clashes: Clash[]) {
@@ -99,7 +101,7 @@ function TrackerCard({ t, clashes }: { t: TrackedWithHackathon; clashes: Clash[]
           {h.title}
         </Link>
         {clashes.length > 0 && (
-          <span className="shrink-0 rounded-md bg-danger-soft px-1.5 py-1 text-danger" title="Has clashes"><TriangleAlert aria-hidden className="size-3" /><span className="sr-only">Has clashes</span></span>
+          <Badge tone="danger" className="shrink-0 py-1"><TriangleAlert aria-hidden className="size-3" /><span className="sr-only">Has clashes</span></Badge>
         )}
       </div>
       <div className="text-xs text-muted">
@@ -107,8 +109,8 @@ function TrackerCard({ t, clashes }: { t: TrackedWithHackathon; clashes: Clash[]
       </div>
 
       {next && (
-        <div className="rounded-md bg-surface-2 px-2 py-1 text-xs">
-          <span className="text-muted">Next:</span> {next.label} <span className="font-medium">{relative(next.dueAt, now)}</span>
+        <div className="flex flex-wrap items-center gap-1.5 rounded-md bg-surface-2 px-2 py-1 text-xs">
+          <span className="text-muted">Next:</span> {next.label} <Countdown to={next.dueAt} />
         </div>
       )}
 
@@ -220,7 +222,7 @@ function StageActions({
     case "results":
       return (
         <div className="space-y-1">
-          {t.result && <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ${RESULT_STYLE[t.result]}`}>{t.result === "won" && <Trophy aria-hidden className="size-3" />}{RESULT_LABELS[t.result]}</span>}
+          {t.result && <Badge tone={RESULT_TONE[t.result]}>{t.result === "won" && <Trophy aria-hidden className="size-3" />}{RESULT_LABELS[t.result]}</Badge>}
           {t.resultNotes && <p className="text-xs text-muted">{t.resultNotes}</p>}
           {t.submissionUrl && (
             <a href={t.submissionUrl} target="_blank" rel="noreferrer" className="block truncate text-xs text-accent hover:underline">

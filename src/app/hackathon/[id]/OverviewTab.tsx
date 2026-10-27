@@ -2,6 +2,7 @@
 
 import { Info, OctagonX, TriangleAlert } from "lucide-react";
 import { fmtDateTime, relative } from "@/lib/format";
+import { Badge } from "@/components/ui/Feedback";
 import type { DetailsPayload } from "./HackathonView";
 
 const LEVEL_STYLE = {
@@ -91,7 +92,7 @@ export function OverviewTab({ data, onRefresh }: { data: DetailsPayload; onRefre
               {info.judgingCriteria.map((c, i) => (
                 <li key={i} className="text-sm">
                   <span className="font-medium">{c.name}</span>
-                  {c.weight && <span className="ml-2 rounded-md bg-accent-soft px-1.5 text-xs text-accent">{c.weight}</span>}
+                  {c.weight && <Badge tone="accent" className="ml-2">{c.weight}</Badge>}
                   {c.description && <p className="text-muted">{c.description}</p>}
                 </li>
               ))}

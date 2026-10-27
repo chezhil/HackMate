@@ -2,17 +2,13 @@
 
 import { X } from "lucide-react";
 import { useState } from "react";
-import { fmtDateTime, relative, toLocalInput, urgency } from "@/lib/format";
+import { fmtDateTime, toLocalInput } from "@/lib/format";
 import type { DeadlineKind, TrackedWithHackathon } from "@/lib/types";
 import { DEADLINE_LABELS } from "@/lib/types";
 import { useHackmate } from "./HackmateProvider";
+import { Countdown } from "./ui/Countdown";
 
-const URGENCY_STYLE = {
-  past: "text-muted line-through",
-  soon: "text-danger font-medium",
-  near: "text-warn",
-  later: "text-muted",
-};
+
 
 /** Deadlines for one tracked hackathon: tick off, move, delete, or add your own. */
 export function DeadlineEditor({ t }: { t: TrackedWithHackathon }) {
@@ -48,13 +44,12 @@ export function DeadlineEditor({ t }: { t: TrackedWithHackathon }) {
                 }}
               />
             ) : (
-              <button
-                className={`block text-left hover:underline ${d.done ? "text-muted" : URGENCY_STYLE[urgency(d.dueAt)]}`}
-                onClick={() => setEditing(d.id)}
-                title="Change date"
-              >
-                {fmtDateTime(d.dueAt)} · {relative(d.dueAt)}
-              </button>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button className="text-left text-muted hover:text-text hover:underline" onClick={() => setEditing(d.id)} title="Change date">
+                  {fmtDateTime(d.dueAt)}
+                </button>
+                {!d.done && <Countdown to={d.dueAt} />}
+              </div>
             )}
           </div>
           <button

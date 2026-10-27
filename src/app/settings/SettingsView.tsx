@@ -3,6 +3,7 @@
 import { Check } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { CalendarSync } from "@/components/CalendarSync";
+import { Badge } from "@/components/ui/Feedback";
 import { fmtDateTime } from "@/lib/format";
 import type { Settings } from "@/lib/types";
 import { LEAD_OPTIONS } from "@/lib/types";
@@ -153,9 +154,7 @@ export function SettingsView() {
               <li key={e.id} className="py-2 text-sm">
                 <details>
                   <summary className="flex cursor-pointer flex-wrap items-center gap-2">
-                    <span className={`rounded-md px-1.5 text-xs ${e.delivered ? "bg-ok-soft text-ok" : "bg-surface-2 text-muted"}`}>
-                      {e.delivered ? "sent" : "logged"}
-                    </span>
+                    <Badge tone={e.delivered ? "ok" : "neutral"}>{e.delivered ? "sent" : "logged"}</Badge>
                     <span className="font-medium">{e.subject}</span>
                     <span className="text-xs text-muted">→ {e.toAddr} · {fmtDateTime(e.createdAt)}</span>
                   </summary>

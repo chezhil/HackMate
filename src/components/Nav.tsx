@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useHackmate } from "./HackmateProvider";
+import { CountPill } from "./ui/Feedback";
 
 const LINKS = [
   { href: "/", label: "Discover" },
@@ -34,12 +35,10 @@ export function Nav() {
               >
                 {l.label}
                 {l.href === "/tracker" && active > 0 && (
-                  <span className="rounded-full bg-accent-soft px-1.5 text-xs text-accent">{active}</span>
+                  <CountPill label={`${active} active`}>{active}</CountPill>
                 )}
                 {l.href === "/calendar" && clashes.length > 0 && (
-                  <span className="rounded-full bg-danger-soft px-1.5 text-xs text-danger" title="Clashes">
-                    {clashes.length}
-                  </span>
+                  <CountPill tone="danger" label={`${clashes.length} clash${clashes.length > 1 ? "es" : ""}`}>{clashes.length}</CountPill>
                 )}
               </Link>
             );

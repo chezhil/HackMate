@@ -6,8 +6,8 @@ export function Spinner({ className = "" }: { className?: string }) {
   return <LoaderCircle aria-hidden className={`size-4 animate-spin ${className}`} />;
 }
 
-export function Badge({ tone = "neutral", children, className = "" }: { tone?: Tone; children: ReactNode; className?: string }) {
-  return <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium ${SOFT[tone]} ${className}`}>{children}</span>;
+export function Badge({ tone = "neutral", children, className = "", title }: { tone?: Tone; children: ReactNode; className?: string; title?: string }) {
+  return <span title={title} className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium ${SOFT[tone]} ${className}`}>{children}</span>;
 }
 
 /** Small count next to a nav link or column title. */
