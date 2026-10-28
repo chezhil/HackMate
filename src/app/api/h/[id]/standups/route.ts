@@ -1,5 +1,5 @@
 import { withAccount } from "@/lib/auth";
-import { badRequest, readJson, text, validFields } from "@/lib/validation";
+import { badRequest, readJson, text, validFields, decodeParam, readForm } from "@/lib/validation";
 import { getHackathon } from "@/lib/repo";
 import { listStandups, MAX_AUDIO_BYTES, saveStandup, saveTextStandup, transcribeStandup } from "@/lib/standups";
 import { connection } from "next/server";
@@ -8,7 +8,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 async function get(_req: Request, { params }: Ctx) {
   await connection();
-  return Response.json({ standups: await listStandups(decodeURIComponent((await params).id)) });
+  return Response.json({ standups: await listStandups(decodeParam((await params).id)) });
 }
 
 /**
@@ -16,7 +16,7 @@ async function get(_req: Request, { params }: Ctx) {
  * Written: JSON { author?, note?, done?, next?, blockers? } — typed lists are kept as is, a bare note is summarised.
  */
 async function post(req: Request, { params }: Ctx) {
-  const id = decodeURIComponent((await params).id);
+  const id = decodeParam((await params).id);
   if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   if (req.headers.get("content-type")?.includes("application/json")) {
     const raw = await readJson(req);
@@ -32,7 +32,8 @@ async function post(req: Request, { params }: Ctx) {
     await saveTextStandup(id, b.author?.trim() || null, note, parts);
     return Response.json({ standups: await listStandups(id) });
   }
-  const form = await req.formData();
+  const form = await readForm(req);
+  if (form instanceof Response) return form;
   const audio = form.get("audio");
   if (!(audio instanceof Blob) || audio.size === 0) return Response.json({ error: "No audio" }, { status: 400 });
   if (audio.size > MAX_AUDIO_BYTES) return Response.json({ error: "Voice note is too long (max ~15 MB)" }, { status: 413 });

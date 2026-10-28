@@ -1,7 +1,7 @@
 import { withAccount } from "@/lib/auth";
 import { getHackathon } from "@/lib/repo";
-import { badRequest, readJson, text, validFields } from "@/lib/validation";
-import { AiUnavailableError } from "@/lib/ai";
+import { badRequest, readJson, text, validFields, decodeParam } from "@/lib/validation";
+import { aiFailure } from "@/lib/ai";
 import { draftRetro, getRetro, listCertificates, listPrizes, saveRetro } from "@/lib/wrapup";
 import type { Retro } from "@/lib/types";
 import { connection } from "next/server";
@@ -10,13 +10,13 @@ type Ctx = { params: Promise<{ id: string }> };
 
 async function get(_req: Request, { params }: Ctx) {
   await connection();
-  const id = decodeURIComponent((await params).id);
+  const id = decodeParam((await params).id);
   return Response.json({ retro: await getRetro(id), prizes: await listPrizes(id), certificates: await listCertificates(id) });
 }
 
 /** Save retro notes. */
 async function put(req: Request, { params }: Ctx) {
-  const id = decodeURIComponent((await params).id);
+  const id = decodeParam((await params).id);
   if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   const body = await readJson(req);
   if (body instanceof Response) return body;
@@ -28,9 +28,9 @@ async function put(req: Request, { params }: Ctx) {
 /** AI draft of the retro from your activity (not saved until you save it). */
 async function post(_req: Request, { params }: Ctx) {
   try {
-    return Response.json({ draft: await draftRetro(decodeURIComponent((await params).id)) });
+    return Response.json({ draft: await draftRetro(decodeParam((await params).id)) });
   } catch (e) {
-    return Response.json({ error: (e as Error).message }, { status: e instanceof AiUnavailableError ? 503 : 500 });
+    return aiFailure(e);
   }
 }
 

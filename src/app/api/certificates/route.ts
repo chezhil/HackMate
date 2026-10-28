@@ -1,3 +1,4 @@
+import { readForm } from "@/lib/validation";
 import { withAccount } from "@/lib/auth";
 import { fileFromForm, saveFile, UploadError } from "@/lib/files";
 import { getHackathon } from "@/lib/repo";
@@ -11,7 +12,8 @@ async function get() {
 
 /** Multipart: hackathonId, title, status ("pending" | "received"), url?, file? */
 async function post(req: Request) {
-  const form = await req.formData();
+  const form = await readForm(req);
+  if (form instanceof Response) return form;
   const hackathonId = String(form.get("hackathonId") ?? "");
   if (!await getHackathon(hackathonId)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   try {

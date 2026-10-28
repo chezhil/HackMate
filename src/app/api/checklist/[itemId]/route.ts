@@ -2,7 +2,7 @@ import { withAccount } from "@/lib/auth";
 import { fileFromForm, saveFile, UploadError } from "@/lib/files";
 import { deleteChecklistItem, itemHackathon, listChecklist, updateChecklistItem } from "@/lib/submission";
 import type { ChecklistItem } from "@/lib/types";
-import { badRequest, boolean, nullableText, readJson, text, validFields } from "@/lib/validation";
+import { badRequest, boolean, nullableText, readJson, text, validFields, readForm } from "@/lib/validation";
 
 type Ctx = { params: Promise<{ itemId: string }> };
 
@@ -32,7 +32,8 @@ async function post(req: Request, { params }: Ctx) {
   const { itemId, hackathonId } = await itemOr404(params);
   if (!hackathonId) return Response.json({ error: "Not found" }, { status: 404 });
   try {
-    const form = await req.formData();
+    const form = await readForm(req);
+    if (form instanceof Response) return form;
     const file = await fileFromForm(form);
     if (!file) return Response.json({ error: "No file" }, { status: 400 });
     const item = (await listChecklist(hackathonId)).find((i) => i.id === itemId)!;

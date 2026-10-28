@@ -1,13 +1,13 @@
 import { withAccount } from "@/lib/auth";
 import { getHackathon } from "@/lib/repo";
-import { badRequest, readJson, text, validFields } from "@/lib/validation";
+import { badRequest, readJson, text, validFields, decodeParam } from "@/lib/validation";
 import { draftTeammatePost, type PostInput } from "@/lib/team";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 /** Draft a "looking for teammates" post. Body: { lookingFor, aboutMe, idea } */
 async function post(req: Request, { params }: Ctx) {
-  const id = decodeURIComponent((await params).id);
+  const id = decodeParam((await params).id);
   if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   const raw = await readJson(req);
   if (raw instanceof Response) return raw;

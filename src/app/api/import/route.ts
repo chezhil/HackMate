@@ -27,8 +27,8 @@ async function post(req: Request) {
     }
     return badRequest("Unknown action");
   } catch (e) {
-    const status = e instanceof ImportError ? 400 : 500;
-    return Response.json({ error: (e as Error).message }, { status });
+    if (e instanceof ImportError) return Response.json({ error: e.message }, { status: 400 });
+    throw e;
   }
 }
 

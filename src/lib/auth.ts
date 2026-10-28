@@ -201,10 +201,25 @@ export function withAccount<A extends unknown[], R>(handler: (...args: A) => Pro
       if (req?.method && req.method !== "GET" && !opts.open) {
         return Response.json({ error: "Sign in to save your own tracker, ideas and results.", signIn: true }, { status: 401 });
       }
-      return withClient(ip, () => runAs(ANONYMOUS, () => handler(...args)));
+      return withClient(ip, () => runAs(ANONYMOUS, () => guarded(handler, args)));
     }
-    return withClient(ip, () => runAs(userId, () => handler(...args)));
+    return withClient(ip, () => runAs(userId, () => guarded(handler, args)));
   };
+}
+
+/**
+ * The last line of defence for a route: "Unknown hackathon" / "… not found" become a 404, and anything else
+ * unexpected a plain 500 that doesn't leak the database's or a provider's error text.
+ */
+async function guarded<A extends unknown[], R>(handler: (...args: A) => Promise<R>, args: A): Promise<R | Response> {
+  try {
+    return await handler(...args);
+  } catch (e) {
+    const message = (e as Error)?.message ?? "";
+    if (/^Unknown hackathon$|not found$/i.test(message)) return Response.json({ error: message }, { status: 404 });
+    console.error("[route]", e);
+    return Response.json({ error: "Something went wrong on our side. Try again in a moment." }, { status: 500 });
+  }
 }
 
 /**

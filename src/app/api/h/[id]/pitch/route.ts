@@ -1,7 +1,7 @@
 import { withAccount } from "@/lib/auth";
 import { getHackathon } from "@/lib/repo";
-import { badRequest, readJson, text, validFields } from "@/lib/validation";
-import { AiUnavailableError } from "@/lib/ai";
+import { badRequest, readJson, text, validFields, decodeParam } from "@/lib/validation";
+import { aiFailure } from "@/lib/ai";
 import { generatePitch, generateVideoScript, generateWriteup, listOutputs, roastDeck, videoLimitSec } from "@/lib/pitch";
 import type { Writeup } from "@/lib/types";
 import { connection } from "next/server";
@@ -10,7 +10,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 async function get(_req: Request, { params }: Ctx) {
   await connection();
-  const id = decodeURIComponent((await params).id);
+  const id = decodeParam((await params).id);
   if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   return Response.json({ outputs: await listOutputs(id), videoLimitSec: await videoLimitSec(id) });
 }
@@ -20,7 +20,7 @@ async function get(_req: Request, { params }: Ctx) {
  * | { kind: "writeup", platform, extra }
  */
 async function post(req: Request, { params }: Ctx) {
-  const id = decodeURIComponent((await params).id);
+  const id = decodeParam((await params).id);
   if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   const raw = await readJson(req);
   if (raw instanceof Response) return raw;
@@ -39,7 +39,7 @@ async function post(req: Request, { params }: Ctx) {
     } else return Response.json({ error: "Unknown kind" }, { status: 400 });
     return Response.json({ output, outputs: await listOutputs(id) });
   } catch (e) {
-    return Response.json({ error: (e as Error).message }, { status: e instanceof AiUnavailableError ? 503 : 500 });
+    return aiFailure(e);
   }
 }
 

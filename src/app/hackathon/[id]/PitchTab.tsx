@@ -34,7 +34,7 @@ export function PitchTab({ id, section, onOpenProject }: { id: string; section: 
     call<{ outputs: AiOutput[]; videoLimitSec: number | null }>(`/api/h/${hid(id)}/pitch`).then((d) => {
       setOutputs(d.outputs);
       setVideoLimit(d.videoLimitSec);
-    });
+    }, (e: Error) => setError(e.message));
   }, [id]);
 
   const generate = async (body: Record<string, unknown>) => {
@@ -296,7 +296,7 @@ function QaSection({ id }: { id: string }) {
     call<{ turns: QaTurn[]; rounds: number }>(`/api/h/${hid(id)}/qa`).then((d) => {
       setTurns(d.turns);
       setRounds(d.rounds);
-    });
+    }, (e: Error) => setError(e.message));
   }, [id]);
 
   const post = async (body: Record<string, unknown>) => {

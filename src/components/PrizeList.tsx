@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useHackmate } from "./HackmateProvider";
 import { SOFT } from "./ui/tone";
 import { useConfirm } from "./ui/Confirm";
+import { useToast } from "./ui/Toast";
 import { call, hid } from "@/lib/client";
 import { fmtDate, formatMoney } from "@/lib/format";
 import type { Prize, PrizeStatus } from "@/lib/types";
@@ -37,6 +38,8 @@ export function PrizeList({
   hackathonOptions?: { id: string; title: string }[];
 }) {
   const confirm = useConfirm();
+  const toast = useToast();
+  const failed = (e: unknown) => toast({ message: `Couldn't save the prize: ${(e as Error).message}`, tone: "error" });
   const [form, setForm] = useState({ ...BLANK, hackathonId: hackathonId ?? "" });
   const [adding, setAdding] = useState(false);
   const { now } = useHackmate();
@@ -44,17 +47,21 @@ export function PrizeList({
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
-    const d = await call<{ prizes: Prize[] }>("/api/prizes", "POST", {
-      ...form,
-      amount: form.amount === "" ? null : Number(form.amount),
-      expectedBy: form.expectedBy ? new Date(form.expectedBy).toISOString() : null,
-    });
-    onChange(d.prizes);
-    setForm({ ...BLANK, hackathonId: hackathonId ?? "" });
-    setAdding(false);
+    try {
+      const d = await call<{ prizes: Prize[] }>("/api/prizes", "POST", {
+        ...form,
+        amount: form.amount === "" ? null : Number(form.amount),
+        expectedBy: form.expectedBy ? new Date(form.expectedBy).toISOString() : null,
+      });
+      onChange(d.prizes);
+      setForm({ ...BLANK, hackathonId: hackathonId ?? "" });
+      setAdding(false);
+    } catch (err) {
+      failed(err); // keep the form open with what you typed
+    }
   };
 
-  const patch = (p: Prize, body: Partial<Prize>) => call<{ prizes: Prize[] }>(`/api/prizes/${p.id}`, "PATCH", body).then((d) => onChange(d.prizes));
+  const patch = (p: Prize, body: Partial<Prize>) => call<{ prizes: Prize[] }>(`/api/prizes/${p.id}`, "PATCH", body).then((d) => onChange(d.prizes), failed);
 
   return (
     <div className="space-y-2">
@@ -95,7 +102,7 @@ export function PrizeList({
                   <button
                     className="text-muted opacity-0 hover:text-danger group-hover:opacity-100 focus-visible:opacity-100"
                     title="Delete"
-                    onClick={async () => (await confirm({ title: "Delete this prize?", body: `${p.title} is removed from your prize tracker and totals.`, confirmLabel: "Delete" })) && call<{ prizes: Prize[] }>(`/api/prizes/${p.id}`, "DELETE").then((d) => onChange(d.prizes))}
+                    onClick={async () => (await confirm({ title: "Delete this prize?", body: `${p.title} is removed from your prize tracker and totals.`, confirmLabel: "Delete" })) && call<{ prizes: Prize[] }>(`/api/prizes/${p.id}`, "DELETE").then((d) => onChange(d.prizes), failed)}
                   >
                     <X aria-hidden className="size-3.5" /><span className="sr-only">Delete prize</span>
                   </button>

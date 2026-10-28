@@ -47,12 +47,20 @@ const usd = (n: number) => `$${n.toLocaleString()}`;
 export function ProfileView() {
   const [data, setData] = useState<ProfileData | null>(null);
   const [tab, setTab] = useState<Tab>("stats");
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const load = () => call<ProfileData>("/api/profile").then(setData);
+  const load = () => call<ProfileData>("/api/profile").then(setData, (e: Error) => setLoadError(e.message));
   useEffect(() => {
-    void call<ProfileData>("/api/profile").then(setData);
+    call<ProfileData>("/api/profile").then(setData, (e: Error) => setLoadError(e.message));
   }, []);
 
+  if (!data && loadError) {
+    return (
+      <Banner tone="danger" action={<button className="btn btn-sm" onClick={() => { setLoadError(null); void load(); }}>Try again</button>}>
+        Couldn&apos;t load your profile: {loadError}
+      </Banner>
+    );
+  }
   if (!data) return <div className="h-64 animate-pulse rounded-xl bg-surface-2" />;
 
   return (

@@ -3,17 +3,17 @@ import { addTeammate, listTeam } from "@/lib/team";
 import type { Teammate } from "@/lib/types";
 import { connection } from "next/server";
 import { getHackathon } from "@/lib/repo";
-import { badRequest, boolean, nullableText, readJson, text, validFields } from "@/lib/validation";
+import { badRequest, boolean, nullableText, readJson, text, validFields, decodeParam } from "@/lib/validation";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 async function get(_req: Request, { params }: Ctx) {
   await connection();
-  return Response.json({ team: await listTeam(decodeURIComponent((await params).id)) });
+  return Response.json({ team: await listTeam(decodeParam((await params).id)) });
 }
 
 async function post(req: Request, { params }: Ctx) {
-  const id = decodeURIComponent((await params).id);
+  const id = decodeParam((await params).id);
   if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   const raw = await readJson(req);
   if (raw instanceof Response) return raw;

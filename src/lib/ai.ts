@@ -70,6 +70,15 @@ export interface AiResult {
 
 export class AiUnavailableError extends Error {}
 
+/**
+ * For a route's catch: the AI being unavailable or over its allowance is a 503 with its message; anything else
+ * is rethrown for the route wrapper (a 404 for "not found", otherwise a generic 500).
+ */
+export function aiFailure(e: unknown): Response {
+  if (e instanceof AiUnavailableError) return Response.json({ error: e.message }, { status: 503 });
+  throw e;
+}
+
 // ---------- per-account limits ----------
 //
 // Groq and Gemini free tiers are shared by everyone on this HackMate, so each account gets an allowance of real

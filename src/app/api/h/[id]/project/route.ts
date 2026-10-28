@@ -1,6 +1,6 @@
 import { withAccount } from "@/lib/auth";
 import { getHackathon } from "@/lib/repo";
-import { badRequest, isHttpUrl, readJson, text, validFields } from "@/lib/validation";
+import { badRequest, isHttpUrl, readJson, text, validFields, decodeParam } from "@/lib/validation";
 import { getProject, saveProject } from "@/lib/project";
 import type { Project } from "@/lib/types";
 import { connection } from "next/server";
@@ -9,13 +9,13 @@ type Ctx = { params: Promise<{ id: string }> };
 
 async function get(_req: Request, { params }: Ctx) {
   await connection();
-  const id = decodeURIComponent((await params).id);
+  const id = decodeParam((await params).id);
   if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   return Response.json({ project: await getProject(id) });
 }
 
 async function put(req: Request, { params }: Ctx) {
-  const id = decodeURIComponent((await params).id);
+  const id = decodeParam((await params).id);
   if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   const body = await readJson(req);
   if (body instanceof Response) return body;

@@ -35,8 +35,8 @@ export function WrapUpTab({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    call<{ prizes: Prize[] }>("/api/prizes").then((d) => setPrizes(d.prizes));
-    call<CertData>("/api/certificates").then(setCerts);
+    call<{ prizes: Prize[] }>("/api/prizes").then((d) => setPrizes(d.prizes), (e: Error) => setError(e.message));
+    call<CertData>("/api/certificates").then(setCerts, (e: Error) => setError(e.message));
   }, [id, t?.status]);
 
   useEffect(() => {
@@ -44,6 +44,12 @@ export function WrapUpTab({ id }: { id: string }) {
       const n = { rating: r.rating, wentWell: r.wentWell, improve: r.improve, lessons: r.lessons };
       setSaved(n);
       setNotes(n);
+    }, (e: Error) => {
+      // Still let you write notes; saving will say if it fails again.
+      const blank = { rating: null, wentWell: "", improve: "", lessons: "" };
+      setSaved(blank);
+      setNotes(blank);
+      setError(e.message);
     });
   }, [id]);
 

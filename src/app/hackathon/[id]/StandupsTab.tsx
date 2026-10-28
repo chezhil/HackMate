@@ -119,7 +119,7 @@ export function StandupsTab({ id }: { id: string }) {
         ? { title: "Delete this standup?", body: "The note and its summary are deleted.", confirmLabel: "Delete" }
         : { title: "Delete this voice note?", body: "The recording and its transcript are deleted.", confirmLabel: "Delete" },
     )) &&
-    call<{ standups: Standup[] }>(`/api/standups/${s.id}`, "DELETE").then((d) => setStandups(d.standups));
+    call<{ standups: Standup[] }>(`/api/standups/${s.id}`, "DELETE").then((d) => setStandups(d.standups), (e: Error) => setError(e.message));
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">

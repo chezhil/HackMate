@@ -41,3 +41,21 @@ export const prizeRules = {
   expectedBy: (v: unknown) => v === null || v === "" || isDate(v),
   paidAt: (v: unknown) => v === null || isDate(v), notes: nullableText,
 };
+
+/** A route segment as text; a malformed %-escape is kept as typed instead of crashing. */
+export function decodeParam(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+/** The request's multipart form, or a 400 when it isn't one. */
+export async function readForm(req: Request): Promise<FormData | Response> {
+  try {
+    return await req.formData();
+  } catch {
+    return badRequest("Expected a file upload (multipart form)");
+  }
+}

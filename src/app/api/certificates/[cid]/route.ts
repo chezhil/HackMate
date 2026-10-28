@@ -1,6 +1,6 @@
 import { withAccount } from "@/lib/auth";
 import { fileFromForm, saveFile, UploadError } from "@/lib/files";
-import { badRequest, readJson, text, optionalUrl, validFields } from "@/lib/validation";
+import { badRequest, readJson, text, optionalUrl, validFields, readForm } from "@/lib/validation";
 import { certificateHackathon, deleteCertificate, listCertificates, missingCertificates, updateCertificate } from "@/lib/wrapup";
 
 type Ctx = { params: Promise<{ cid: string }> };
@@ -13,7 +13,9 @@ async function patch(req: Request, { params }: Ctx) {
   if (!await certificateHackathon(cid)) return Response.json({ error: "Not found" }, { status: 404 });
   if (req.headers.get("content-type")?.includes("multipart/form-data")) {
     try {
-      const file = await fileFromForm(await req.formData());
+      const form = await readForm(req);
+      if (form instanceof Response) return form;
+      const file = await fileFromForm(form);
       if (file) await updateCertificate(cid, { file: await saveFile(file.data, file.mime), mime: file.mime });
     } catch (e) { return Response.json({ error: (e as Error).message }, { status: e instanceof UploadError ? e.status : 400 }); }
   } else {

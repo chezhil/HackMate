@@ -309,7 +309,7 @@ function WriteupPanel({ id }: { id: string }) {
       const latest: Record<string, string> = {};
       for (const o of d.outputs.filter((x) => x.kind === "writeup").reverse()) latest[o.content.platform] = o.content.text;
       setDrafts(latest);
-    });
+    }, (e: Error) => setError(e.message));
   }, [id]);
 
   const write = async () => {

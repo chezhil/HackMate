@@ -1,3 +1,4 @@
+import { decodeParam } from "@/lib/validation";
 import { background } from "@/lib/request";
 import { withAccount } from "@/lib/auth";
 import { aiStatus } from "@/lib/ai";
@@ -26,7 +27,7 @@ async function payload(id: string) {
  */
 async function get(_req: Request, { params }: Ctx) {
   await connection();
-  const id = decodeURIComponent((await params).id);
+  const id = decodeParam((await params).id);
   if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   if (!(await getDetails(id)) && !isBuilding(id)) background("details", () => buildDetails(id));
   return Response.json(await payload(id));
@@ -34,7 +35,7 @@ async function get(_req: Request, { params }: Ctx) {
 
 /** Re-read the page and re-run extraction (in the background; poll GET). */
 async function post(_req: Request, { params }: Ctx) {
-  const id = decodeURIComponent((await params).id);
+  const id = decodeParam((await params).id);
   if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   background("details", () => buildDetails(id));
   return Response.json(await payload(id));

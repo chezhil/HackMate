@@ -559,7 +559,9 @@ async function begin(conn: Conn, userId: number, owner: boolean) {
   await conn.exec(`BEGIN; SET LOCAL search_path = ${SEARCH_PATH}; ${role}SELECT set_config('app.uid', '${Math.trunc(userId)}', true);`);
 }
 
-async function exec(sql: string, params: unknown[], owner = false): Promise<Result> {
+async function exec(sql: string, rawParams: unknown[], owner = false): Promise<Result> {
+  // A route given /prizes/abc passes NaN: let it match nothing (a 404) instead of failing in Postgres.
+  const params = rawParams.map((p) => (typeof p === "number" && !Number.isFinite(p) ? null : p));
   const open = inTx.getStore();
   const userId = uid();
   if (open && open.uid === userId && open.owner === owner) return open.conn.query(toPg(sql), params);

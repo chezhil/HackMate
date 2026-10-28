@@ -1,11 +1,11 @@
 import { withAccount } from "@/lib/auth";
 import { listTracked, untrackHackathon, updateTracked, type TrackedPatch } from "@/lib/repo";
-import { badRequest, isResultKind, isTrackStatus, nullableText, optionalUrl, readJson, validFields } from "@/lib/validation";
+import { badRequest, isResultKind, isTrackStatus, nullableText, optionalUrl, readJson, validFields, decodeParam } from "@/lib/validation";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 async function patch(req: Request, { params }: Ctx) {
-  const id = decodeURIComponent((await params).id);
+  const id = decodeParam((await params).id);
   const body = await readJson(req);
   if (body instanceof Response) return body;
   if (!validFields(body, {
@@ -26,7 +26,7 @@ async function patch(req: Request, { params }: Ctx) {
 }
 
 async function remove(_req: Request, { params }: Ctx) {
-  await untrackHackathon(decodeURIComponent((await params).id));
+  await untrackHackathon(decodeParam((await params).id));
   return Response.json({ tracked: await listTracked() });
 }
 

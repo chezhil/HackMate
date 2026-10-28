@@ -1,6 +1,6 @@
 import { withAccount } from "@/lib/auth";
 import { badRequest, readJson } from "@/lib/validation";
-import { AiUnavailableError } from "@/lib/ai";
+import { aiFailure } from "@/lib/ai";
 import { critiqueIdea, deleteIdea, renameIdea } from "@/lib/planning";
 
 type Ctx = { params: Promise<{ ideaId: string }> };
@@ -16,7 +16,7 @@ async function post(req: Request, { params }: Ctx) {
   try {
     return Response.json({ idea: await critiqueIdea(ideaId, text.trim().slice(0, 6000)) });
   } catch (e) {
-    return Response.json({ error: (e as Error).message }, { status: e instanceof AiUnavailableError ? 503 : 500 });
+    return aiFailure(e);
   }
 }
 

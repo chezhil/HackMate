@@ -1,18 +1,17 @@
 import { withAccount } from "@/lib/auth";
 import { getHackathon } from "@/lib/repo";
-import { badRequest, readJson, text, validFields } from "@/lib/validation";
-import { AiUnavailableError } from "@/lib/ai";
+import { badRequest, readJson, text, validFields, decodeParam } from "@/lib/validation";
+import { aiFailure } from "@/lib/ai";
 import { createIdea, listIdeas, suggestIdeas } from "@/lib/planning";
 import { connection } from "next/server";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-const fail = (e: unknown) =>
-  Response.json({ error: (e as Error).message }, { status: e instanceof AiUnavailableError ? 503 : 500 });
+const fail = aiFailure;
 
 async function get(_req: Request, { params }: Ctx) {
   await connection();
-  return Response.json({ ideas: await listIdeas(decodeURIComponent((await params).id)) });
+  return Response.json({ ideas: await listIdeas(decodeParam((await params).id)) });
 }
 
 /**
@@ -20,7 +19,7 @@ async function get(_req: Request, { params }: Ctx) {
  * { action: "create", title, text } → save an idea you'll iterate on
  */
 async function post(req: Request, { params }: Ctx) {
-  const id = decodeURIComponent((await params).id);
+  const id = decodeParam((await params).id);
   if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   const raw = await readJson(req);
   if (raw instanceof Response) return raw;

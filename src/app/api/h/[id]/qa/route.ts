@@ -1,7 +1,7 @@
 import { withAccount } from "@/lib/auth";
 import { getHackathon } from "@/lib/repo";
-import { badRequest, readJson, text, validFields } from "@/lib/validation";
-import { AiUnavailableError } from "@/lib/ai";
+import { badRequest, readJson, text, validFields, decodeParam } from "@/lib/validation";
+import { aiFailure } from "@/lib/ai";
 import { answerQa, clearQa, listQa, QA_ROUNDS, startQa } from "@/lib/pitch";
 import { connection } from "next/server";
 
@@ -9,12 +9,12 @@ type Ctx = { params: Promise<{ id: string }> };
 
 async function get(_req: Request, { params }: Ctx) {
   await connection();
-  return Response.json({ turns: await listQa(decodeURIComponent((await params).id)), rounds: QA_ROUNDS });
+  return Response.json({ turns: await listQa(decodeParam((await params).id)), rounds: QA_ROUNDS });
 }
 
 /** { action: "start" } | { action: "answer", turnId, answer } | { action: "clear" } */
 async function post(req: Request, { params }: Ctx) {
-  const id = decodeURIComponent((await params).id);
+  const id = decodeParam((await params).id);
   if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   const raw = await readJson(req);
   if (raw instanceof Response) return raw;
@@ -32,7 +32,7 @@ async function post(req: Request, { params }: Ctx) {
     }
     return Response.json({ error: "Unknown action" }, { status: 400 });
   } catch (e) {
-    return Response.json({ error: (e as Error).message }, { status: e instanceof AiUnavailableError ? 503 : 500 });
+    return aiFailure(e);
   }
 }
 
