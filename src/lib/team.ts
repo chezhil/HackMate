@@ -6,36 +6,40 @@ import { fmtDate } from "./format";
 import { getHackathon } from "./repo";
 import type { Teammate } from "./types";
 
+type TeammateRow = Omit<Teammate, "confirmed"> & { confirmed: number };
+
 export async function listTeam(hackathonId: string): Promise<Teammate[]> {
-  return (
-    (await all("SELECT id, name, role, skills, contact, confirmed FROM teammates WHERE hackathon_id = ? ORDER BY id", hackathonId)) as unknown as (Omit<Teammate, "confirmed"> & { confirmed: number })[]
-  ).map((t) => ({ ...t, confirmed: Boolean(t.confirmed) }));
+  const rows = await all<TeammateRow>(
+    "SELECT id, name, role, skills, contact, confirmed FROM teammates WHERE hackathon_id = ? ORDER BY id",
+    hackathonId,
+  );
+  return rows.map((row) => ({ ...row, confirmed: Boolean(row.confirmed) }));
 }
 
 export async function addTeammate(hackathonId: string, t: Omit<Teammate, "id">) {
-  (await run("INSERT INTO teammates (hackathon_id, name, role, skills, contact, confirmed, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", hackathonId, t.name.trim(), t.role || null, t.skills || null, t.contact || null, t.confirmed ? 1 : 0, new Date().toISOString()));
+  await run("INSERT INTO teammates (hackathon_id, name, role, skills, contact, confirmed, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", hackathonId, t.name.trim(), t.role || null, t.skills || null, t.contact || null, t.confirmed ? 1 : 0, new Date().toISOString());
 }
 
 export async function updateTeammate(id: number, patch: Partial<Omit<Teammate, "id">>) {
   return withAccountLock(`team:updateTeammate:${id}`, async () => {
-    const cur = (await get("SELECT * FROM teammates WHERE id = ?", id)) as Record<string, unknown> | undefined;
+    const cur = await get<TeammateRow>("SELECT * FROM teammates WHERE id = ?", id);
     if (!cur) throw new Error("Teammate not found");
-    (await run("UPDATE teammates SET name = ?, role = ?, skills = ?, contact = ?, confirmed = ? WHERE id = ?", patch.name ?? (cur.name as string),
-        patch.role !== undefined ? patch.role : (cur.role as string | null),
-        patch.skills !== undefined ? patch.skills : (cur.skills as string | null),
-        patch.contact !== undefined ? patch.contact : (cur.contact as string | null),
-        patch.confirmed !== undefined ? (patch.confirmed ? 1 : 0) : (cur.confirmed as number),
-        id,));
+    await run("UPDATE teammates SET name = ?, role = ?, skills = ?, contact = ?, confirmed = ? WHERE id = ?", patch.name ?? cur.name,
+        patch.role !== undefined ? patch.role : cur.role,
+        patch.skills !== undefined ? patch.skills : cur.skills,
+        patch.contact !== undefined ? patch.contact : cur.contact,
+        patch.confirmed !== undefined ? (patch.confirmed ? 1 : 0) : cur.confirmed,
+        id);
   });
 }
 
 export async function removeTeammate(id: number) {
-  (await run("DELETE FROM teammates WHERE id = ?", id));
+  await run("DELETE FROM teammates WHERE id = ?", id);
 }
 
 export async function teamOf(id: number): Promise<string | null> {
-  const r = (await get("SELECT hackathon_id FROM teammates WHERE id = ?", id)) as { hackathon_id: string } | undefined;
-  return r?.hackathon_id ?? null;
+  const row = await get<{ hackathon_id: string }>("SELECT hackathon_id FROM teammates WHERE id = ?", id);
+  return row?.hackathon_id ?? null;
 }
 
 export interface PostInput {

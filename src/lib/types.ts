@@ -53,6 +53,44 @@ export interface Hackathon {
   aiPolicy?: AiPolicy | null;
 }
 
+/** What the import form shows for you to check and edit before anything is saved. */
+export interface ImportDraft {
+  /** The event's page, or "" for one added by hand without a link. */
+  url: string;
+  title: string;
+  tagline: string | null;
+  organizer: string | null;
+  mode: Mode;
+  city: string | null;
+  country: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  regEndsAt: string | null;
+  prizeText: string | null;
+  themes: string[];
+  teamMin: number | null;
+  teamMax: number | null;
+  image: string | null;
+  /** Rules, prizes, anything you know: added by hand, it's what Overview, Ask AI and the checklist read. */
+  description?: string | null;
+}
+
+export interface ImportPreview {
+  draft: ImportDraft;
+  /** Already in HackMate (from a feed or added before): open that instead of making a copy. */
+  existingId: string | null;
+  /** Why the page couldn't be read, when it couldn't. The form is still offered, mostly empty. */
+  warning: string | null;
+  /**
+   * Where the fields came from: the site's own event data ("listing", for sites whose pages are built in the
+   * browser, like Unstop and Hack2skill), the AI reading the page, only the page's title and image tags, or nothing.
+   * "manual" is used by the client when the form is filled in without reading a page.
+   */
+  readBy: "listing" | "ai" | "page" | "none" | "manual";
+  /** The site, when readBy is "listing". */
+  site?: string;
+}
+
 export type TrackStatus = "interested" | "registered" | "building" | "submitted" | "results";
 
 export const STATUSES: { key: TrackStatus; label: string }[] = [

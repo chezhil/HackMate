@@ -14,6 +14,7 @@ import type {
 import { DEADLINE_LABELS, STATUSES } from "./types";
 
 type Row = Record<string, unknown>;
+type GeocodeCandidate = { id: string; city: string; state: string | null; country: string | null };
 
 function toHackathon(r: Row): Hackathon {
   return {
@@ -113,46 +114,57 @@ export async function upsertHackathons(list: Hackathon[], seenAt: string) {
 /** Hackathons that haven't ended yet (or have no end date), plus anything being tracked. */
 export async function listHackathons(): Promise<Hackathon[]> {
   const cutoff = new Date(Date.now() - 24 * 3600_000).toISOString();
-  const list = (
-    (await all(// The full rules (when the AI has read them) win over the feed description for the AI policy.
-        `SELECT h.*, COALESCE(d.source_text, h.description) AS policy_text FROM hackathons h
-         LEFT JOIN hackathon_details d ON d.hackathon_id = h.id
-         WHERE h.ends_at IS NULL OR h.ends_at >= ? OR h.id IN (SELECT hackathon_id FROM tracked)
-         ORDER BY COALESCE(h.starts_at, h.ends_at) ASC`, cutoff)) as Record<string, unknown>[]
-  ).map((r) => ({ ...toHackathon(r), aiPolicy: aiPolicy(r.policy_text as string | null) }));
-  const trackedIds = new Set(((await all("SELECT hackathon_id FROM tracked")) as { hackathon_id: string }[]).map((r) => r.hackathon_id));
+  // The full rules, when available, take precedence over the feed description for the AI policy.
+  const rows = await all(
+    `SELECT h.*, COALESCE(d.source_text, h.description) AS policy_text FROM hackathons h
+     LEFT JOIN hackathon_details d ON d.hackathon_id = h.id
+     WHERE h.ends_at IS NULL OR h.ends_at >= ? OR h.id IN (SELECT hackathon_id FROM tracked)
+     ORDER BY COALESCE(h.starts_at, h.ends_at) ASC`,
+    cutoff,
+  );
+  const list = rows.map((row) => ({ ...toHackathon(row), aiPolicy: aiPolicy(row.policy_text as string | null) }));
+  const tracked = await all<{ hackathon_id: string }>("SELECT hackathon_id FROM tracked");
+  const trackedIds = new Set(tracked.map((row) => row.hackathon_id));
   return deduplicateHackathons(list, trackedIds);
 }
 
 export async function getDescription(id: string): Promise<string | null> {
-  const r = (await get("SELECT description FROM hackathons WHERE id = ?", id)) as { description: string | null } | undefined;
+  const r = await get<{ description: string | null }>("SELECT description FROM hackathons WHERE id = ?", id);
   return r?.description ?? null;
 }
 
 export async function getHackathon(id: string): Promise<Hackathon | null> {
-  const r = (await get("SELECT * FROM hackathons WHERE id = ?", id));
+  const r = await get("SELECT * FROM hackathons WHERE id = ?", id);
   return r ? toHackathon(r) : null;
 }
 
-export async function hackathonsNeedingGeocode(): Promise<{ id: string; city: string; state: string | null; country: string | null }[]> {
-  return (await all(`SELECT id, city, state, country FROM hackathons
-       WHERE mode != 'online' AND city IS NOT NULL AND city != '' AND lat IS NULL`,)) as { id: string; city: string; state: string | null; country: string | null }[];
+export async function hackathonsNeedingGeocode(): Promise<GeocodeCandidate[]> {
+  return all<GeocodeCandidate>(
+    `SELECT id, city, state, country FROM hackathons
+     WHERE mode != 'online' AND city IS NOT NULL AND city != '' AND lat IS NULL`,
+  );
 }
 
 export async function setCoords(id: string, lat: number, lng: number) {
-  (await run("UPDATE hackathons SET lat = ?, lng = ? WHERE id = ?", lat, lng, id));
+  await run("UPDATE hackathons SET lat = ?, lng = ? WHERE id = ?", lat, lng, id);
 }
 
 // ---------- tracker ----------
 
 export async function listTracked(): Promise<TrackedWithHackathon[]> {
-  const rows = (await all(`SELECT t.*, h.* FROM tracked t JOIN hackathons h ON h.id = t.hackathon_id
-       ORDER BY COALESCE(h.starts_at, h.ends_at) ASC`,));
-  const deadlines = (await all("SELECT * FROM deadlines ORDER BY due_at ASC")).map(toDeadline);
+  const rows = await all(`SELECT t.*, h.* FROM tracked t JOIN hackathons h ON h.id = t.hackathon_id
+       ORDER BY COALESCE(h.starts_at, h.ends_at) ASC`);
+  const deadlinesByHackathon = new Map<string, Deadline[]>();
+  for (const row of await all("SELECT * FROM deadlines ORDER BY due_at ASC")) {
+    const deadline = toDeadline(row);
+    const group = deadlinesByHackathon.get(deadline.hackathonId);
+    if (group) group.push(deadline);
+    else deadlinesByHackathon.set(deadline.hackathonId, [deadline]);
+  }
   return rows.map((r) => ({
     ...toTracked(r),
     hackathon: toHackathon(r),
-    deadlines: deadlines.filter((d) => d.hackathonId === r.hackathon_id),
+    deadlines: deadlinesByHackathon.get(r.hackathon_id as string) ?? [],
   }));
 }
 
@@ -163,7 +175,7 @@ export async function trackHackathon(id: string) {
     const existing = (await listTracked()).find((t) => sameHackathon(candidate, t.hackathon));
     if (existing && existing.hackathonId !== id) return existing.hackathonId;
     const now = new Date().toISOString();
-    (await run("INSERT INTO tracked (hackathon_id, status, pinned_at) VALUES (?, 'interested', ?) ON CONFLICT DO NOTHING", id, now));
+    await run("INSERT INTO tracked (hackathon_id, status, pinned_at) VALUES (?, 'interested', ?) ON CONFLICT DO NOTHING", id, now);
     await syncAutoDeadlines(id);
     return id;
   });
@@ -188,14 +200,14 @@ export interface TrackedPatch {
 export async function updateTracked(id: string, patch: TrackedPatch) {
   return withAccountLock("tracker", async () => {
     const now = new Date().toISOString();
-    const current = (await get("SELECT * FROM tracked WHERE hackathon_id = ?", id));
+    const current = await get("SELECT * FROM tracked WHERE hackathon_id = ?", id);
     if (!current) throw new Error("Not tracked");
     const t = toTracked(current);
     const next = { ...t, ...patch };
     if (patch.status === "registered" && !t.registeredAt) next.registeredAt = now;
     if (patch.status === "submitted" && !t.submittedAt) next.submittedAt = now;
-    (await run(`UPDATE tracked SET status = ?, registered_at = ?, submitted_at = ?, submission_url = ?,
-         result = ?, result_notes = ?, notes = ? WHERE hackathon_id = ?`, next.status, next.registeredAt, next.submittedAt, next.submissionUrl, next.result, next.resultNotes, next.notes, id));
+    await run(`UPDATE tracked SET status = ?, registered_at = ?, submitted_at = ?, submission_url = ?,
+         result = ?, result_notes = ?, notes = ? WHERE hackathon_id = ?`, next.status, next.registeredAt, next.submittedAt, next.submissionUrl, next.result, next.resultNotes, next.notes, id);
 
     // Moving forward ticks off the deadlines you've now met, so they stop showing up and reminding you.
     const rank = (s: TrackStatus) => STATUSES.findIndex((x) => x.key === s);
@@ -203,7 +215,7 @@ export async function updateTracked(id: string, patch: TrackedPatch) {
     if (rank(next.status) >= rank("registered")) met.push("registration");
     if (rank(next.status) >= rank("submitted")) met.push("submission");
     if (patch.status && met.length) {
-      (await run(`UPDATE deadlines SET done = 1 WHERE hackathon_id = ? AND kind IN (${met.map(() => "?").join(",")})`, id, ...met));
+      await run(`UPDATE deadlines SET done = 1 WHERE hackathon_id = ? AND kind IN (${met.map(() => "?").join(",")})`, id, ...met);
     }
   });
 }
@@ -236,36 +248,36 @@ export async function syncAutoDeadlines(hackathonId: string) {
 }
 
 export async function syncAllAutoDeadlines() {
-  const ids = (await all("SELECT hackathon_id FROM tracked")) as { hackathon_id: string }[];
+  const ids = await all<{ hackathon_id: string }>("SELECT hackathon_id FROM tracked");
   for (const { hackathon_id } of ids) await syncAutoDeadlines(hackathon_id);
 }
 
 export async function addDeadline(hackathonId: string, kind: DeadlineKind, label: string, dueAt: string): Promise<Deadline> {
   return withAccountLock("tracker", async () => {
-    const r = (await get("INSERT INTO deadlines (hackathon_id, kind, label, due_at, auto) VALUES (?, ?, ?, ?, 0) RETURNING *", hackathonId, kind, label || DEADLINE_LABELS[kind], dueAt));
+    const r = await get("INSERT INTO deadlines (hackathon_id, kind, label, due_at, auto) VALUES (?, ?, ?, ?, 0) RETURNING *", hackathonId, kind, label || DEADLINE_LABELS[kind], dueAt);
     return toDeadline(r!);
   });
 }
 
 export async function updateDeadline(id: number, patch: { label?: string; dueAt?: string; done?: boolean }) {
   return withAccountLock("tracker", async () => {
-    const r = (await get("SELECT * FROM deadlines WHERE id = ?", id));
+    const r = await get("SELECT * FROM deadlines WHERE id = ?", id);
     if (!r) throw new Error("Deadline not found");
     const d = toDeadline(r);
     const dueChanged = patch.dueAt !== undefined && patch.dueAt !== d.dueAt;
-    (await run("UPDATE deadlines SET label = ?, due_at = ?, done = ?, auto = ? WHERE id = ?", patch.label ?? d.label,
+    await run("UPDATE deadlines SET label = ?, due_at = ?, done = ?, auto = ? WHERE id = ?", patch.label ?? d.label,
         patch.dueAt ?? d.dueAt,
         (patch.done ?? d.done) ? 1 : 0,
         // once the user moves a date by hand, stop overwriting it from the feed
         dueChanged ? 0 : d.auto ? 1 : 0,
-        id,));
+        id);
   });
 }
 
 export async function deleteDeadline(id: number) {
   return withAccountLock("tracker", async () => {
-    (await run("DELETE FROM reminders_sent WHERE deadline_id = ?", id));
-    (await run("DELETE FROM deadlines WHERE id = ?", id));
+    await run("DELETE FROM reminders_sent WHERE deadline_id = ?", id);
+    await run("DELETE FROM deadlines WHERE id = ?", id);
   });
 }
 

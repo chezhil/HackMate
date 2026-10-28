@@ -1,10 +1,38 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Node tests use the TypeScript bootstrap. */
-const {test}=require('node:test');const assert=require('node:assert/strict');require('../tests-setup.cjs');const {canonicalUrl,safeReturnPath}=require('../src/lib/urls.ts');const {sameHackathon}=require('../src/lib/deduplicate.ts');
-for(const value of ['https://example.com','//example.com','/\\example.com','/\t/example.com','/\n/example.com','javascript:alert(1)'])test(`sign-in return path rejects ${JSON.stringify(value)}`,()=>assert.equal(safeReturnPath(value),'/profile'));
-test('sign-in return paths keep local query parameters and fragments',()=>assert.equal(safeReturnPath('/tracker?view=list#project'),'/tracker?view=list#project'));
-test('canonical event URLs preserve case-sensitive paths and parameters',()=>{assert.notEqual(canonicalUrl('https://example.com/Build?id=AB'),canonicalUrl('https://example.com/build?id=AB'));assert.notEqual(canonicalUrl('https://example.com/build?id=AB'),canonicalUrl('https://example.com/build?id=ab'))});
-test('URL normalization ignores only tracking, fragments, and a trailing slash',()=>assert.equal(canonicalUrl('http://www.example.com/event/?id=AB&UTM_SOURCE=test#top'),'example.com/event?id=AB'));
-test('encoded reserved separators are not collapsed into another event path',()=>assert.notEqual(canonicalUrl('https://example.com/a%2fb'),canonicalUrl('https://example.com/a/b')));
-test('case-sensitive event URLs cannot merge unrelated event titles',()=>{const h={id:'custom:one',title:'First Event',url:'https://example.com/Build',mode:'online',startsAt:null,endsAt:null,regEndsAt:null};assert.equal(sameHackathon(h,{...h,id:'custom:two',title:'Second Event',url:'https://example.com/build'}),false)});
-const {parseWeMakeDevs}=require('../src/lib/sources/wemakedevs.ts');
-test('WeMakeDevs uses shared RSC decoding without breaking quotes or prizes',()=>{const event={id:'test',title:'Build "AI" Tools',formats:['online'],location:null,prize:'$5000',image:null,href:'/events/test',isExternal:false,startDate:'2030-01-01',endDate:'2030-01-02'};const html='<script>self.__next_f.push('+JSON.stringify([1,JSON.stringify({events:[event,event]})])+')</script>';const values=parseWeMakeDevs(html);assert.equal(values.length,1);assert.equal(values[0].title,event.title);assert.equal(values[0].prizeUsd,5000)});
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+require('../tests-setup.cjs');
+const { canonicalUrl, safeReturnPath } = require('../src/lib/urls.ts');
+const { sameHackathon } = require('../src/lib/deduplicate.ts');
+for (const value of ['https://example.com', '//example.com', '/\\example.com', '/\t/example.com', '/\n/example.com', 'javascript:alert(1)'])
+  test(`sign-in return path rejects ${JSON.stringify(value)}`, () => assert.equal(safeReturnPath(value), '/profile'));
+
+test('sign-in return paths keep local query parameters and fragments', () => assert.equal(safeReturnPath('/tracker?view=list#project'), '/tracker?view=list#project'));
+
+test('canonical event URLs preserve case-sensitive paths and parameters', () => {
+  assert.notEqual(canonicalUrl('https://example.com/Build?id=AB'), canonicalUrl('https://example.com/build?id=AB'));
+  assert.notEqual(canonicalUrl('https://example.com/build?id=AB'), canonicalUrl('https://example.com/build?id=ab'));
+});
+
+test('URL normalization ignores only tracking, fragments, and a trailing slash', () => assert.equal(canonicalUrl('http://www.example.com/event/?id=AB&UTM_SOURCE=test#top'), 'example.com/event?id=AB'));
+
+test('encoded reserved separators are not collapsed into another event path', () => assert.notEqual(canonicalUrl('https://example.com/a%2fb'), canonicalUrl('https://example.com/a/b')));
+
+test('case-sensitive event URLs cannot merge unrelated event titles', () => {
+  const h = {
+    id: 'custom:one', title: 'First Event', url: 'https://example.com/Build', mode: 'online', startsAt: null, endsAt: null, regEndsAt: null
+  };
+  assert.equal(sameHackathon(h, { ...h, id: 'custom:two', title: 'Second Event', url: 'https://example.com/build' }), false);
+});
+const { parseWeMakeDevs } = require('../src/lib/sources/wemakedevs.ts');
+
+test('WeMakeDevs uses shared RSC decoding without breaking quotes or prizes', () => {
+  const event = {
+    id: 'test', title: 'Build "AI" Tools', formats: ['online'], location: null, prize: '$5000', image: null, href: '/events/test', isExternal: false, startDate: '2030-01-01', endDate: '2030-01-02'
+  };
+  const html = '<script>self.__next_f.push(' + JSON.stringify([1, JSON.stringify({ events: [event, event] })]) + ')</script>';
+  const values = parseWeMakeDevs(html);
+  assert.equal(values.length, 1);
+  assert.equal(values[0].title, event.title);
+  assert.equal(values[0].prizeUsd, 5000);
+});

@@ -1,7 +1,6 @@
 import { withAccount } from "@/lib/auth";
 import { listTracked, untrackHackathon, updateTracked, type TrackedPatch } from "@/lib/repo";
-import { RESULT_LABELS, STATUSES } from "@/lib/types";
-import { badRequest, nullableText, optionalUrl, readJson, validFields } from "@/lib/validation";
+import { badRequest, isResultKind, isTrackStatus, nullableText, optionalUrl, readJson, validFields } from "@/lib/validation";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -10,19 +9,13 @@ async function patch(req: Request, { params }: Ctx) {
   const body = await readJson(req);
   if (body instanceof Response) return body;
   if (!validFields(body, {
-    status: (v) => STATUSES.some((s) => s.key === v),
-    result: (v) => v === null || (typeof v === "string" && Object.hasOwn(RESULT_LABELS, v)),
+    status: isTrackStatus,
+    result: (v) => v === null || isResultKind(v),
     submissionUrl: optionalUrl, resultNotes: nullableText, notes: nullableText,
   })) return badRequest("Invalid tracker fields");
   const patch: TrackedPatch = {};
   for (const key of ["status", "result", "submissionUrl", "resultNotes", "notes"] as const) {
     if (body[key] !== undefined) Object.assign(patch, { [key]: body[key] });
-  }
-  if (patch.status && !STATUSES.some((s) => s.key === patch.status)) {
-    return Response.json({ error: "Bad status" }, { status: 400 });
-  }
-  if (patch.result && !Object.hasOwn(RESULT_LABELS, patch.result)) {
-    return Response.json({ error: "Bad result" }, { status: 400 });
   }
   try {
     await updateTracked(id, patch);

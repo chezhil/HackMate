@@ -1,28 +1,159 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Test isolated account logic with request-local cookie jars. */
-const {test,before,after}=require('node:test');const assert=require('node:assert/strict');const {AsyncLocalStorage}=require('node:async_hooks');require('../tests-setup.cjs');
-for(const key of ['DATABASE_URL','SMTP_HOST','GROQ_API_KEY','GEMINI_API_KEY','GOOGLE_API_KEY','HACKMATE_REQUIRE_LOGIN'])delete process.env[key];process.env.HACKMATE_PG_MEMORY='1';
-const jars=new AsyncLocalStorage();const headers=require.resolve('next/headers');require(headers);require.cache[headers].exports={cookies:async()=>jars.getStore()};
-const jar=()=>{const values=new Map();return {get:n=>values.has(n)?{value:values.get(n)}:undefined,set:(n,v)=>values.set(n,v),delete:n=>values.delete(n)}};
-const db=require('../src/lib/db.ts');const auth=require('../src/lib/auth.ts');const request=require('../src/lib/request.ts');const {saveProfile}=require('../src/lib/wrapup.ts');const repo=require('../src/lib/repo.ts');
-request.background=()=>{};
-const alice=jar(),bob=jar(),anonymous=jar();const as=(j,fn)=>jars.run(j,fn);let bobId;
-before(async()=>{await saveProfile({name:'Local owner'});await as(alice,()=>auth.signUp({username:'alice_test',email:'alice@example.com',password:'StrongPassword123'},false));await as(bob,()=>auth.signUp({username:'bob_test',email:'bob@example.com',password:'StrongPassword123'},false));bobId=await as(bob,auth.currentUserId)});
-after(()=>db.closeDb());
-test('accounts have different hashed sessions and private emails stay out of the directory',async()=>{assert.notEqual(alice.get(auth.SESSION_COOKIE).value,bob.get(auth.SESSION_COOKIE).value);const members=await auth.listMembers();assert.equal(members.length,2);for(const m of members){assert.equal(m.email,undefined);assert.equal(m.password_hash,undefined)}});
-test('first account inherits local profile; subsequent accounts start with their own name',async()=>{assert.equal((await as(alice,auth.currentUser)).profile.name,'Local owner');assert.equal((await as(bob,auth.currentUser)).profile.name,'bob_test')});
-test('request wrapper isolates personal settings for signed-in accounts',async()=>{const write=auth.withAccount(async()=>{await db.setSetting('private-note','alice only');return Response.json({ok:true})});await as(alice,()=>write(new Request('https://example.com/api/test',{method:'POST'})));const read=auth.withAccount(async()=>db.getSetting('private-note'));assert.equal(await as(alice,()=>read(new Request('https://example.com/api/test'))),'alice only');assert.equal(await as(bob,()=>read(new Request('https://example.com/api/test'))),null)});
-test('public-mode anonymous writes are denied and reads cannot see account or local rows',async()=>{process.env.HACKMATE_REQUIRE_LOGIN='1';try{await db.setSetting('anonymous-check','local secret');const read=auth.withAccount(async()=>db.getSetting('anonymous-check'));assert.equal(await as(anonymous,()=>read(new Request('https://example.com/api/test'))),null);const write=auth.withAccount(async()=>Response.json({unsafe:true}));const r=await as(anonymous,()=>write(new Request('https://example.com/api/test',{method:'POST'})));assert.equal(r.status,401)}finally{delete process.env.HACKMATE_REQUIRE_LOGIN}});
-test('parallel public profile changes preserve both fields',async()=>{await as(alice,()=>auth.saveMemberProfile({headline:'Before',location:'Before'}));await as(alice,()=>Promise.all([auth.saveMemberProfile({headline:'Builder'}),auth.saveMemberProfile({location:'Bengaluru'})]));const user=await as(alice,auth.currentUser);assert.equal(user.profile.headline,'Builder');assert.equal(user.profile.location,'Bengaluru')});
-test('parallel signups for the same username return a friendly conflict',async()=>{const results=await Promise.allSettled(['one','two'].map(email=>as(jar(),()=>auth.signUp({username:'same_name',email:email+'@example.com',password:'StrongPassword123'},false))));assert.equal(results.filter(r=>r.status==='fulfilled').length,1);const failure=results.find(r=>r.status==='rejected').reason;assert.ok(failure instanceof auth.AuthError);assert.equal(failure.status,409)});
-test('expired sessions cannot read account data',async()=>{const temp=jar();await as(temp,()=>auth.signIn({email:'bob@example.com',password:'StrongPassword123'},false));await db.run('UPDATE sessions SET expires_at = ? WHERE user_id = ?','2000-01-01T00:00:00.000Z',bobId);assert.equal(await as(temp,auth.currentUser),null);assert.equal(await as(temp,auth.currentUserId),null)});
-test('signing out invalidates the server-side session',async()=>{await as(alice,auth.signOut);assert.equal(await as(alice,auth.currentUser),null);assert.equal(alice.get(auth.SESSION_COOKIE),undefined)});
-const draft={url:'',title:'Manual Builder Test',mode:'online',tagline:null,organizer:null,city:null,country:null,startsAt:null,endsAt:null,regEndsAt:null,prizeText:null,themes:[],teamMin:null,teamMax:null,image:null};
-const importRoute=()=>require('../src/app/api/import/route.ts').POST;
-const importing=body=>as(anonymous,()=>importRoute()(new Request('http://localhost/api/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})));
-for(const [field,value] of [['tagline',{}],['startsAt','not-a-date'],['teamMin',-1],['teamMax','many'],['themes',[{}]],['image','javascript:alert(1)']])test(`manual import rejects invalid ${field}`,async()=>{const r=await importing({action:'create',draft:{...draft,[field]:value},status:'interested'});assert.equal(r.status,400)});
-test('manual import rejects inherited result names',async()=>assert.equal((await importing({action:'create',draft,status:'results',result:'toString'})).status,400));
-test('manual import rejects inverted dates and impossible team sizes',async()=>{for(const changes of [{startsAt:'2030-01-03',endsAt:'2030-01-01'},{teamMin:5,teamMax:2}])assert.equal((await importing({action:'create',draft:{...draft,...changes},status:'interested'})).status,400)});
-test('minimal manual input is normalized without crashing',async()=>{const r=await importing({action:'create',draft:{title:'Minimal manual',url:'',mode:'online'},status:'interested'});assert.equal(r.status,200)});
-test('adding an existing event at a new stage updates its canonical tracked record',async()=>{const h={...draft,id:'devpost:already',source:'devpost',url:'https://canonical-event.example.com/',title:'Canonical Builders',state:null,venue:null,lat:null,lng:null,regStartsAt:null,prizeUsd:null,entryFee:null};await repo.upsertHackathons([h],new Date().toISOString());await repo.trackHackathon(h.id);const r=await importing({action:'create',draft:{...draft,title:h.title,url:h.url},status:'registered'});assert.equal(r.status,200);assert.equal((await r.json()).id,h.id);const tracked=await repo.listTracked();assert.equal(tracked.find(t=>t.hackathonId===h.id).status,'registered')});
+const { test, before, after } = require('node:test');
+const assert = require('node:assert/strict');
+const { AsyncLocalStorage } = require('node:async_hooks');
+require('../tests-setup.cjs');
+for (const key of ['DATABASE_URL', 'SMTP_HOST', 'GROQ_API_KEY', 'GEMINI_API_KEY', 'GOOGLE_API_KEY', 'HACKMATE_REQUIRE_LOGIN'])
+  delete process.env[key];
+process.env.HACKMATE_PG_MEMORY = '1';
+const jars = new AsyncLocalStorage();
+const headers = require.resolve('next/headers');
+require(headers);
+require.cache[headers].exports = { cookies: async () => jars.getStore() };
+const createCookieJar = () => {
+  const values = new Map();
+  return {
+    get: name => values.has(name) ? { value: values.get(name) } : undefined,
+    set: (name, value) => values.set(name, value),
+    delete: name => values.delete(name),
+  };
+};
+const db = require('../src/lib/db.ts');
+const auth = require('../src/lib/auth.ts');
+const request = require('../src/lib/request.ts');
+const { saveProfile } = require('../src/lib/wrapup.ts');
+const repo = require('../src/lib/repo.ts');
+// These tests validate persistence; page reading must never start an external request.
+request.background = () => {};
+const alice = createCookieJar(), bob = createCookieJar(), anonymous = createCookieJar();
+const withCookies = (cookieJar, fn) => jars.run(cookieJar, fn);
+let bobId;
 
-test('parallel clash resolutions preserve all decisions',async()=>{const route=require('../src/app/api/clashes/route.ts');await db.setSetting('resolvedClashes','[]');await Promise.all(['event-a','event-b','event-c'].map(key=>as(anonymous,()=>route.POST(new Request('http://localhost/api/clashes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key,resolved:true})})))));assert.deepEqual(JSON.parse(await db.getSetting('resolvedClashes')).sort(),['event-a','event-b','event-c'])});
+before(async () => {
+  await saveProfile({ name: 'Local owner' });
+  await withCookies(alice, () => auth.signUp({ username: 'alice_test', email: 'alice@example.com', password: 'StrongPassword123' }, false));
+  await withCookies(bob, () => auth.signUp({ username: 'bob_test', email: 'bob@example.com', password: 'StrongPassword123' }, false));
+  bobId = await withCookies(bob, auth.currentUserId);
+});
+
+after(() => db.closeDb());
+
+test('accounts have different hashed sessions and private emails stay out of the directory', async () => {
+  assert.notEqual(alice.get(auth.SESSION_COOKIE).value, bob.get(auth.SESSION_COOKIE).value);
+  const members = await auth.listMembers();
+  assert.equal(members.length, 2);
+  for (const m of members) {
+    assert.equal(m.email, undefined);
+    assert.equal(m.password_hash, undefined);
+  }
+});
+
+test('first account inherits local profile; subsequent accounts start with their own name', async () => {
+  assert.equal((await withCookies(alice, auth.currentUser)).profile.name, 'Local owner');
+  assert.equal((await withCookies(bob, auth.currentUser)).profile.name, 'bob_test');
+});
+
+test('request wrapper isolates personal settings for signed-in accounts', async () => {
+  const write = auth.withAccount(async () => {
+    await db.setSetting('private-note', 'alice only');
+    return Response.json({ ok: true });
+  });
+  await withCookies(alice, () => write(new Request('https://example.com/api/test', { method: 'POST' })));
+  const read = auth.withAccount(async () => db.getSetting('private-note'));
+  assert.equal(await withCookies(alice, () => read(new Request('https://example.com/api/test'))), 'alice only');
+  assert.equal(await withCookies(bob, () => read(new Request('https://example.com/api/test'))), null);
+});
+
+test('public-mode anonymous writes are denied and reads cannot see account or local rows', async () => {
+  process.env.HACKMATE_REQUIRE_LOGIN = '1';
+  try {
+    await db.setSetting('anonymous-check', 'local secret');
+    const read = auth.withAccount(async () => db.getSetting('anonymous-check'));
+    assert.equal(await withCookies(anonymous, () => read(new Request('https://example.com/api/test'))), null);
+    const write = auth.withAccount(async () => Response.json({ unsafe: true }));
+    const r = await withCookies(anonymous, () => write(new Request('https://example.com/api/test', { method: 'POST' })));
+    assert.equal(r.status, 401);
+  } finally {
+    delete process.env.HACKMATE_REQUIRE_LOGIN;
+  }
+});
+
+test('parallel public profile changes preserve both fields', async () => {
+  await withCookies(alice, () => auth.saveMemberProfile({ headline: 'Before', location: 'Before' }));
+  await withCookies(alice, () => Promise.all([auth.saveMemberProfile({ headline: 'Builder' }), auth.saveMemberProfile({ location: 'Bengaluru' })]));
+  const user = await withCookies(alice, auth.currentUser);
+  assert.equal(user.profile.headline, 'Builder');
+  assert.equal(user.profile.location, 'Bengaluru');
+});
+
+test('parallel signups for the same username return a friendly conflict', async () => {
+  const results = await Promise.allSettled(['one', 'two'].map(email => withCookies(createCookieJar(), () => auth.signUp({ username: 'same_name', email: email + '@example.com', password: 'StrongPassword123' }, false))));
+  assert.equal(results.filter(r => r.status === 'fulfilled').length, 1);
+  const failure = results.find(r => r.status === 'rejected').reason;
+  assert.ok(failure instanceof auth.AuthError);
+  assert.equal(failure.status, 409);
+});
+
+test('expired sessions cannot read account data', async () => {
+  const temp = createCookieJar();
+  await withCookies(temp, () => auth.signIn({ email: 'bob@example.com', password: 'StrongPassword123' }, false));
+  await db.run('UPDATE sessions SET expires_at = ? WHERE user_id = ?', '2000-01-01T00:00:00.000Z', bobId);
+  assert.equal(await withCookies(temp, auth.currentUser), null);
+  assert.equal(await withCookies(temp, auth.currentUserId), null);
+});
+
+test('signing out invalidates the server-side session', async () => {
+  await withCookies(alice, auth.signOut);
+  assert.equal(await withCookies(alice, auth.currentUser), null);
+  assert.equal(alice.get(auth.SESSION_COOKIE), undefined);
+});
+
+const draft = {
+  url: '', title: 'Manual Builder Test', mode: 'online', tagline: null, organizer: null, city: null, country: null, startsAt: null, endsAt: null, regEndsAt: null, prizeText: null, themes: [], teamMin: null, teamMax: null, image: null
+};
+const importRoute = () => require('../src/app/api/import/route.ts').POST;
+const importing = body => withCookies(anonymous, () => importRoute()(new Request('http://localhost/api/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })));
+for (const [field, value] of [['tagline', {}], ['startsAt', 'not-a-date'], ['teamMin', -1], ['teamMax', 'many'], ['themes', [{}]], ['image', 'javascript:alert(1)']])
+  test(`manual import rejects invalid ${field}`, async () => {
+    const r = await importing({ action: 'create', draft: { ...draft, [field]: value }, status: 'interested' });
+    assert.equal(r.status, 400);
+  });
+
+test('manual import rejects inherited result names', async () => assert.equal((await importing({ action: 'create', draft, status: 'results', result: 'toString' })).status, 400));
+
+test('manual import rejects inverted dates and impossible team sizes', async () => {
+  for (const changes of [{ startsAt: '2030-01-03', endsAt: '2030-01-01' }, { teamMin: 5, teamMax: 2 }])
+    assert.equal((await importing({ action: 'create', draft: { ...draft, ...changes }, status: 'interested' })).status, 400);
+});
+
+test('minimal manual input is normalized without crashing', async () => {
+  const r = await importing({ action: 'create', draft: { title: 'Minimal manual', url: '', mode: 'online' }, status: 'interested' });
+  assert.equal(r.status, 200);
+});
+
+test('adding an existing event at a new stage updates its canonical tracked record', async () => {
+  const h = {
+    ...draft, id: 'devpost:already', source: 'devpost', url: 'https://canonical-event.example.com/', title: 'Canonical Builders', state: null, venue: null, lat: null, lng: null, regStartsAt: null, prizeUsd: null, entryFee: null
+  };
+  await repo.upsertHackathons([h], new Date().toISOString());
+  await repo.trackHackathon(h.id);
+  const r = await importing({ action: 'create', draft: { ...draft, title: h.title, url: h.url }, status: 'registered' });
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).id, h.id);
+  const tracked = await repo.listTracked();
+  assert.equal(tracked.find(t => t.hackathonId === h.id).status, 'registered');
+});
+
+test('parallel clash resolutions preserve all decisions', async () => {
+  const route = require('../src/app/api/clashes/route.ts');
+  await db.setSetting('resolvedClashes', '[]');
+  await Promise.all(['event-a', 'event-b', 'event-c'].map(key => withCookies(anonymous, () => route.POST(new Request('http://localhost/api/clashes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, resolved: true }) })))));
+  assert.deepEqual(JSON.parse(await db.getSetting('resolvedClashes')).sort(), ['event-a', 'event-b', 'event-c']);
+});
+
+test('manual import rejects result arrays and objects before saving', async () => {
+  for (const result of [['won'], { toString: 'won' }, ['not_selected']]) {
+    const response = await importing({ action: 'create', draft, status: 'results', result });
+    assert.equal(response.status, 400);
+  }
+});

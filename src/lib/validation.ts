@@ -1,3 +1,5 @@
+import { RESULT_LABELS, STATUSES, type ResultKind, type TrackStatus } from "./types";
+
 /** Small runtime guards for user input; TypeScript types do not validate a request body. */
 export async function readJson(req: Request): Promise<Record<string, unknown> | Response> {
   try {
@@ -24,6 +26,12 @@ export const text = (value: unknown): value is string => typeof value === "strin
 export const nullableText = (value: unknown) => value === null || text(value);
 export const boolean = (value: unknown): value is boolean => typeof value === "boolean";
 export const optionalUrl = (value: unknown) => value === null || value === "" || isHttpUrl(value);
+
+export const isTrackStatus = (value: unknown): value is TrackStatus =>
+  typeof value === "string" && STATUSES.some((status) => status.key === value);
+
+export const isResultKind = (value: unknown): value is ResultKind =>
+  typeof value === "string" && Object.hasOwn(RESULT_LABELS, value);
 
 export const prizeRules = {
   title: text, amount: (v: unknown) => v === null || (typeof v === "number" && Number.isFinite(v) && v >= 0),

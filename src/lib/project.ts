@@ -5,9 +5,20 @@ import { getHackathon, listTracked } from "./repo";
 import { listTeam } from "./team";
 import type { Project } from "./types";
 
-type Row = Record<string, string>;
+interface ProjectRow {
+  hackathon_id: string;
+  name: string;
+  tagline: string;
+  problem: string;
+  solution: string;
+  stack: string;
+  repo_url: string;
+  demo_url: string;
+  video_url: string;
+  updated_at: string;
+}
 
-function toProject(r: Row): Project {
+function toProject(r: ProjectRow): Project {
   return {
     hackathonId: r.hackathon_id,
     name: r.name,
@@ -27,8 +38,8 @@ function toProject(r: Row): Project {
  * (title + text) and the submission link they gave the tracker.
  */
 export async function getProject(hackathonId: string): Promise<Project> {
-  const r = (await get("SELECT * FROM projects WHERE hackathon_id = ?", hackathonId)) as Row | undefined;
-  if (r) return toProject(r);
+  const row = await get<ProjectRow>("SELECT * FROM projects WHERE hackathon_id = ?", hackathonId);
+  if (row) return toProject(row);
   const idea = (await listIdeas(hackathonId))[0];
   const latest = idea?.versions.at(-1)?.text ?? "";
   const submission = (await listTracked()).find((t) => t.hackathonId === hackathonId)?.submissionUrl ?? "";
@@ -47,16 +58,16 @@ export async function getProject(hackathonId: string): Promise<Project> {
   };
 }
 
-export async function saveProject(hackathonId: string, p: Partial<Project>): Promise<Project> {
+export async function saveProject(hackathonId: string, patch: Partial<Project>): Promise<Project> {
   return withAccountLock(`project:saveProject:${hackathonId}`, async () => {
     const cur = await getProject(hackathonId);
-    const next = { ...cur, ...p };
-    (await run(`INSERT INTO projects (hackathon_id, name, tagline, problem, solution, stack, repo_url, demo_url, video_url, updated_at)
+    const next = { ...cur, ...patch };
+    await run(`INSERT INTO projects (hackathon_id, name, tagline, problem, solution, stack, repo_url, demo_url, video_url, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(user_id, hackathon_id) DO UPDATE SET name = excluded.name, tagline = excluded.tagline, problem = excluded.problem,
            solution = excluded.solution, stack = excluded.stack, repo_url = excluded.repo_url, demo_url = excluded.demo_url,
            video_url = excluded.video_url, updated_at = excluded.updated_at`, hackathonId, next.name.trim(), next.tagline.trim(), next.problem.trim(), next.solution.trim(), next.stack.trim(),
-        next.repoUrl.trim(), next.demoUrl.trim(), next.videoUrl.trim(), new Date().toISOString(),));
+        next.repoUrl.trim(), next.demoUrl.trim(), next.videoUrl.trim(), new Date().toISOString());
     return getProject(hackathonId);
   });
 }

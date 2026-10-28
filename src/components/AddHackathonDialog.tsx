@@ -10,41 +10,13 @@ import { Dialog } from "./ui/Dialog";
 import { Banner } from "./ui/Feedback";
 import { call, hid } from "@/lib/client";
 import { THEMES } from "@/lib/themes";
-import type { Mode, ResultKind, TrackStatus } from "@/lib/types";
+import type { ImportDraft, ImportPreview, Mode, ResultKind, TrackStatus } from "@/lib/types";
 import { RESULT_LABELS } from "@/lib/types";
 
-interface Draft {
-  url: string;
-  title: string;
-  tagline: string | null;
-  organizer: string | null;
-  mode: Mode;
-  city: string | null;
-  country: string | null;
-  startsAt: string | null;
-  endsAt: string | null;
-  regEndsAt: string | null;
-  prizeText: string | null;
-  themes: string[];
-  teamMin: number | null;
-  teamMax: number | null;
-  image: string | null;
-  description?: string | null;
-}
-
-const BLANK: Draft = {
+const BLANK: ImportDraft = {
   url: "", title: "", tagline: null, organizer: null, mode: "online", city: null, country: null, startsAt: null, endsAt: null,
   regEndsAt: null, prizeText: null, themes: [], teamMin: null, teamMax: null, image: null, description: null,
 };
-
-interface Preview {
-  draft: Draft;
-  existingId: string | null;
-  warning: string | null;
-  /** "manual": typed in by hand, no page was read. */
-  readBy: "listing" | "ai" | "page" | "none" | "manual";
-  site?: string;
-}
 
 const STAGES: { value: TrackStatus; label: string }[] = [
   { value: "interested", label: "Just pin it" },
@@ -81,14 +53,14 @@ export function AddHackathonDialog({
   const { refresh } = useHackmate();
   const router = useRouter();
   const [url, setUrl] = useState("");
-  const [preview, setPreview] = useState<Preview | null>(null);
-  const [draft, setDraft] = useState<Draft | null>(null);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [draft, setDraft] = useState<ImportDraft | null>(null);
   const [stage, setStage] = useState<TrackStatus>(defaultStage);
   const [result, setResult] = useState<ResultKind>("participated");
   const [busy, setBusy] = useState<"read" | "save" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const manualPreview: Preview = { draft: BLANK, existingId: null, warning: null, readBy: "manual" };
+  const manualPreview: ImportPreview = { draft: BLANK, existingId: null, warning: null, readBy: "manual" };
   const startBlank = () => {
     setError(null);
     setPreview(manualPreview);
@@ -116,7 +88,7 @@ export function AddHackathonDialog({
     setBusy("read");
     setError(null);
     try {
-      const p = await call<Preview>("/api/import", "POST", { action: "preview", url: url.trim() });
+      const p = await call<ImportPreview>("/api/import", "POST", { action: "preview", url: url.trim() });
       setPreview(p);
       setDraft(p.draft);
     } catch (e) {
@@ -143,7 +115,7 @@ export function AddHackathonDialog({
     }
   };
 
-  const set = (patch: Partial<Draft>) => setDraft((d) => (d ? { ...d, ...patch } : d));
+  const set = (patch: Partial<ImportDraft>) => setDraft((d) => (d ? { ...d, ...patch } : d));
 
   return (
     <Dialog

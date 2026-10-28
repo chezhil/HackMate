@@ -2,27 +2,32 @@ import "server-only";
 import { calendarToken, getSetting, setSetting, withAccountLock } from "./db";
 import type { Settings } from "./types";
 
-const DEFAULTS: Omit<Settings, "calendarToken"> = {
+type Preferences = Omit<Settings, "calendarToken">;
+
+const DEFAULTS: Preferences = {
   email: "",
   remindersEnabled: true,
   leadMinutes: [24 * 60, 3 * 60],
   calendarProvider: "google",
 };
 
-export async function getSettings(): Promise<Settings> {
+async function getPreferences(): Promise<Preferences> {
   const raw = await getSetting("prefs");
-  const prefs = raw ? { ...DEFAULTS, ...JSON.parse(raw) } : DEFAULTS;
-  return { ...prefs, calendarToken: await calendarToken() };
+  return raw ? { ...DEFAULTS, ...JSON.parse(raw) } : { ...DEFAULTS };
 }
 
-export async function saveSettings(patch: Partial<Omit<Settings, "calendarToken">>): Promise<Settings> {
+export async function getSettings(): Promise<Settings> {
+  return { ...await getPreferences(), calendarToken: await calendarToken() };
+}
+
+export async function saveSettings(patch: Partial<Preferences>): Promise<Settings> {
   return withAccountLock("settings:saveSettings", async () => {
-    const { calendarToken: _ignored, ...current } = await getSettings();
-    void _ignored;
-    const next = { ...current, ...Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)) };
-    if (next.leadMinutes) next.leadMinutes = [...new Set(next.leadMinutes.map(Number))].sort((a, b) => b - a);
+    const current = await getPreferences();
+    const changes = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined));
+    const next = { ...current, ...changes };
+    next.leadMinutes = [...new Set(next.leadMinutes.map(Number))].sort((a, b) => b - a);
     await setSetting("prefs", JSON.stringify(next));
-    return getSettings();
+    return { ...next, calendarToken: await calendarToken() };
   });
 }
 

@@ -13,44 +13,7 @@ import { fetchHack2skillEvent } from "./sources/hack2skill";
 import { fetchUnstopEvent } from "./sources/unstop";
 import { htmlToText, iso, parsePrizeUsd, USER_AGENT } from "./sources/util";
 import { inferThemes, THEMES } from "./themes";
-import type { Hackathon, Mode, ResultKind, TrackStatus } from "./types";
-
-/** What the import form shows for you to check and edit before anything is saved. */
-export interface ImportDraft {
-  /** The event's page, or "" for one added by hand without a link. */
-  url: string;
-  title: string;
-  tagline: string | null;
-  organizer: string | null;
-  mode: Mode;
-  city: string | null;
-  country: string | null;
-  startsAt: string | null;
-  endsAt: string | null;
-  regEndsAt: string | null;
-  prizeText: string | null;
-  themes: string[];
-  teamMin: number | null;
-  teamMax: number | null;
-  image: string | null;
-  /** Rules, prizes, anything you know: added by hand, it's what Overview, Ask AI and the checklist read. */
-  description?: string | null;
-}
-
-export interface ImportPreview {
-  draft: ImportDraft;
-  /** Already in HackMate (from a feed or added before): open that instead of making a copy. */
-  existingId: string | null;
-  /** Why the page couldn't be read, when it couldn't. The form is still offered, mostly empty. */
-  warning: string | null;
-  /**
-   * Where the fields came from: the site's own event data ("listing", for sites whose pages are built in the
-   * browser, like Unstop and Hack2skill), the AI reading the page, only the page's title and image tags, or nothing.
-   */
-  readBy: "listing" | "ai" | "page" | "none";
-  /** The site, when readBy is "listing". */
-  site?: string;
-}
+import type { Hackathon, ImportDraft, ImportPreview, Mode, ResultKind, TrackStatus } from "./types";
 
 export class ImportError extends Error {}
 
@@ -93,7 +56,6 @@ export function validateImportDraft(value: unknown): ImportDraft {
   if (draft.teamMin && draft.teamMax && draft.teamMin > draft.teamMax) throw new ImportError("The maximum team size must be at least the minimum");
   return draft;
 }
-
 
 // ---------- sites whose pages are empty until JavaScript runs ----------
 //
