@@ -104,7 +104,13 @@ export async function currentUser(): Promise<Account | null> {
 }
 
 export async function currentUserId(): Promise<number | null> {
-  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  let token: string | undefined;
+  try {
+    token = (await cookies()).get(SESSION_COOKIE)?.value;
+  } catch {
+    // Called outside a request (tests, scripts): no one is signed in.
+    return null;
+  }
   if (!token) return null;
   const row = sharedDb().prepare("SELECT user_id FROM sessions WHERE token_hash = ? AND expires_at > ?").get(tokenHash(token), new Date().toISOString()) as
     | { user_id: number }
