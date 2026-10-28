@@ -483,13 +483,24 @@ function ensureSchema(): Promise<void> {
     g.hackmateSchema = (async () => {
       const c = await (await driver()).connect();
       try {
+        // Its own transaction with its own search_path, for the same reason as begin().
+        await c.exec(`BEGIN; SET LOCAL search_path = ${SEARCH_PATH};`);
         const have = await c
-          .query("SELECT value FROM hackmate_meta WHERE key = 'schema'")
+          .query("SELECT value FROM public.hackmate_meta WHERE key = 'schema'")
           .then((r) => r.rows[0]?.value as string | undefined)
           .catch(() => undefined);
-        if (have === SCHEMA_VERSION) return;
+        if (have === SCHEMA_VERSION) {
+          await c.exec("COMMIT");
+          return;
+        }
+        // The read above may have failed on a brand-new database, which aborts the transaction: start again.
+        await c.exec(`ROLLBACK; BEGIN; SET LOCAL search_path = ${SEARCH_PATH};`);
         await c.exec(SCHEMA);
         await c.query("INSERT INTO hackmate_meta (key, value) VALUES ('schema', $1) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [SCHEMA_VERSION]);
+        await c.exec("COMMIT");
+      } catch (e) {
+        await c.exec("ROLLBACK").catch(() => {});
+        throw e;
       } finally {
         c.release();
       }
@@ -537,11 +548,15 @@ function toPg(sql: string): string {
 /** The open transaction of tx(), so queries inside it join it. */
 const inTx = new AsyncLocalStorage<{ conn: Conn; uid: number; owner: boolean }>();
 
+const SEARCH_PATH = "public, extensions";
+
 /** Start a transaction as the current account: its rows only, its id on new rows. */
 async function begin(conn: Conn, userId: number, owner: boolean) {
   // The id is a plain integer, so it's safe inline; it rides in one round trip with BEGIN.
   const role = owner ? "" : "SET LOCAL ROLE hackmate_app; ";
-  await conn.exec(`BEGIN; ${role}SELECT set_config('app.uid', '${Math.trunc(userId)}', true);`);
+  // search_path too: through a transaction pooler a server connection is shared, and a session setting someone
+  // else left on it (pg_dump clears search_path) would otherwise make every table "not found".
+  await conn.exec(`BEGIN; SET LOCAL search_path = ${SEARCH_PATH}; ${role}SELECT set_config('app.uid', '${Math.trunc(userId)}', true);`);
 }
 
 async function exec(sql: string, params: unknown[], owner = false): Promise<Result> {

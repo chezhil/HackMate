@@ -7,6 +7,8 @@ import { generateJson } from "./ai";
 import { buildDetails } from "./details";
 import { all } from "./db";
 import { getHackathon, trackHackathon, updateTracked, upsertHackathons } from "./repo";
+import { fetchHack2skillEvent } from "./sources/hack2skill";
+import { fetchUnstopEvent } from "./sources/unstop";
 import { htmlToText, iso, parsePrizeUsd, USER_AGENT } from "./sources/util";
 import { inferThemes, THEMES } from "./themes";
 import type { Hackathon, Mode, ResultKind, TrackStatus } from "./types";
@@ -36,11 +38,57 @@ export interface ImportPreview {
   existingId: string | null;
   /** Why the page couldn't be read, when it couldn't. The form is still offered, mostly empty. */
   warning: string | null;
-  /** Whether the AI filled the fields, or only the page's own title and image tags. */
-  readBy: "ai" | "page" | "none";
+  /**
+   * Where the fields came from: the site's own event data ("listing", for sites whose pages are built in the
+   * browser, like Unstop and Hack2skill), the AI reading the page, only the page's title and image tags, or nothing.
+   */
+  readBy: "listing" | "ai" | "page" | "none";
+  /** The site, when readBy is "listing". */
+  site?: string;
 }
 
 export class ImportError extends Error {}
+
+// ---------- sites whose pages are empty until JavaScript runs ----------
+//
+// Unstop and Hack2skill event pages arrive as an empty shell, so reading them gives only the site's name. Their
+// public event data (the same HackMate's feeds use) has the real title, dates, format, prizes and team size, and
+// includes events that are already over, so a link to one of them is looked up there instead.
+
+const SITES: { name: string; match: (u: URL) => string | null; fetch: (key: string) => Promise<Hackathon | null> }[] = [
+  {
+    name: "Unstop",
+    // unstop.com/hackathons/<title>-<id>, unstop.com/competitions/..., unstop.com/o/<id>
+    match: (u) => (/(^|\.)unstop\.com$/.test(u.hostname) ? (u.pathname.match(/-(\d{4,})\/?$/) ?? u.pathname.match(/^\/o\/(\d{4,})/))?.[1] ?? null : null),
+    fetch: (id) => fetchUnstopEvent(id),
+  },
+  {
+    name: "Hack2skill",
+    // hack2skill.com/event/<slug>/
+    match: (u) => (/(^|\.)hack2skill\.com$/.test(u.hostname) ? (u.pathname.match(/^\/event\/([\w-]+)\/?$/)?.[1] ?? null) : null),
+    fetch: (slug) => fetchHack2skillEvent(slug),
+  },
+];
+
+/** The event from its site's own data, for links to a site above; null for any other link or when it isn't found. */
+async function fromSite(url: URL): Promise<{ site: string; listing: Hackathon } | null> {
+  for (const s of SITES) {
+    const key = s.match(url);
+    if (!key) continue;
+    const listing = await s.fetch(key).catch((e: unknown) => {
+      console.warn(`[import] ${s.name} lookup failed:`, (e as Error).message);
+      return null;
+    });
+    return listing ? { site: s.name, listing } : null;
+  }
+  return null;
+}
+
+const draftOf = (h: Hackathon): ImportDraft => ({
+  url: h.url, title: h.title, tagline: h.tagline, organizer: h.organizer, mode: h.mode, city: h.city, country: h.country,
+  startsAt: h.startsAt, endsAt: h.endsAt, regEndsAt: h.regEndsAt, prizeText: h.prizeText, themes: h.themes,
+  teamMin: h.teamMin, teamMax: h.teamMax, image: h.image,
+});
 
 /** Only public web pages: never this machine or the local network. */
 function checkUrl(raw: string): URL {
@@ -138,6 +186,28 @@ type Extracted = Partial<Omit<ImportDraft, "url" | "image">>;
  */
 export async function previewFromUrl(raw: string): Promise<ImportPreview> {
   const url = checkUrl(raw);
+  const known = await fromSite(url);
+  if (known) {
+    // Already in HackMate from the feed (or added before) under the site's own id.
+    const existingId = (await getHackathon(known.listing.id)) ? known.listing.id : await findExisting(new URL(known.listing.url));
+    const d = draftOf(known.listing);
+    const missing = !d.startsAt && !d.endsAt && !d.regEndsAt;
+    return {
+      draft: d,
+      existingId,
+      warning: missing ? `${known.site} doesn't list dates for this event. Add them below if you know them.` : null,
+      readBy: "listing",
+      site: known.site,
+    };
+  }
+  if (SITES.some((s) => s.match(url))) {
+    return {
+      draft: EMPTY(url.toString(), url.hostname.replace(/^www\./, "")),
+      existingId: await findExisting(url),
+      warning: "Couldn't find this event in the site's data (check the link is to the event itself). Fill in the details below.",
+      readBy: "none",
+    };
+  }
   const existingId = await findExisting(url);
   const fallbackTitle = url.hostname.replace(/^www\./, "");
 
@@ -236,29 +306,33 @@ export interface ImportChoice {
  */
 export async function createFromDraft(d: ImportDraft, choice: ImportChoice): Promise<string> {
   const url = checkUrl(d.url);
-  const id = `custom:${createHash("sha1").update(normalise(url)).digest("hex").slice(0, 12)}`;
+  // A link to a site with event data is saved as that site's listing (its id, link and description), so the feed
+  // and the import never make two copies; your edits in the form still win.
+  const known = (await fromSite(url))?.listing ?? null;
+  const id = known?.id ?? `custom:${createHash("sha1").update(normalise(url)).digest("hex").slice(0, 12)}`;
   const title = d.title.trim().slice(0, 200) || url.hostname;
   const h: Hackathon = {
+    ...(known ?? {}),
     id,
-    source: "custom",
+    source: known?.source ?? "custom",
     title,
     tagline: d.tagline?.trim() || null,
-    url: url.toString(),
+    url: known?.url ?? url.toString(),
     image: d.image,
     mode: d.mode,
     city: d.mode === "online" ? null : d.city?.trim() || null,
     state: null,
     country: d.mode === "online" ? null : d.country?.trim() || null,
-    venue: null,
-    lat: null,
-    lng: null,
+    venue: known?.venue ?? null,
+    lat: known?.lat ?? null,
+    lng: known?.lng ?? null,
     startsAt: iso(d.startsAt),
     endsAt: iso(d.endsAt),
-    regStartsAt: null,
+    regStartsAt: known?.regStartsAt ?? null,
     regEndsAt: iso(d.regEndsAt),
     prizeText: d.prizeText?.trim() || null,
-    prizeUsd: parsePrizeUsd(d.prizeText),
-    entryFee: null,
+    prizeUsd: d.prizeText === known?.prizeText ? known.prizeUsd : parsePrizeUsd(d.prizeText),
+    entryFee: known?.entryFee ?? null,
     themes: [...new Set([...d.themes, ...inferThemes(title, d.tagline)])],
     organizer: d.organizer?.trim() || null,
     teamMin: d.teamMin,

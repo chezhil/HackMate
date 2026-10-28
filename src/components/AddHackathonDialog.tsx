@@ -35,7 +35,8 @@ interface Preview {
   draft: Draft;
   existingId: string | null;
   warning: string | null;
-  readBy: "ai" | "page" | "none";
+  readBy: "listing" | "ai" | "page" | "none";
+  site?: string;
 }
 
 const STAGES: { value: TrackStatus; label: string }[] = [
@@ -170,7 +171,8 @@ export function AddHackathonDialog({ open, onClose, defaultStage = "interested" 
             <Banner tone="warn">{preview.warning}</Banner>
           ) : (
             <p className="flex items-center gap-1.5 text-xs text-muted">
-              <Sparkles aria-hidden className="size-3.5" /> Read from the page{preview?.readBy === "ai" ? " by AI" : ""}. Check it and fix anything that&apos;s off.
+              <Sparkles aria-hidden className="size-3.5" />{" "}
+              {preview?.readBy === "listing" ? `From ${preview.site}'s event data` : `Read from the page${preview?.readBy === "ai" ? " by AI" : ""}`}. Check it and fix anything that&apos;s off.
             </p>
           )}
 

@@ -37,3 +37,16 @@ export async function fetchHack2skill(): Promise<Hackathon[]> {
   }
   throw new Error("Hack2skill: listing exceeded the pagination limit");
 }
+
+/** One event by the slug in its link (hack2skill.com/event/<slug>), open or over. */
+export async function fetchHack2skillEvent(slug: string): Promise<Hackathon | null> {
+  const want = slug.toLowerCase();
+  for (let page = 1; page <= 15; page++) {
+    const response = await fetchJson<Hack2skillPage>(`https://hack2skill.com/api/v1/innovator/public/event/public-list?page=${page}&records=100`);
+    if (response.success !== true || !Array.isArray(response.data)) return null;
+    const e = response.data.find((x) => x._id && x.title && x.eventUrl?.toLowerCase() === want);
+    if (e) return normalizeHack2skill(e);
+    if (page >= response.pages || response.data.length === 0) return null;
+  }
+  return null;
+}

@@ -47,10 +47,10 @@ export async function fetchUnstop(): Promise<Hackathon[]> {
     items.push(...res.data.data);
     if (page >= res.data.last_page) break;
   }
-  return items.map(normalize);
+  return items.map(normalizeUnstop);
 }
 
-function normalize(it: UnstopItem): Hackathon {
+export function normalizeUnstop(it: UnstopItem): Hackathon {
   const addr = it.address_with_country_logo ?? null;
   const mode: Mode = it.region === "offline" ? "offline" : it.region === "hybrid" ? "hybrid" : "online";
   const cash = (it.prizes ?? []).reduce((sum, p) => sum + (p.cash ?? 0), 0);
@@ -89,4 +89,14 @@ function normalize(it: UnstopItem): Hackathon {
     teamMax: it.regnRequirements?.max_team_size ?? null,
     description: it.details ? htmlToText(it.details) : null,
   };
+}
+
+/** One event by its id (the number at the end of its link), open or long over. */
+export async function fetchUnstopEvent(id: string): Promise<Hackathon | null> {
+  const res = await fetchJson<{ data?: { competition?: UnstopItem & { start_date?: string | null } } }>(
+    `https://unstop.com/api/public/competition/${encodeURIComponent(id)}`,
+  );
+  const c = res.data?.competition;
+  // Unlike the listing, a single event has its start date.
+  return c?.id && c.title ? { ...normalizeUnstop(c), startsAt: iso(c.start_date) } : null;
 }
