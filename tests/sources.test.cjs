@@ -58,3 +58,24 @@ for(const [name,fetcher] of [['Devpost',fetchDevpost],['lablab',fetchLablab],['H
 test('Devpost venue labels are not misclassified as cities',()=>{
  const h=normalizeDevpost({...rawDevpost,displayed_location:{icon:'map-marker-alt',location:'Sheridan College Hazel McCallion Campus'}});assert.equal(h.city,null);assert.equal(h.venue,'Sheridan College Hazel McCallion Campus');assert.equal(h.mode,'offline');
 });
+
+test('Devnovate events keep public fields only, with India-time dates and team sizes', () => {
+  const { normalizeDevnovate, devnovateDate, devnovateTeam } = require('../src/lib/sources/devnovate.ts');
+  const e = { _id: 'abc', name: 'Test Hack', hackathon: 'test-hack', eventType: 'hackathon', approvalStatus: 'approved', status: 'OFFLINE',
+    startDate: '02-11-2026', endDate: '2026-11-03', registrationDeadline: '2026-11-01T11:30', location: 'Some College, Panipat',
+    prizes: [{ place: '1st', amount: '15000' }, { place: '2nd', amount: '10,000' }], teamSize: '2-5', paid: true, price: 400,
+    organizationName: 'Test Org', subtitle: 'About the Event\nBuild things.', rules: ['Be nice'],
+    contact: { email: 'person@example.com', phoneNumber: '9812345678', name: 'Someone' }, leads: [{ name: 'Lead', phone: '9876543210' }] };
+  const h = normalizeDevnovate(e);
+  assert.equal(h.id, 'devnovate:abc'); assert.equal(h.url, 'https://devnovate.co/event/test-hack');
+  assert.equal(h.startsAt, '2026-11-01T18:30:00.000Z'); assert.equal(h.endsAt, '2026-11-03T18:29:00.000Z');
+  assert.equal(h.regEndsAt, '2026-11-01T06:00:00.000Z');
+  assert.equal(h.city, 'Panipat'); assert.equal(h.mode, 'offline'); assert.equal(h.entryFee, 'paid');
+  assert.equal(h.prizeText, '₹25,000 in prizes'); assert.equal(h.teamMin, 2); assert.equal(h.teamMax, 5);
+  assert.equal(h.tagline, 'Build things.');
+  assert.doesNotMatch(JSON.stringify(h), /person@example\.com|9812345678|9876543210|Someone/);
+  assert.equal(devnovateDate('not a date'), null);
+  assert.deepEqual(devnovateTeam('individual'), { min: 1, max: 1 });
+  assert.deepEqual(devnovateTeam('Up to 5 members per team'), { min: null, max: 5 });
+  assert.equal(normalizeDevnovate({ ...e, location: 'Hybrid', status: 'HYBRID' }).venue, null);
+});

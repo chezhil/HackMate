@@ -9,6 +9,7 @@ import { all } from "./db";
 import { canonicalUrl } from "./urls";
 import { isDate, isHttpUrl } from "./validation";
 import { getDescription, getHackathon, trackHackathon, updateTracked, upsertHackathons } from "./repo";
+import { fetchDevnovateEvent } from "./sources/devnovate";
 import { fetchHack2skillEvent } from "./sources/hack2skill";
 import { fetchUnstopEvent } from "./sources/unstop";
 import { htmlToText, iso, parsePrizeUsd, USER_AGENT } from "./sources/util";
@@ -75,6 +76,12 @@ const SITES: { name: string; match: (u: URL) => string | null; fetch: (key: stri
     // hack2skill.com/event/<slug>/
     match: (u) => (/(^|\.)hack2skill\.com$/.test(u.hostname) ? (u.pathname.match(/^\/event\/([\w-]+)\/?$/)?.[1] ?? null) : null),
     fetch: (slug) => fetchHack2skillEvent(slug),
+  },
+  {
+    name: "Devnovate",
+    // devnovate.co/event/<slug>
+    match: (u) => (/(^|\.)devnovate\.co$/.test(u.hostname) ? (u.pathname.match(/^\/event\/([\w-]+)\/?$/)?.[1] ?? null) : null),
+    fetch: (slug) => fetchDevnovateEvent(slug),
   },
 ];
 

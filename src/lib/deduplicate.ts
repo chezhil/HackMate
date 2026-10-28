@@ -16,7 +16,7 @@ function eventUrl(value: string): string | null {
     const host = url.hostname.toLowerCase().replace(/^www\./, "");
     const path = url.pathname.replace(/\/+$/, "");
     // A platform home page is not an event identity.
-    if ((!path || ["/hackathons", "/events", "/challenges"].includes(path)) && ["devpost.com", "devfolio.co", "unstop.com", "hack2skill.com", "devsemble.com", "lablab.ai", "hackerearth.com", "mlh.com", "wemakedevs.org"].includes(host)) return null;
+    if ((!path || ["/hackathons", "/events", "/challenges"].includes(path)) && ["devpost.com", "devfolio.co", "unstop.com", "hack2skill.com", "devsemble.com", "lablab.ai", "hackerearth.com", "mlh.com", "wemakedevs.org", "devnovate.co"].includes(host)) return null;
     return canonicalUrl(value);
   } catch { return null; }
 }

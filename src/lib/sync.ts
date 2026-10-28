@@ -7,6 +7,7 @@ import { fetchDevfolio } from "./sources/devfolio";
 import { fetchMlh } from "./sources/mlh";
 import { fetchUnstop } from "./sources/unstop";
 import { fetchWeMakeDevs } from "./sources/wemakedevs";
+import { fetchDevnovate } from "./sources/devnovate";
 import { fetchDevpost } from "./sources/devpost";
 import { fetchLablab } from "./sources/lablab";
 import { fetchHackerEarth } from "./sources/hackerearth";
@@ -24,6 +25,7 @@ const FETCHERS: Record<FeedSource, () => Promise<Hackathon[]>> = {
   hackerearth: fetchHackerEarth,
   lablab: fetchLablab,
   devpost: fetchDevpost,
+  devnovate: fetchDevnovate,
 };
 
 export interface SyncReport {
