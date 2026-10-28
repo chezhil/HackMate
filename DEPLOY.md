@@ -1,5 +1,23 @@
 # Deploying HackMate
 
+## Vercel + Supabase (free; what's live)
+
+HackMate runs on Vercel with its data in Supabase Postgres. With `DATABASE_URL` set it uses Postgres; without it
+(your own machine, tests) it uses PGlite, Postgres inside the process, in `data/pg`.
+
+- **Supabase**: project `hackmate` (us-east-1). Use the *transaction pooler* connection string (port 6543) as
+  `DATABASE_URL`. The app creates its tables, the restricted `hackmate_app` role and the row-level security rules
+  on first connect. Its scheduler (pg_cron + pg_net) calls `/api/cron` every 5 minutes with `CRON_SECRET`.
+- **Vercel**: project `hackmate`, region iad1 (next to the database). Variables: `DATABASE_URL`, `GROQ_API_KEY`,
+  `GEMINI_API_KEY`, `CRON_SECRET`, `HACKMATE_REQUIRE_LOGIN=1`, `HACKMATE_TZ` (Vercel reserves `TZ`).
+  `vercel.json` adds a daily Vercel Cron as a backup to Supabase's.
+- **Deploy**: `vercel deploy --prod` from this folder.
+- **Limits**: uploads up to 4 MB each (Vercel's request size); Supabase pauses a free project after about a week
+  with no activity (the 5-minute job usually keeps it awake; otherwise press Restore in its dashboard).
+- **Copying an old SQLite HackMate in**: `DATABASE_URL=... node --conditions=react-server scripts/import-sqlite.ts`.
+
+## A server of your own (Railway, Fly, a VPS)
+
 HackMate is one Node server that keeps its data in SQLite files and runs background jobs (reminder emails every
 5 minutes, feed refresh every 30). So it needs:
 

@@ -16,7 +16,7 @@ function timeLeft(ms: number) {
 }
 
 function fmt(iso: string) {
-  return new Date(iso).toLocaleString("en-US", { dateStyle: "full", timeStyle: "short", timeZone: process.env.TZ || undefined });
+  return new Date(iso).toLocaleString("en-US", { dateStyle: "full", timeStyle: "short", timeZone: process.env.HACKMATE_TZ || process.env.TZ || undefined });
 }
 
 /**
