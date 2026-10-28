@@ -1,0 +1,19 @@
+import { runAllReminders } from "@/lib/reminders";
+import { isStale, syncAll } from "@/lib/sync";
+import { connection } from "next/server";
+
+/**
+ * The scheduled jobs, for hosts without a long-running server (Vercel): send everyone's due reminders and
+ * refresh the feeds when they're stale. Called by Vercel Cron and by Supabase's scheduler every few minutes,
+ * with CRON_SECRET as a bearer token; anyone else gets a 401.
+ */
+export async function GET(req: Request) {
+  await connection();
+  const secret = process.env.CRON_SECRET;
+  if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) {
+    return Response.json({ error: "Not allowed" }, { status: 401 });
+  }
+  const reminders = await runAllReminders();
+  const synced = (await isStale()) ? (await syncAll()).at : null;
+  return Response.json({ ok: true, reminders, synced });
+}

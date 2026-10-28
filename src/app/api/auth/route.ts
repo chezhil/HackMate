@@ -21,10 +21,10 @@ async function post(req: Request) {
   const str = (v: unknown) => (typeof v === "string" ? v : "");
   // Per address: a handful of new accounts an hour, and a cap on sign-in attempts on top of the per-email one.
   const ip = clientIp() ?? "local";
-  if (b.action === "signup" && !allow(`signup:${ip}`, 5, 3_600_000)) {
-    return tooMany(`Too many new accounts from here. Try again after ${retryAt(`signup:${ip}`, 3_600_000).toLocaleTimeString()}.`);
+  if (b.action === "signup" && !await allow(`signup:${ip}`, 5, 3_600_000)) {
+    return tooMany(`Too many new accounts from here. Try again after ${(await retryAt(`signup:${ip}`, 3_600_000)).toLocaleTimeString()}.`);
   }
-  if (b.action === "signin" && !allow(`signin:${ip}`, 30, 15 * 60_000)) return tooMany("Too many sign-in attempts. Wait 15 minutes and try again.");
+  if (b.action === "signin" && !await allow(`signin:${ip}`, 30, 15 * 60_000)) return tooMany("Too many sign-in attempts. Wait 15 minutes and try again.");
   try {
     if (b.action === "signup") return Response.json({ user: await signUp({ username: str(b.username), email: str(b.email), password: str(b.password) }, secure) });
     if (b.action === "signin") return Response.json({ user: await signIn({ email: str(b.email), password: str(b.password) }, secure) });

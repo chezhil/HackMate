@@ -7,7 +7,7 @@ import { connection } from "next/server";
 
 async function get() {
   await connection();
-  return Response.json({ prizes: listPrizes() });
+  return Response.json({ prizes: await listPrizes() });
 }
 
 async function post(req: Request) {
@@ -16,9 +16,9 @@ async function post(req: Request) {
   if (raw.amount === "") raw.amount = null;
   if (!text(raw.hackathonId) || !validFields(raw, prizeRules)) return badRequest("Invalid prize fields");
   const b = raw as Partial<Prize> & { hackathonId: string };
-  if (!getHackathon(b.hackathonId)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
-  addPrize(b.hackathonId, { ...b, amount: b.amount != null && b.amount !== ("" as unknown) ? Number(b.amount) : null });
-  return Response.json({ prizes: listPrizes() });
+  if (!await getHackathon(b.hackathonId)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
+  await addPrize(b.hackathonId, { ...b, amount: b.amount != null && b.amount !== ("" as unknown) ? Number(b.amount) : null });
+  return Response.json({ prizes: await listPrizes() });
 }
 
 // Every request reads and writes the signed-in person's own data.

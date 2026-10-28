@@ -9,13 +9,13 @@ type Ctx = { params: Promise<{ id: string }> };
 
 async function get(_req: Request, { params }: Ctx) {
   await connection();
-  return Response.json({ turns: listQa(decodeURIComponent((await params).id)), rounds: QA_ROUNDS });
+  return Response.json({ turns: await listQa(decodeURIComponent((await params).id)), rounds: QA_ROUNDS });
 }
 
 /** { action: "start" } | { action: "answer", turnId, answer } | { action: "clear" } */
 async function post(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
-  if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
+  if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   const raw = await readJson(req);
   if (raw instanceof Response) return raw;
   if (!validFields(raw, { action: text, answer: text, turnId: (v) => Number.isSafeInteger(v) && Number(v) > 0 })) return badRequest("Invalid request fields");
@@ -27,7 +27,7 @@ async function post(req: Request, { params }: Ctx) {
       return Response.json({ turns: await answerQa(id, b.turnId, b.answer.trim().slice(0, 4000)), rounds: QA_ROUNDS });
     }
     if (b.action === "clear") {
-      clearQa(id);
+      await clearQa(id);
       return Response.json({ turns: [], rounds: QA_ROUNDS });
     }
     return Response.json({ error: "Unknown action" }, { status: 400 });

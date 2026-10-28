@@ -15,16 +15,16 @@ async function patch(req: Request, { params }: Ctx) {
     dueAt: body.dueAt === undefined ? undefined : new Date(body.dueAt as string).toISOString(),
     done: body.done as boolean | undefined,
   };
-  try { updateDeadline(id, patch); }
+  try { await updateDeadline(id, patch); }
   catch (e) { return Response.json({ error: (e as Error).message }, { status: 404 }); }
-  return Response.json({ tracked: listTracked() });
+  return Response.json({ tracked: await listTracked() });
 }
 
 async function remove(_req: Request, { params }: Ctx) {
   const id = Number((await params).id);
   if (!isPositiveId(id)) return badRequest("Invalid deadline ID");
-  deleteDeadline(id);
-  return Response.json({ tracked: listTracked() });
+  await deleteDeadline(id);
+  return Response.json({ tracked: await listTracked() });
 }
 
 // Every request reads and writes the signed-in person's own data.

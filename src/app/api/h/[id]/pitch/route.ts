@@ -11,8 +11,8 @@ type Ctx = { params: Promise<{ id: string }> };
 async function get(_req: Request, { params }: Ctx) {
   await connection();
   const id = decodeURIComponent((await params).id);
-  if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
-  return Response.json({ outputs: listOutputs(id), videoLimitSec: videoLimitSec(id) });
+  if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
+  return Response.json({ outputs: await listOutputs(id), videoLimitSec: await videoLimitSec(id) });
 }
 
 /**
@@ -21,7 +21,7 @@ async function get(_req: Request, { params }: Ctx) {
  */
 async function post(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
-  if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
+  if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   const raw = await readJson(req);
   if (raw instanceof Response) return raw;
   if (!validFields(raw, { kind: text, audience: text, script: text, extra: text, platform: text, minutes: (v) => typeof v === "number" && Number.isFinite(v), seconds: (v) => typeof v === "number" && Number.isFinite(v) })) return badRequest("Invalid request fields");
@@ -37,7 +37,7 @@ async function post(req: Request, { params }: Ctx) {
       if (!["linkedin", "x", "devto"].includes(b.platform ?? "")) return Response.json({ error: "Pick a platform" }, { status: 400 });
       output = await generateWriteup(id, b.platform!, b.extra?.slice(0, 1000) ?? "");
     } else return Response.json({ error: "Unknown kind" }, { status: 400 });
-    return Response.json({ output, outputs: listOutputs(id) });
+    return Response.json({ output, outputs: await listOutputs(id) });
   } catch (e) {
     return Response.json({ error: (e as Error).message }, { status: e instanceof AiUnavailableError ? 503 : 500 });
   }

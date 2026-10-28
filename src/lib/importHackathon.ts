@@ -1,10 +1,11 @@
 import "server-only";
+import { background } from "./request";
 import { createHash } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { generateJson } from "./ai";
 import { buildDetails } from "./details";
-import { db } from "./db";
+import { all } from "./db";
 import { getHackathon, trackHackathon, updateTracked, upsertHackathons } from "./repo";
 import { htmlToText, iso, parsePrizeUsd, USER_AGENT } from "./sources/util";
 import { inferThemes, THEMES } from "./themes";
@@ -66,9 +67,9 @@ function normalise(u: URL) {
   return `${keep.hostname.replace(/^www\./, "")}${keep.pathname.replace(/\/+$/, "")}${keep.search}`.toLowerCase();
 }
 
-function findExisting(u: URL): string | null {
+async function findExisting(u: URL): Promise<string | null> {
   const target = normalise(u);
-  const rows = db().prepare("SELECT id, url FROM hackathons").all() as { id: string; url: string }[];
+  const rows = (await all("SELECT id, url FROM hackathons")) as { id: string; url: string }[];
   for (const r of rows) {
     try {
       if (normalise(new URL(r.url)) === target) return r.id;
@@ -137,7 +138,7 @@ type Extracted = Partial<Omit<ImportDraft, "url" | "image">>;
  */
 export async function previewFromUrl(raw: string): Promise<ImportPreview> {
   const url = checkUrl(raw);
-  const existingId = findExisting(url);
+  const existingId = await findExisting(url);
   const fallbackTitle = url.hostname.replace(/^www\./, "");
 
   let html: string;
@@ -233,7 +234,7 @@ export interface ImportChoice {
  * Save a checked draft as a hackathon "Added by you", pin it at the chosen stage, and start reading its full
  * rules in the background so Overview, Ask AI and the checklist work like for any other hackathon.
  */
-export function createFromDraft(d: ImportDraft, choice: ImportChoice): string {
+export async function createFromDraft(d: ImportDraft, choice: ImportChoice): Promise<string> {
   const url = checkUrl(d.url);
   const id = `custom:${createHash("sha1").update(normalise(url)).digest("hex").slice(0, 12)}`;
   const title = d.title.trim().slice(0, 200) || url.hostname;
@@ -263,12 +264,12 @@ export function createFromDraft(d: ImportDraft, choice: ImportChoice): string {
     teamMin: d.teamMin,
     teamMax: d.teamMax,
   };
-  upsertHackathons([h], new Date().toISOString());
-  trackHackathon(id);
+  await upsertHackathons([h], new Date().toISOString());
+  await trackHackathon(id);
   if (choice.status !== "interested" || choice.result) {
-    updateTracked(id, { status: choice.status, ...(choice.status === "results" ? { result: choice.result ?? "participated" } : {}) });
+    await updateTracked(id, { status: choice.status, ...(choice.status === "results" ? { result: choice.result ?? "participated" } : {}) });
   }
   // Fills Overview, rules, Ask AI and the submission checklist from the page, like any other hackathon.
-  void buildDetails(id).catch((e) => console.warn("[import] reading rules failed for", id, (e as Error).message));
-  return getHackathon(id)!.id;
+  background("import", () => buildDetails(id));
+  return (await getHackathon(id))!.id;
 }

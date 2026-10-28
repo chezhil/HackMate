@@ -1,14 +1,14 @@
 import "server-only";
 import { generateJson } from "./ai";
-import { db } from "./db";
+import { all, get, run } from "./db";
 import { factsBlock, getDetails, pastWinners } from "./details";
 import { getHackathon } from "./repo";
 import type { Idea, IdeaCritique, IdeaSuggestion, IdeaVersion } from "./types";
 
-function context(id: string) {
-  const h = getHackathon(id);
+async function context(id: string) {
+  const h = await getHackathon(id);
   if (!h) throw new Error("Unknown hackathon");
-  const info = getDetails(id)?.info;
+  const info = (await getDetails(id))?.info;
   return { h, info };
 }
 
@@ -29,7 +29,7 @@ export interface SuggestResult {
 }
 
 export async function suggestIdeas(id: string, interests: string): Promise<SuggestResult> {
-  const { h, info } = context(id);
+  const { h, info } = await context(id);
   const winners = await pastWinners(id).catch(() => []);
   const res = await generateJson<{ guidelines: string[]; ideas: IdeaSuggestion[] }>({
     task: "ideas",
@@ -60,11 +60,9 @@ ${interests ? `Our interests / skills: ${interests}` : ""}`,
 
 // ---------- saved ideas + critique iterations ----------
 
-function versionsFor(ideaId: number): IdeaVersion[] {
+async function versionsFor(ideaId: number): Promise<IdeaVersion[]> {
   return (
-    db()
-      .prepare("SELECT id, text, critique, provider, created_at FROM idea_versions WHERE idea_id = ? ORDER BY id")
-      .all(ideaId) as { id: number; text: string; critique: string | null; provider: string | null; created_at: string }[]
+    (await all("SELECT id, text, critique, provider, created_at FROM idea_versions WHERE idea_id = ? ORDER BY id", ideaId)) as { id: number; text: string; critique: string | null; provider: string | null; created_at: string }[]
   ).map((v) => ({
     id: v.id,
     text: v.text,
@@ -74,29 +72,25 @@ function versionsFor(ideaId: number): IdeaVersion[] {
   }));
 }
 
-export function listIdeas(hackathonId: string): Idea[] {
-  const rows = db()
-    .prepare("SELECT id, hackathon_id, title, created_at FROM ideas WHERE hackathon_id = ? ORDER BY id DESC")
-    .all(hackathonId) as { id: number; hackathon_id: string; title: string; created_at: string }[];
-  return rows.map((r) => ({ id: r.id, hackathonId: r.hackathon_id, title: r.title, createdAt: r.created_at, versions: versionsFor(r.id) }));
+export async function listIdeas(hackathonId: string): Promise<Idea[]> {
+  const rows = (await all("SELECT id, hackathon_id, title, created_at FROM ideas WHERE hackathon_id = ? ORDER BY id DESC", hackathonId)) as { id: number; hackathon_id: string; title: string; created_at: string }[];
+  return Promise.all(rows.map(async (r) => ({ id: r.id, hackathonId: r.hackathon_id, title: r.title, createdAt: r.created_at, versions: await versionsFor(r.id) })));
 }
 
-export function createIdea(hackathonId: string, title: string, text: string): number {
+export async function createIdea(hackathonId: string, title: string, text: string): Promise<number> {
   const now = new Date().toISOString();
-  const r = db()
-    .prepare("INSERT INTO ideas (hackathon_id, title, created_at) VALUES (?, ?, ?) RETURNING id")
-    .get(hackathonId, title.trim() || "Untitled idea", now) as { id: number };
-  db().prepare("INSERT INTO idea_versions (idea_id, text, created_at) VALUES (?, ?, ?)").run(r.id, text, now);
+  const r = (await get("INSERT INTO ideas (hackathon_id, title, created_at) VALUES (?, ?, ?) RETURNING id", hackathonId, title.trim() || "Untitled idea", now)) as { id: number };
+  (await run("INSERT INTO idea_versions (idea_id, text, created_at) VALUES (?, ?, ?)", r.id, text, now));
   return r.id;
 }
 
-export function deleteIdea(ideaId: number) {
-  db().prepare("DELETE FROM idea_versions WHERE idea_id = ?").run(ideaId);
-  db().prepare("DELETE FROM ideas WHERE id = ?").run(ideaId);
+export async function deleteIdea(ideaId: number) {
+  (await run("DELETE FROM idea_versions WHERE idea_id = ?", ideaId));
+  (await run("DELETE FROM ideas WHERE id = ?", ideaId));
 }
 
-export function renameIdea(ideaId: number, title: string) {
-  db().prepare("UPDATE ideas SET title = ? WHERE id = ?").run(title, ideaId);
+export async function renameIdea(ideaId: number, title: string) {
+  (await run("UPDATE ideas SET title = ? WHERE id = ?", title, ideaId));
 }
 
 /**
@@ -104,13 +98,13 @@ export function renameIdea(ideaId: number, title: string) {
  * and their critiques are passed along so feedback tracks what changed.
  */
 export async function critiqueIdea(ideaId: number, text: string): Promise<Idea> {
-  const idea = db().prepare("SELECT hackathon_id, title FROM ideas WHERE id = ?").get(ideaId) as
+  const idea = (await get("SELECT hackathon_id, title FROM ideas WHERE id = ?", ideaId)) as
     | { hackathon_id: string; title: string }
     | undefined;
   if (!idea) throw new Error("Idea not found");
-  const { h, info } = context(idea.hackathon_id);
+  const { h, info } = await context(idea.hackathon_id);
   const winners = await pastWinners(idea.hackathon_id).catch(() => []);
-  const previous = versionsFor(ideaId).filter((v) => v.critique).slice(-2);
+  const previous = (await versionsFor(ideaId)).filter((v) => v.critique).slice(-2);
 
   const res = await generateJson<IdeaCritique>({
     task: "critique",
@@ -137,15 +131,13 @@ ${text}`,
     ],
   });
 
-  const latest = versionsFor(ideaId).at(-1);
+  const latest = (await versionsFor(ideaId)).at(-1);
   const provider = `${res.provider}:${res.model}`;
   if (latest && !latest.critique && latest.text === text) {
     // first critique of the text the idea was created with: attach it instead of duplicating
-    db().prepare("UPDATE idea_versions SET critique = ?, provider = ? WHERE id = ?").run(JSON.stringify(res.data), provider, latest.id);
+    (await run("UPDATE idea_versions SET critique = ?, provider = ? WHERE id = ?", JSON.stringify(res.data), provider, latest.id));
   } else {
-    db()
-      .prepare("INSERT INTO idea_versions (idea_id, text, critique, provider, created_at) VALUES (?, ?, ?, ?, ?)")
-      .run(ideaId, text, JSON.stringify(res.data), provider, new Date().toISOString());
+    (await run("INSERT INTO idea_versions (idea_id, text, critique, provider, created_at) VALUES (?, ?, ?, ?, ?)", ideaId, text, JSON.stringify(res.data), provider, new Date().toISOString()));
   }
-  return listIdeas(idea.hackathon_id).find((i) => i.id === ideaId)!;
+  return (await listIdeas(idea.hackathon_id)).find((i) => i.id === ideaId)!;
 }

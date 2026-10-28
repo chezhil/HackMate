@@ -25,8 +25,8 @@ async function post(req: Request) {
       if (!STATUSES.some((s) => s.key === status)) return badRequest("Pick where you are with it");
       const result = (b.result ?? null) as ResultKind | null;
       if (result !== null && !(result in RESULT_LABELS)) return badRequest("Unknown result");
-      const id = createFromDraft({ ...d, themes: Array.isArray(d.themes) ? d.themes : [] }, { status, result });
-      return Response.json({ id, tracked: listTracked() });
+      const id = await createFromDraft({ ...d, themes: Array.isArray(d.themes) ? d.themes : [] }, { status, result });
+      return Response.json({ id, tracked: await listTracked() });
     }
     return badRequest("Unknown action");
   } catch (e) {

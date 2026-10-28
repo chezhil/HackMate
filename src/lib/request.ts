@@ -1,5 +1,7 @@
 import "server-only";
 import { AsyncLocalStorage } from "node:async_hooks";
+import { after } from "next/server";
+import { currentScope, get, run, runAs } from "./db";
 
 /**
  * Public mode: set HACKMATE_REQUIRE_LOGIN=1 when HackMate is on the internet. Signed-out visitors can browse
@@ -27,21 +29,51 @@ export function ipOf(req: Request | undefined): string {
   return fwd || req?.headers?.get?.("x-real-ip") || req?.headers?.get?.("fly-client-ip") || "local";
 }
 
-// ---------- rate limits ----------
+// ---------- after the response ----------
 
-/** In memory, per server: fine for one machine (SQLite means one machine anyway). A restart clears them. */
-const hits = new Map<string, number[]>();
+/**
+ * Work that can finish after the response (reading a hackathon's rules, geocoding, a feed refresh). On Vercel a
+ * function stops when it responds unless the work is handed to after(); it keeps the same account and caller.
+ * Outside a request (tests, scripts) it just runs.
+ */
+export function background(label: string, fn: () => Promise<unknown>) {
+  const who = currentScope();
+  const ip = clientIp();
+  const job = () => withClient(ip ?? "local", () => runAs(who, fn)).then(
+    () => undefined,
+    (e: unknown) => console.error(`[${label}]`, e),
+  );
+  try {
+    after(job);
+  } catch {
+    void job();
+  }
+}
+
+// ---------- rate limits ----------
+//
+// Kept in the database (rate_hits), so every server instance shares the same count: on Vercel each request can
+// land on a different one.
+
+const since = (windowMs: number) => new Date(Date.now() - windowMs).toISOString();
+
+/** How many times `key` was used in the last `windowMs`. */
+export async function used(key: string, windowMs: number): Promise<number> {
+  const r = await get<{ n: number }>("SELECT COUNT(*)::int AS n FROM rate_hits WHERE key = ? AND at > ?", key, since(windowMs));
+  return r?.n ?? 0;
+}
+
+/** Count one use of each key, without checking a limit. */
+export async function record(keys: string[]) {
+  for (const key of keys) await run("INSERT INTO rate_hits (key) VALUES (?)", key);
+  // Now and then, forget anything older than the longest window (a day).
+  if (Math.random() < 0.02) await run("DELETE FROM rate_hits WHERE at < ?", since(2 * 86_400_000));
+}
 
 /** Record one use of `key`; false when it's already had `max` uses in the last `windowMs`. */
-export function allow(key: string, max: number, windowMs: number): boolean {
-  const now = Date.now();
-  const list = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
-  if (list.length >= max) {
-    hits.set(key, list);
-    return false;
-  }
-  list.push(now);
-  hits.set(key, list);
+export async function allow(key: string, max: number, windowMs: number): Promise<boolean> {
+  if ((await used(key, windowMs)) >= max) return false;
+  await record([key]);
   return true;
 }
 
@@ -49,21 +81,21 @@ export function allow(key: string, max: number, windowMs: number): boolean {
  * Like allow(), for several windows at once (say per hour and per day): it's only used, in all of them, when
  * every one has room. Returns the rule that's full, or null when allowed.
  */
-export function allowAll(rules: { key: string; max: number; windowMs: number }[]): { key: string; max: number; windowMs: number } | null {
-  const now = Date.now();
-  for (const r of rules) {
-    const list = (hits.get(r.key) ?? []).filter((t) => now - t < r.windowMs);
-    hits.set(r.key, list);
-    if (list.length >= r.max) return r;
-  }
-  for (const r of rules) hits.get(r.key)!.push(now);
+export async function allowAll(rules: { key: string; max: number; windowMs: number }[]): Promise<{ key: string; max: number; windowMs: number } | null> {
+  for (const r of rules) if ((await used(r.key, r.windowMs)) >= r.max) return r;
+  await record(rules.map((r) => r.key));
   return null;
 }
 
+/** Forget the uses of `key` (say, failed sign-ins once the right password comes in). */
+export async function clearUses(key: string) {
+  await run("DELETE FROM rate_hits WHERE key = ?", key);
+}
+
 /** When the oldest use in the window expires, i.e. when `key` can be used again. */
-export function retryAt(key: string, windowMs: number): Date {
-  const oldest = (hits.get(key) ?? [])[0] ?? Date.now();
-  return new Date(oldest + windowMs);
+export async function retryAt(key: string, windowMs: number): Promise<Date> {
+  const r = await get<{ at: Date | string | null }>("SELECT MIN(at) AS at FROM rate_hits WHERE key = ? AND at > ?", key, since(windowMs));
+  return new Date(new Date(r?.at ?? Date.now()).getTime() + windowMs);
 }
 
 export const tooMany = (message: string) => Response.json({ error: message }, { status: 429 });

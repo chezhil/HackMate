@@ -9,13 +9,13 @@ async function get() {
   const account = await currentUser();
   return Response.json({
     // Signed in, the header shows and edits your account's public profile; otherwise the one kept on this device.
-    profile: account?.profile ?? getProfile(),
+    profile: account?.profile ?? await getProfile(),
     account,
-    stats: stats(),
-    portfolio: portfolio(),
-    prizes: listPrizes(),
-    certificates: listCertificates(),
-    missingCertificates: missingCertificates(),
+    stats: await stats(),
+    portfolio: await portfolio(),
+    prizes: await listPrizes(),
+    certificates: await listCertificates(),
+    missingCertificates: await missingCertificates(),
   });
 }
 
@@ -26,7 +26,7 @@ async function put(req: Request) {
   const skills = (v: unknown) => Array.isArray(v) && v.length <= 30 && v.every((s) => typeof s === "string" && s.length <= 40);
   if (!validFields(body, { ...Object.fromEntries(keys.map((key) => [key, text])), skills, lookingForTeam: boolean })) return badRequest("Invalid profile fields");
   const patch = Object.fromEntries(Object.entries(body).filter(([key]) => keys.includes(key))) as Partial<Profile>;
-  if (!(await currentUser())) return Response.json({ profile: saveProfile(patch), account: null });
+  if (!(await currentUser())) return Response.json({ profile: await saveProfile(patch), account: null });
   // Account profiles are public, so their links must be real web links.
   if (["github", "linkedin", "website"].some((k) => typeof patch[k as keyof Profile] === "string" && patch[k as keyof Profile] !== "" && !isHttpUrl(patch[k as keyof Profile]))) {
     return badRequest("Links need to be full web addresses, starting with https://");

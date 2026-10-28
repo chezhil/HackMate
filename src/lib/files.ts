@@ -1,14 +1,16 @@
 import "server-only";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { DATA_DIR } from "./db";
+import { get, run } from "./db";
 
-// User uploads (screenshots, certificates, demo videos) live in data/files and are served by
-// /api/files/[name]. Names are random UUIDs, so they can't be guessed or collide.
+// User uploads (screenshots, certificates, demo videos, voice notes) live in the database's files table and are
+// served by /api/files/[name]. Names are random UUIDs, so they can't be guessed or collide.
 
-const FILES_DIR = path.join(DATA_DIR, "files");
-export const MAX_UPLOAD_BYTES = 200 * 1024 * 1024;
+/**
+ * Vercel's functions take request bodies up to about 4.5 MB, so uploads are capped below that there; a server of
+ * your own can take much bigger ones.
+ */
+export const MAX_UPLOAD_BYTES = process.env.VERCEL ? 4 * 1024 * 1024 : 200 * 1024 * 1024;
+const LIMIT_LABEL = process.env.VERCEL ? "4 MB" : "200 MB";
 
 const EXT: Record<string, string> = {
   "image/png": "png",
@@ -19,26 +21,29 @@ const EXT: Record<string, string> = {
   "video/mp4": "mp4",
   "video/webm": "webm",
   "video/quicktime": "mov",
+  "audio/webm": "webm",
+  "audio/ogg": "ogg",
+  "audio/mp4": "m4a",
+  "audio/mpeg": "mp3",
+  "audio/wav": "wav",
 };
 
-export function saveFile(data: Buffer, mime: string): string {
-  mkdirSync(FILES_DIR, { recursive: true });
+const SAFE_NAME = /^[\w-]+\.\w+$/;
+
+export async function saveFile(data: Buffer, mime: string): Promise<string> {
   const name = `${randomUUID()}.${EXT[mime] ?? "bin"}`;
-  writeFileSync(path.join(FILES_DIR, name), data);
+  await run("INSERT INTO files (name, mime, data, created_at) VALUES (?, ?, ?, ?)", name, mime, data, new Date().toISOString());
   return name;
 }
 
-export function readFile(name: string): Buffer | null {
-  if (!/^[\w-]+\.\w+$/.test(name)) return null; // no path tricks
-  try {
-    return readFileSync(path.join(FILES_DIR, name));
-  } catch {
-    return null;
-  }
+export async function readFile(name: string): Promise<Buffer | null> {
+  if (!SAFE_NAME.test(name)) return null;
+  const r = await get<{ data: Uint8Array }>("SELECT data FROM files WHERE name = ?", name);
+  return r ? Buffer.from(r.data) : null;
 }
 
-export function deleteFile(name: string | null | undefined) {
-  if (name && /^[\w-]+\.\w+$/.test(name)) rmSync(path.join(FILES_DIR, name), { force: true });
+export async function deleteFile(name: string | null | undefined) {
+  if (name && SAFE_NAME.test(name)) await run("DELETE FROM files WHERE name = ?", name);
 }
 
 export function mimeOf(name: string): string {
@@ -54,7 +59,7 @@ export class UploadError extends Error {
 export async function fileFromForm(form: FormData, field = "file"): Promise<{ data: Buffer; mime: string } | null> {
   const f = form.get(field);
   if (!(f instanceof Blob) || f.size === 0) return null;
-  if (f.size > MAX_UPLOAD_BYTES) throw new UploadError("File is too large (max 200 MB)", 413);
+  if (f.size > MAX_UPLOAD_BYTES) throw new UploadError(`File is too large (max ${LIMIT_LABEL})`, 413);
   if (!Object.hasOwn(EXT, f.type)) throw new UploadError("Upload an image, PDF, or video", 400);
   return { data: Buffer.from(await f.arrayBuffer()), mime: f.type };
 }
