@@ -16,22 +16,31 @@ export function SignInGate({ children }: { children: ReactNode }) {
   const path = usePathname();
   const { loaded, user, loginRequired } = useAccount();
   const personal = PERSONAL.some((p) => path === p || path.startsWith(`${p}/`));
-  if (personal && !loaded) return <PageSkeleton />;
-  if (!personal || user || !loginRequired) return children;
+  // Until we know who's signed in, a skeleton; then the sign-in prompt for a signed-out visitor.
+  const waiting = personal && !loaded;
+  const gated = personal && loaded && !user && loginRequired;
   const next = encodeURIComponent(path);
+  // The page itself always renders, just hidden while waiting or gated, so Next can still check it for
+  // instant navigation; a signed-out visitor's reads come back empty anyway.
   return (
-    <EmptyState
-      level={1}
-      icon={<LockKeyhole />}
-      title="Sign in to see this"
-      action={
-        <div className="flex flex-wrap justify-center gap-2">
-          <Link href={`/signin?next=${next}`} className="btn btn-primary">Sign in</Link>
-          <Link href={`/signin?mode=signup&next=${next}`} className="btn">Create account</Link>
-        </div>
-      }
-    >
-      Your tracker, calendar, results and profile belong to your account. You can still browse hackathons and people without one.
-    </EmptyState>
+    <>
+      {waiting && <PageSkeleton />}
+      {gated && (
+        <EmptyState
+          level={1}
+          icon={<LockKeyhole />}
+          title="Sign in to see this"
+          action={
+            <div className="flex flex-wrap justify-center gap-2">
+              <Link href={`/signin?next=${next}`} className="btn btn-primary">Sign in</Link>
+              <Link href={`/signin?mode=signup&next=${next}`} className="btn">Create account</Link>
+            </div>
+          }
+        >
+          Your tracker, calendar, results and profile belong to your account. You can still browse hackathons and people without one.
+        </EmptyState>
+      )}
+      <div hidden={waiting || gated}>{children}</div>
+    </>
   );
 }
