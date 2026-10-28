@@ -8,7 +8,7 @@ import { allow, tooMany } from "@/lib/request";
  * what's due, once, so pressing it again does nothing new; the limit just stops it being hammered.
  */
 async function post() {
-  if (!allow(`reminders:${currentScope() ?? "local"}`, 10, 3_600_000)) return tooMany("Checked a lot already this hour. The server checks every 5 minutes anyway.");
+  if (!await allow(`reminders:${currentScope() ?? "local"}`, 10, 3_600_000)) return tooMany("Checked a lot already this hour. The server checks every 5 minutes anyway.");
   return Response.json(await runReminders());
 }
 

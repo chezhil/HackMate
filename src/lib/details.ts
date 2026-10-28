@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { AiUnavailableError, generate, generateJson } from "./ai";
-import { db } from "./db";
+import { all, get, run, stmt } from "./db";
 import { getDescription, getHackathon } from "./repo";
 import { fetchJson, fetchText, htmlToText, USER_AGENT } from "./sources/util";
 import { passagesBlock, relevantPassages, resolveCitations } from "./citations";
@@ -14,7 +14,7 @@ const MAX_SOURCE_CHARS = 45_000;
 /** Everything we can read about a hackathon, as plain text, for the AI and the rule scanner. */
 async function gatherSourceText(h: Hackathon): Promise<string> {
   const parts: string[] = [];
-  const feedText = getDescription(h.id);
+  const feedText = await getDescription(h.id);
   if (feedText) parts.push(feedText);
 
   try {
@@ -87,14 +87,14 @@ function toDetails(r: Record<string, unknown>): HackathonDetails {
   };
 }
 
-export function getDetails(id: string): HackathonDetails | null {
-  const r = db().prepare("SELECT * FROM hackathon_details WHERE hackathon_id = ?").get(id);
+export async function getDetails(id: string): Promise<HackathonDetails | null> {
+  const r = (await get("SELECT * FROM hackathon_details WHERE hackathon_id = ?", id));
   return r ? toDetails(r) : null;
 }
 
-export function getSourceText(id: string): string {
-  const r = db().prepare("SELECT source_text FROM hackathon_details WHERE hackathon_id = ?").get(id) as { source_text: string } | undefined;
-  return r?.source_text ?? getDescription(id) ?? "";
+export async function getSourceText(id: string): Promise<string> {
+  const r = (await get("SELECT source_text FROM hackathon_details WHERE hackathon_id = ?", id)) as { source_text: string } | undefined;
+  return r?.source_text ?? await getDescription(id) ?? "";
 }
 
 const building = new Map<string, Promise<HackathonDetails>>();
@@ -108,7 +108,7 @@ export function buildDetails(id: string): Promise<HackathonDetails> {
   const pending = building.get(id);
   if (pending) return pending;
   const job = (async () => {
-    const h = getHackathon(id);
+    const h = await getHackathon(id);
     if (!h) throw new Error("Unknown hackathon");
     const sourceText = await gatherSourceText(h);
     let info: HackathonInfo | null = null;
@@ -133,14 +133,10 @@ export function buildDetails(id: string): Promise<HackathonDetails> {
         error = e instanceof AiUnavailableError ? e.message : `AI extraction failed: ${(e as Error).message}`;
       }
     }
-    db()
-      .prepare(
-        `INSERT INTO hackathon_details (hackathon_id, source_text, info, provider, error, fetched_at) VALUES (?, ?, ?, ?, ?, ?)
+    (await run(`INSERT INTO hackathon_details (hackathon_id, source_text, info, provider, error, fetched_at) VALUES (?, ?, ?, ?, ?, ?)
          ON CONFLICT(hackathon_id) DO UPDATE SET source_text = excluded.source_text, info = excluded.info,
-           provider = excluded.provider, error = excluded.error, fetched_at = excluded.fetched_at`,
-      )
-      .run(id, sourceText, info ? JSON.stringify(info) : null, provider, error, new Date().toISOString());
-    return getDetails(id)!;
+           provider = excluded.provider, error = excluded.error, fetched_at = excluded.fetched_at`, id, sourceText, info ? JSON.stringify(info) : null, provider, error, new Date().toISOString()));
+    return (await getDetails(id))!;
   })().finally(() => building.delete(id));
   building.set(id, job);
   return job;
@@ -148,10 +144,8 @@ export function buildDetails(id: string): Promise<HackathonDetails> {
 
 // ---------- Q&A chat ----------
 
-export function listChat(id: string): ChatMessage[] {
-  const rows = db()
-    .prepare("SELECT id, role, content, provider, created_at AS createdAt, citations, not_found AS notFound, follow_ups AS followUps FROM chat_messages WHERE hackathon_id = ? ORDER BY id")
-    .all(id) as unknown as (Omit<ChatMessage, "citations" | "notFound" | "followUps"> & { citations: string | null; notFound: number; followUps: string | null })[];
+export async function listChat(id: string): Promise<ChatMessage[]> {
+  const rows = (await all("SELECT id, role, content, provider, created_at AS createdAt, citations, not_found AS notFound, follow_ups AS followUps FROM chat_messages WHERE hackathon_id = ? ORDER BY id", id)) as unknown as (Omit<ChatMessage, "citations" | "notFound" | "followUps"> & { citations: string | null; notFound: number; followUps: string | null })[];
   return rows.map((r) => ({
     ...r,
     citations: r.citations ? (JSON.parse(r.citations) as Citation[]) : [],
@@ -160,17 +154,17 @@ export function listChat(id: string): ChatMessage[] {
   }));
 }
 
-export function clearChat(id: string) {
-  db().prepare("DELETE FROM chat_messages WHERE hackathon_id = ?").run(id);
+export async function clearChat(id: string) {
+  (await run("DELETE FROM chat_messages WHERE hackathon_id = ?", id));
 }
 
 export async function askQuestion(id: string, question: string): Promise<ChatMessage[]> {
-  const h = getHackathon(id);
+  const h = await getHackathon(id);
   if (!h) throw new Error("Unknown hackathon");
-  const details = getDetails(id) ?? (await buildDetails(id));
-  const history = listChat(id).slice(-10);
+  const details = await getDetails(id) ?? (await buildDetails(id));
+  const history = (await listChat(id)).slice(-10);
   const now = new Date().toISOString();
-  const passages = relevantPassages(getSourceText(id), question);
+  const passages = relevantPassages(await getSourceText(id), question);
   const system = `You are HackMate, helping someone decide on and prepare for one hackathon. Answer using ONLY the hackathon information below.
 If the answer isn't in it, say so plainly and suggest where to check (the hackathon page, organizers' Discord/email). Quote exact limits, dates and rules when they matter.
 Be brief: a direct answer first, then short bullets if useful. Current time: ${now}.
@@ -201,7 +195,7 @@ ${passagesBlock(passages)}`;
     // An opening question about a hackathon ("max team size?") gets the same answer for everyone, so it's
     // shared. Keyed on the question and the page it's answered from, not the prompt (which has the time in it).
     const firstQuestion = history.length === 0;
-    const pageHash = createHash("sha256").update(getSourceText(id)).update(JSON.stringify(details.info ?? null)).digest("hex").slice(0, 16);
+    const pageHash = createHash("sha256").update(await getSourceText(id)).update(JSON.stringify(details.info ?? null)).digest("hex").slice(0, 16);
     const asked = question.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
     const r = await generateJson<{ answer?: string; quotes?: Record<string, string>; notFound?: boolean; followUps?: unknown }>({
       task: "chat",
@@ -226,11 +220,9 @@ ${passagesBlock(passages)}`;
   }
   const { content, citations } = resolveCitations(answer.trim(), quotes, passages);
 
-  const insert = db().prepare(
-    "INSERT INTO chat_messages (hackathon_id, role, content, provider, created_at, citations, not_found, follow_ups) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-  );
-  insert.run(id, "user", question, null, now, null, 0, null);
-  insert.run(id, "assistant", content, `${res.provider}:${res.model}`, new Date().toISOString(), JSON.stringify(citations), notFound ? 1 : 0, JSON.stringify(followUps));
+  const insert = stmt("INSERT INTO chat_messages (hackathon_id, role, content, provider, created_at, citations, not_found, follow_ups) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",);
+  await insert.run(id, "user", question, null, now, null, 0, null);
+  await insert.run(id, "assistant", content, `${res.provider}:${res.model}`, new Date().toISOString(), JSON.stringify(citations), notFound ? 1 : 0, JSON.stringify(followUps));
   return listChat(id);
 }
 
@@ -268,13 +260,13 @@ const WINNERS_TTL_MS = 3 * 86_400_000;
  * hackathon first (matched on its name without the year/edition), then winners in the same themes.
  */
 export async function pastWinners(id: string, refresh = false): Promise<WinnerProject[]> {
-  const cached = db().prepare("SELECT projects, fetched_at FROM past_winners WHERE hackathon_id = ?").get(id) as
+  const cached = (await get("SELECT projects, fetched_at FROM past_winners WHERE hackathon_id = ?", id)) as
     | { projects: string; fetched_at: string }
     | undefined;
   if (cached && !refresh && Date.now() - new Date(cached.fetched_at).getTime() < WINNERS_TTL_MS) {
     return JSON.parse(cached.projects);
   }
-  const h = getHackathon(id);
+  const h = await getHackathon(id);
   if (!h) throw new Error("Unknown hackathon");
   const stem = h.title.replace(/\b(20\d\d|\d+(\.\d+)?|v\d+|[ivx]+|edition|season)\b/gi, "").replace(/[^\w\s&]/g, " ").replace(/\s+/g, " ").trim();
   const queries = [stem, ...h.themes.slice(0, 2).map((t) => t.replace(/ \/ .*/, ""))].filter((q) => q.length > 2);
@@ -292,12 +284,8 @@ export async function pastWinners(id: string, refresh = false): Promise<WinnerPr
     }
   }
   const top = projects.slice(0, 16);
-  db()
-    .prepare(
-      `INSERT INTO past_winners (hackathon_id, projects, fetched_at) VALUES (?, ?, ?)
-       ON CONFLICT(hackathon_id) DO UPDATE SET projects = excluded.projects, fetched_at = excluded.fetched_at`,
-    )
-    .run(id, JSON.stringify(top), new Date().toISOString());
+  (await run(`INSERT INTO past_winners (hackathon_id, projects, fetched_at) VALUES (?, ?, ?)
+       ON CONFLICT(hackathon_id) DO UPDATE SET projects = excluded.projects, fetched_at = excluded.fetched_at`, id, JSON.stringify(top), new Date().toISOString()));
   return top;
 }
 

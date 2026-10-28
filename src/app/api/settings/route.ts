@@ -6,7 +6,7 @@ import { connection } from "next/server";
 
 async function get() {
   await connection();
-  return Response.json({ settings: getSettings(), smtpConfigured: smtpConfigured() });
+  return Response.json({ settings: await getSettings(), smtpConfigured: smtpConfigured() });
 }
 
 async function put(req: Request) {
@@ -18,7 +18,7 @@ async function put(req: Request) {
     leadMinutes: (v) => Array.isArray(v) && v.length <= 20 && v.every((m) => Number.isSafeInteger(m) && m > 0 && m <= 525600),
     calendarProvider: (v) => ["google", "apple", "outlook", "other"].includes(v as string),
   })) return badRequest("Invalid settings");
-  const settings = saveSettings({
+  const settings = await saveSettings({
     email: (body.email as string | undefined)?.trim(),
     remindersEnabled: body.remindersEnabled as boolean | undefined,
     leadMinutes: body.leadMinutes as number[] | undefined,

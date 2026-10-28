@@ -8,7 +8,7 @@ type Ctx = { params: Promise<{ id: string }> };
 /** Draft a "looking for teammates" post. Body: { lookingFor, aboutMe, idea } */
 async function post(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
-  if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
+  if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   const raw = await readJson(req);
   if (raw instanceof Response) return raw;
   if (!validFields(raw, { lookingFor: text, aboutMe: text, idea: text })) return badRequest("Invalid teammate post fields");

@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { ANONYMOUS, currentScope, sharedDb } from "./db";
+import { ANONYMOUS, currentScope, get, run } from "./db";
 import { allowAll, clientIp, retryAt } from "./request";
 
 /**
@@ -82,7 +82,7 @@ const limit = (name: string, fallback: number) => {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 };
 
-function checkAllowance(task: Task) {
+async function checkAllowance(task: Task) {
   const who = currentScope();
   const ip = clientIp();
   if (ip == null) return; // not from a request
@@ -93,9 +93,9 @@ function checkAllowance(task: Task) {
           { key: `ai:${who ?? "local"}:h`, max: limit("AI_LIMIT_PER_HOUR", 60), windowMs: HOUR },
           { key: `ai:${who ?? "local"}:d`, max: limit("AI_LIMIT_PER_DAY", 300), windowMs: 24 * HOUR },
         ];
-  const full = allowAll(rules);
+  const full = await allowAll(rules);
   if (!full) return;
-  const when = retryAt(full.key, full.windowMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const when = (await retryAt(full.key, full.windowMs)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const span = full.windowMs === HOUR ? "this hour" : "today";
   console.warn(`[ai] limit reached for ${who ?? "local"} (${full.key}) on ${task}`);
   throw new AiUnavailableError(`You've used your AI allowance for ${span} (${full.max} requests). It frees up again around ${when}.`);
@@ -267,34 +267,30 @@ function cacheKey(req: AiRequest): string {
 }
 
 /** Serve from the cache, or run and store the answer. `accept` keeps bad answers (unparseable JSON) out. */
-async function cached(req: AiRequest, run: () => Promise<AiResult>, accept: (text: string) => boolean = () => true): Promise<AiResult> {
-  if (!req.cache) return run();
+async function cached(req: AiRequest, call: () => Promise<AiResult>, accept: (text: string) => boolean = () => true): Promise<AiResult> {
+  if (!req.cache) return call();
   const key = cacheKey(req);
   const now = new Date();
-  const hit = sharedDb().prepare("SELECT text, provider, model FROM ai_cache WHERE key = ? AND expires_at > ?").get(key, now.toISOString()) as
+  const hit = (await get("SELECT text, provider, model FROM ai_cache WHERE key = ? AND expires_at > ?", key, now.toISOString())) as
     | { text: string; provider: Provider; model: string }
     | undefined;
   if (hit) {
-    sharedDb().prepare("UPDATE ai_cache SET hits = hits + 1 WHERE key = ?").run(key);
+    (await run("UPDATE ai_cache SET hits = hits + 1 WHERE key = ?", key));
     return { ...hit, cached: true };
   }
-  const result = await run();
+  const result = await call();
   if (accept(result.text)) {
     const expires = new Date(now.getTime() + req.cache.ttlDays * 86_400_000);
-    sharedDb()
-      .prepare(
-        `INSERT INTO ai_cache (key, task, text, provider, model, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+    (await run(`INSERT INTO ai_cache (key, task, text, provider, model, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(key) DO UPDATE SET text = excluded.text, provider = excluded.provider, model = excluded.model,
-           created_at = excluded.created_at, expires_at = excluded.expires_at, hits = 0`,
-      )
-      .run(key, req.task, result.text, result.provider, result.model, now.toISOString(), expires.toISOString());
+           created_at = excluded.created_at, expires_at = excluded.expires_at, hits = 0`, key, req.task, result.text, result.provider, result.model, now.toISOString(), expires.toISOString()));
   }
   return result;
 }
 
 /** How much the cache has saved: answers stored, and calls answered from them. */
-export function cacheStats() {
-  const r = sharedDb().prepare("SELECT COUNT(*) AS entries, COALESCE(SUM(hits), 0) AS hits FROM ai_cache WHERE expires_at > ?").get(new Date().toISOString()) as {
+export async function cacheStats() {
+  const r = (await get("SELECT COUNT(*) AS entries, COALESCE(SUM(hits), 0) AS hits FROM ai_cache WHERE expires_at > ?", new Date().toISOString())) as {
     entries: number;
     hits: number;
   };
@@ -306,7 +302,7 @@ export function generate(req: AiRequest): Promise<AiResult> {
 }
 
 async function callProviders(req: AiRequest): Promise<AiResult> {
-  checkAllowance(req.task);
+  await checkAllowance(req.task);
   const order = ROUTES[req.task].filter(available);
   if (order.length === 0) {
     const needs = req.task === "audio" ? "GEMINI_API_KEY" : "GROQ_API_KEY or GEMINI_API_KEY";
@@ -349,7 +345,7 @@ function parseJson(text: string): unknown {
 
 /** Speech-to-text with Groq's Whisper: the fallback when Gemini can't take a voice note. */
 export async function transcribe(audio: Buffer, mime: string): Promise<string> {
-  checkAllowance("audio");
+  await checkAllowance("audio");
   const key = KEYS.groq();
   if (!key) throw new AiUnavailableError("Transcription needs GEMINI_API_KEY or GROQ_API_KEY in .env.local.");
   const form = new FormData();
@@ -365,7 +361,7 @@ export async function transcribe(audio: Buffer, mime: string): Promise<string> {
   return ((await res.json()) as { text: string }).text.trim();
 }
 
-export function aiStatus() {
+export async function aiStatus() {
   return {
     groq: { configured: Boolean(KEYS.groq()), model: process.env.GROQ_MODEL ?? state.hackmateAiModels!.groq ?? null },
     gemini: {
@@ -374,6 +370,6 @@ export function aiStatus() {
       coolingDown: (state.hackmateGeminiCooldownUntil ?? 0) > Date.now(),
     },
     routes: ROUTES,
-    cache: cacheStats(),
+    cache: await cacheStats(),
   };
 }

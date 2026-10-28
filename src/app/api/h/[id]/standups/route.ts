@@ -8,7 +8,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 async function get(_req: Request, { params }: Ctx) {
   await connection();
-  return Response.json({ standups: listStandups(decodeURIComponent((await params).id)) });
+  return Response.json({ standups: await listStandups(decodeURIComponent((await params).id)) });
 }
 
 /**
@@ -17,7 +17,7 @@ async function get(_req: Request, { params }: Ctx) {
  */
 async function post(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
-  if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
+  if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   if (req.headers.get("content-type")?.includes("application/json")) {
     const raw = await readJson(req);
   if (raw instanceof Response) return raw;
@@ -30,7 +30,7 @@ async function post(req: Request, { params }: Ctx) {
       return Response.json({ error: "Write something first" }, { status: 400 });
     }
     await saveTextStandup(id, b.author?.trim() || null, note, parts);
-    return Response.json({ standups: listStandups(id) });
+    return Response.json({ standups: await listStandups(id) });
   }
   const form = await req.formData();
   const audio = form.get("audio");
@@ -38,9 +38,9 @@ async function post(req: Request, { params }: Ctx) {
   if (audio.size > MAX_AUDIO_BYTES) return Response.json({ error: "Voice note is too long (max ~15 MB)" }, { status: 413 });
   const author = (form.get("author") as string | null)?.trim() || null;
   const duration = Number(form.get("duration")) || null;
-  const standupId = saveStandup(id, Buffer.from(await audio.arrayBuffer()), audio.type || "audio/webm", author, duration);
+  const standupId = await saveStandup(id, Buffer.from(await audio.arrayBuffer()), audio.type || "audio/webm", author, duration);
   await transcribeStandup(standupId);
-  return Response.json({ standups: listStandups(id) });
+  return Response.json({ standups: await listStandups(id) });
 }
 
 // Every request reads and writes the signed-in person's own data.

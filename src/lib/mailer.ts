@@ -1,6 +1,6 @@
 import "server-only";
 import nodemailer from "nodemailer";
-import { db } from "./db";
+import { all, run } from "./db";
 import { smtpConfigured } from "./settings";
 
 /**
@@ -28,14 +28,10 @@ export async function sendEmail(to: string, subject: string, text: string): Prom
     error = "SMTP not configured — logged only";
     console.log(`[mail] (not sent) to=${to} subject=${subject}\n${text}`);
   }
-  db()
-    .prepare("INSERT INTO email_log (to_addr, subject, body, delivered, error, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-    .run(to, subject, text, delivered ? 1 : 0, error ?? null, new Date().toISOString());
+  (await run("INSERT INTO email_log (to_addr, subject, body, delivered, error, created_at) VALUES (?, ?, ?, ?, ?, ?)", to, subject, text, delivered ? 1 : 0, error ?? null, new Date().toISOString()));
   return { delivered, error };
 }
 
-export function recentEmails(limit = 20) {
-  return db()
-    .prepare("SELECT id, to_addr AS toAddr, subject, body, delivered, error, created_at AS createdAt FROM email_log ORDER BY id DESC LIMIT ?")
-    .all(limit);
+export async function recentEmails(limit = 20) {
+  return (await all("SELECT id, to_addr AS toAddr, subject, body, delivered, error, created_at AS createdAt FROM email_log ORDER BY id DESC LIMIT ?", limit));
 }

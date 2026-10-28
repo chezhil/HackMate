@@ -8,7 +8,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 async function get(_req: Request, { params }: Ctx) {
   await connection();
-  return Response.json({ messages: listChat(decodeURIComponent((await params).id)) });
+  return Response.json({ messages: await listChat(decodeURIComponent((await params).id)) });
 }
 
 async function post(req: Request, { params }: Ctx) {
@@ -27,7 +27,7 @@ async function post(req: Request, { params }: Ctx) {
 }
 
 async function remove(_req: Request, { params }: Ctx) {
-  clearChat(decodeURIComponent((await params).id));
+  await clearChat(decodeURIComponent((await params).id));
   return Response.json({ messages: [] });
 }
 

@@ -5,7 +5,7 @@ type Ctx = { params: Promise<{ name: string }> };
 
 async function get(_req: Request, { params }: Ctx) {
   const { name } = await params;
-  const data = readFile(name);
+  const data = await readFile(name);
   if (!data) return new Response("Not found", { status: 404 });
   return new Response(new Uint8Array(data), {
     headers: { "Content-Type": mimeOf(name), "Cache-Control": "private, max-age=86400" },

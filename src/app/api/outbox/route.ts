@@ -4,7 +4,7 @@ import { connection } from "next/server";
 
 async function get() {
   await connection();
-  return Response.json({ emails: recentEmails() });
+  return Response.json({ emails: await recentEmails() });
 }
 
 // Every request reads and writes the signed-in person's own data.

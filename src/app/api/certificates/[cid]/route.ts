@@ -5,22 +5,22 @@ import { certificateHackathon, deleteCertificate, listCertificates, missingCerti
 
 type Ctx = { params: Promise<{ cid: string }> };
 
-const payload = () => Response.json({ certificates: listCertificates(), missing: missingCertificates() });
+const payload = async () => Response.json({ certificates: await listCertificates(), missing: await missingCertificates() });
 
 /** JSON { title?, url?, status? } or multipart with a file. */
 async function patch(req: Request, { params }: Ctx) {
   const cid = Number((await params).cid);
-  if (!certificateHackathon(cid)) return Response.json({ error: "Not found" }, { status: 404 });
+  if (!await certificateHackathon(cid)) return Response.json({ error: "Not found" }, { status: 404 });
   if (req.headers.get("content-type")?.includes("multipart/form-data")) {
     try {
       const file = await fileFromForm(await req.formData());
-      if (file) updateCertificate(cid, { file: saveFile(file.data, file.mime), mime: file.mime });
+      if (file) await updateCertificate(cid, { file: await saveFile(file.data, file.mime), mime: file.mime });
     } catch (e) { return Response.json({ error: (e as Error).message }, { status: e instanceof UploadError ? e.status : 400 }); }
   } else {
     const body = await readJson(req);
     if (body instanceof Response) return body;
     if (!validFields(body, { title: text, url: optionalUrl, status: (v) => v === "pending" || v === "received" })) return badRequest("Invalid certificate fields");
-    updateCertificate(cid, {
+    await updateCertificate(cid, {
       ...(body.title === undefined ? {} : { title: (body.title as string).trim() }),
       ...(body.url === undefined ? {} : { url: body.url as string | null }),
       ...(body.status === undefined ? {} : { status: body.status as "pending" | "received" }),
@@ -30,7 +30,7 @@ async function patch(req: Request, { params }: Ctx) {
 }
 
 async function remove(_req: Request, { params }: Ctx) {
-  deleteCertificate(Number((await params).cid));
+  await deleteCertificate(Number((await params).cid));
   return payload();
 }
 

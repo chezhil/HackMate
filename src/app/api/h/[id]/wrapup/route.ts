@@ -11,18 +11,18 @@ type Ctx = { params: Promise<{ id: string }> };
 async function get(_req: Request, { params }: Ctx) {
   await connection();
   const id = decodeURIComponent((await params).id);
-  return Response.json({ retro: getRetro(id), prizes: listPrizes(id), certificates: listCertificates(id) });
+  return Response.json({ retro: await getRetro(id), prizes: await listPrizes(id), certificates: await listCertificates(id) });
 }
 
 /** Save retro notes. */
 async function put(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
-  if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
+  if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   const body = await readJson(req);
   if (body instanceof Response) return body;
   if (!validFields(body, { wentWell: text, improve: text, lessons: text, rating: (v) => v === null || (Number.isInteger(v) && Number(v) >= 1 && Number(v) <= 5) })) return badRequest("Invalid retro fields");
   const patch = Object.fromEntries(Object.entries(body).filter(([key]) => ['wentWell', 'improve', 'lessons', 'rating'].includes(key))) as Partial<Retro>;
-  return Response.json({ retro: saveRetro(id, patch) });
+  return Response.json({ retro: await saveRetro(id, patch) });
 }
 
 /** AI draft of the retro from your activity (not saved until you save it). */

@@ -1,46 +1,38 @@
 import "server-only";
 import { AiUnavailableError, generate } from "./ai";
-import { db } from "./db";
+import { all, get, run } from "./db";
 import { getDetails } from "./details";
 import { fmtDate } from "./format";
 import { getHackathon } from "./repo";
 import type { Teammate } from "./types";
 
-export function listTeam(hackathonId: string): Teammate[] {
+export async function listTeam(hackathonId: string): Promise<Teammate[]> {
   return (
-    db()
-      .prepare("SELECT id, name, role, skills, contact, confirmed FROM teammates WHERE hackathon_id = ? ORDER BY id")
-      .all(hackathonId) as unknown as (Omit<Teammate, "confirmed"> & { confirmed: number })[]
+    (await all("SELECT id, name, role, skills, contact, confirmed FROM teammates WHERE hackathon_id = ? ORDER BY id", hackathonId)) as unknown as (Omit<Teammate, "confirmed"> & { confirmed: number })[]
   ).map((t) => ({ ...t, confirmed: Boolean(t.confirmed) }));
 }
 
-export function addTeammate(hackathonId: string, t: Omit<Teammate, "id">) {
-  db()
-    .prepare("INSERT INTO teammates (hackathon_id, name, role, skills, contact, confirmed, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-    .run(hackathonId, t.name.trim(), t.role || null, t.skills || null, t.contact || null, t.confirmed ? 1 : 0, new Date().toISOString());
+export async function addTeammate(hackathonId: string, t: Omit<Teammate, "id">) {
+  (await run("INSERT INTO teammates (hackathon_id, name, role, skills, contact, confirmed, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", hackathonId, t.name.trim(), t.role || null, t.skills || null, t.contact || null, t.confirmed ? 1 : 0, new Date().toISOString()));
 }
 
-export function updateTeammate(id: number, patch: Partial<Omit<Teammate, "id">>) {
-  const cur = db().prepare("SELECT * FROM teammates WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+export async function updateTeammate(id: number, patch: Partial<Omit<Teammate, "id">>) {
+  const cur = (await get("SELECT * FROM teammates WHERE id = ?", id)) as Record<string, unknown> | undefined;
   if (!cur) throw new Error("Teammate not found");
-  db()
-    .prepare("UPDATE teammates SET name = ?, role = ?, skills = ?, contact = ?, confirmed = ? WHERE id = ?")
-    .run(
-      patch.name ?? (cur.name as string),
+  (await run("UPDATE teammates SET name = ?, role = ?, skills = ?, contact = ?, confirmed = ? WHERE id = ?", patch.name ?? (cur.name as string),
       patch.role !== undefined ? patch.role : (cur.role as string | null),
       patch.skills !== undefined ? patch.skills : (cur.skills as string | null),
       patch.contact !== undefined ? patch.contact : (cur.contact as string | null),
       patch.confirmed !== undefined ? (patch.confirmed ? 1 : 0) : (cur.confirmed as number),
-      id,
-    );
+      id,));
 }
 
-export function removeTeammate(id: number) {
-  db().prepare("DELETE FROM teammates WHERE id = ?").run(id);
+export async function removeTeammate(id: number) {
+  (await run("DELETE FROM teammates WHERE id = ?", id));
 }
 
-export function teamOf(id: number): string | null {
-  const r = db().prepare("SELECT hackathon_id FROM teammates WHERE id = ?").get(id) as { hackathon_id: string } | undefined;
+export async function teamOf(id: number): Promise<string | null> {
+  const r = (await get("SELECT hackathon_id FROM teammates WHERE id = ?", id)) as { hackathon_id: string } | undefined;
   return r?.hackathon_id ?? null;
 }
 
@@ -52,10 +44,10 @@ export interface PostInput {
 
 /** A "looking for teammates" post. Written by Groq when available, otherwise from a template. */
 export async function draftTeammatePost(hackathonId: string, input: PostInput): Promise<{ text: string; provider: string | null }> {
-  const h = getHackathon(hackathonId);
+  const h = await getHackathon(hackathonId);
   if (!h) throw new Error("Unknown hackathon");
-  const team = listTeam(hackathonId);
-  const max = getDetails(hackathonId)?.info?.teamSize.max ?? h.teamMax;
+  const team = await listTeam(hackathonId);
+  const max = (await getDetails(hackathonId))?.info?.teamSize.max ?? h.teamMax;
   const when = h.startsAt ? fmtDate(h.startsAt) : h.endsAt ? `ends ${fmtDate(h.endsAt)}` : "";
   const where = h.mode === "online" ? "online" : [h.city, h.country].filter(Boolean).join(", ") || h.mode;
 

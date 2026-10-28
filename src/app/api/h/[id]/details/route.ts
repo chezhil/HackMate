@@ -1,3 +1,4 @@
+import { background } from "@/lib/request";
 import { withAccount } from "@/lib/auth";
 import { aiStatus } from "@/lib/ai";
 import { ruleAlerts } from "@/lib/alerts";
@@ -7,15 +8,15 @@ import { connection } from "next/server";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-function payload(id: string) {
-  const hackathon = getHackathon(id)!;
+async function payload(id: string) {
+  const hackathon = (await getHackathon(id))!;
   return {
     hackathon,
-    tracked: listTracked().find((t) => t.hackathonId === id) ?? null,
-    details: getDetails(id),
+    tracked: (await listTracked()).find((t) => t.hackathonId === id) ?? null,
+    details: await getDetails(id),
     building: isBuilding(id),
-    ruleAlerts: ruleAlerts(getSourceText(id), { min: hackathon.teamMin, max: hackathon.teamMax }),
-    ai: aiStatus(),
+    ruleAlerts: ruleAlerts(await getSourceText(id), { min: hackathon.teamMin, max: hackathon.teamMax }),
+    ai: await aiStatus(),
   };
 }
 
@@ -26,17 +27,17 @@ function payload(id: string) {
 async function get(_req: Request, { params }: Ctx) {
   await connection();
   const id = decodeURIComponent((await params).id);
-  if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
-  if (!getDetails(id) && !isBuilding(id)) void buildDetails(id).catch((e) => console.error("[details]", e));
-  return Response.json(payload(id));
+  if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
+  if (!(await getDetails(id)) && !isBuilding(id)) background("details", () => buildDetails(id));
+  return Response.json(await payload(id));
 }
 
 /** Re-read the page and re-run extraction (in the background; poll GET). */
 async function post(_req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
-  if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
-  void buildDetails(id).catch((e) => console.error("[details]", e));
-  return Response.json(payload(id));
+  if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
+  background("details", () => buildDetails(id));
+  return Response.json(await payload(id));
 }
 
 // Every request reads and writes the signed-in person's own data.

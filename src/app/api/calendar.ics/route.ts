@@ -1,4 +1,4 @@
-import { allScopes, getSetting, runAs } from "@/lib/db";
+import { calendarOwner, runAs } from "@/lib/db";
 import { trackerCalendar } from "@/lib/ics";
 import { listTracked } from "@/lib/repo";
 import { getSettings } from "@/lib/settings";
@@ -10,11 +10,11 @@ import { getSettings } from "@/lib/settings";
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
-  const owner = token ? allScopes().find((id) => runAs(id, () => getSetting("calendarToken")) === token) : undefined;
+  const owner = token ? await calendarOwner(token) : undefined;
   if (owner === undefined) {
     return new Response("Not found", { status: 404 });
   }
-  const body = runAs(owner, () => trackerCalendar(listTracked(), getSettings().leadMinutes));
+  const body = await runAs(owner, async () => trackerCalendar(await listTracked(), (await getSettings()).leadMinutes));
   const download = url.searchParams.has("download");
   return new Response(body, {
     headers: {

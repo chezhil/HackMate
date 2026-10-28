@@ -12,7 +12,7 @@ const fail = (e: unknown) =>
 
 async function get(_req: Request, { params }: Ctx) {
   await connection();
-  return Response.json({ ideas: listIdeas(decodeURIComponent((await params).id)) });
+  return Response.json({ ideas: await listIdeas(decodeURIComponent((await params).id)) });
 }
 
 /**
@@ -21,7 +21,7 @@ async function get(_req: Request, { params }: Ctx) {
  */
 async function post(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
-  if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
+  if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   const raw = await readJson(req);
   if (raw instanceof Response) return raw;
   if (!validFields(raw, { action: text, interests: text, title: text, text: text })) return badRequest("Invalid request fields");
@@ -30,8 +30,8 @@ async function post(req: Request, { params }: Ctx) {
     if (body.action === "suggest") return Response.json(await suggestIdeas(id, body.interests?.slice(0, 500) ?? ""));
     if (body.action === "create") {
       if (!body.text?.trim()) return Response.json({ error: "Describe the idea first" }, { status: 400 });
-      createIdea(id, body.title ?? "", body.text.trim());
-      return Response.json({ ideas: listIdeas(id) });
+      await createIdea(id, body.title ?? "", body.text.trim());
+      return Response.json({ ideas: await listIdeas(id) });
     }
     return Response.json({ error: "Unknown action" }, { status: 400 });
   } catch (e) {

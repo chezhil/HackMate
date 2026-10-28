@@ -9,18 +9,18 @@ const DEFAULTS: Omit<Settings, "calendarToken"> = {
   calendarProvider: "google",
 };
 
-export function getSettings(): Settings {
-  const raw = getSetting("prefs");
+export async function getSettings(): Promise<Settings> {
+  const raw = await getSetting("prefs");
   const prefs = raw ? { ...DEFAULTS, ...JSON.parse(raw) } : DEFAULTS;
-  return { ...prefs, calendarToken: calendarToken() };
+  return { ...prefs, calendarToken: await calendarToken() };
 }
 
-export function saveSettings(patch: Partial<Omit<Settings, "calendarToken">>): Settings {
-  const { calendarToken: _ignored, ...current } = getSettings();
+export async function saveSettings(patch: Partial<Omit<Settings, "calendarToken">>): Promise<Settings> {
+  const { calendarToken: _ignored, ...current } = await getSettings();
   void _ignored;
   const next = { ...current, ...Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)) };
   if (next.leadMinutes) next.leadMinutes = [...new Set(next.leadMinutes.map(Number))].sort((a, b) => b - a);
-  setSetting("prefs", JSON.stringify(next));
+  await setSetting("prefs", JSON.stringify(next));
   return getSettings();
 }
 

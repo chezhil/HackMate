@@ -1,6 +1,6 @@
 import "server-only";
 import { AiUnavailableError, generateJson } from "./ai";
-import { db } from "./db";
+import { all, get, run, stmt } from "./db";
 import { factsBlock, getDetails } from "./details";
 import { deleteFile, readFile } from "./files";
 import { videoLimitSec } from "./pitch";
@@ -48,10 +48,10 @@ function seedFor(item: string, limit: string | null): Seed {
  * (plus submitting and adding teammates). Only when they list nothing do the usual items appear, and then
  * as optional suggestions, so a hackathon that wants a PR link and a blog post never asks for a demo video.
  */
-function seedsFor(hackathonId: string): Seed[] {
-  const info = getDetails(hackathonId)?.info;
+async function seedsFor(hackathonId: string): Promise<Seed[]> {
+  const info = (await getDetails(hackathonId))?.info;
   const fromRules: Seed[] = (info?.deliverables ?? []).map((d) => seedFor(d.item, d.limit));
-  const limit = videoLimitSec(hackathonId);
+  const limit = await videoLimitSec(hackathonId);
   for (const s of fromRules) if (s.meta?.accept === "video" && limit) s.meta.limitSec = limit;
 
   const suggestions: Seed[] = fromRules.length
@@ -63,21 +63,19 @@ function seedsFor(hackathonId: string): Seed[] {
       ];
   const always = [
     { label: "Project submitted on the hackathon platform", detail: "Before the submission deadline", kind: "check", required: true, meta: null, origin: "default" },
-    (info?.teamSize.max ?? getHackathon(hackathonId)?.teamMax ?? 1) > 1 && { label: "All teammates added to the submission", detail: null, kind: "check", required: true, meta: null, origin: "default" },
+    (info?.teamSize.max ?? (await getHackathon(hackathonId))?.teamMax ?? 1) > 1 && { label: "All teammates added to the submission", detail: null, kind: "check", required: true, meta: null, origin: "default" },
   ].filter(Boolean) as Seed[];
   return [...fromRules, ...suggestions, ...always];
 }
 
 /** Whether the rules have been read and list deliverables yet. */
-const rulesKnown = (hackathonId: string) => (getDetails(hackathonId)?.info?.deliverables.length ?? 0) > 0;
+const rulesKnown = async (hackathonId: string) => ((await getDetails(hackathonId))?.info?.deliverables.length ?? 0) > 0;
 
 /** An item you haven't touched: not ticked, nothing attached, not one you added. Safe to replace. */
 const untouched = (i: ChecklistItem) => i.origin !== "custom" && !i.done && !i.value && !i.file;
 
 function insertSeeds(hackathonId: string, seeds: Seed[], startSort: number) {
-  const insert = db().prepare(
-    "INSERT INTO checklist_items (hackathon_id, label, detail, kind, required, meta, origin, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-  );
+  const insert = stmt("INSERT INTO checklist_items (hackathon_id, label, detail, kind, required, meta, origin, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",);
   seeds.forEach((s, i) =>
     insert.run(hackathonId, s.label, s.detail, s.kind, s.required ? 1 : 0, s.meta ? JSON.stringify(s.meta) : null, s.origin, startSort + i),
   );
@@ -87,50 +85,48 @@ function insertSeeds(hackathonId: string, seeds: Seed[], startSort: number) {
  * Re-derive the rule-based items: replaces the ones you haven't touched with what the rules ask for now,
  * keeps your own items and anything ticked or attached, and doesn't duplicate what's already there.
  */
-export function rebuildChecklist(hackathonId: string) {
-  const current = (db().prepare("SELECT * FROM checklist_items WHERE hackathon_id = ? ORDER BY sort, id").all(hackathonId) as Row[]).map(toItem);
-  const del = db().prepare("DELETE FROM checklist_items WHERE id = ?");
-  for (const i of current) if (untouched(i)) del.run(i.id);
+export async function rebuildChecklist(hackathonId: string) {
+  const current = ((await all("SELECT * FROM checklist_items WHERE hackathon_id = ? ORDER BY sort, id", hackathonId)) as Row[]).map(toItem);
+  const del = stmt("DELETE FROM checklist_items WHERE id = ?");
+  for (const i of current) if (untouched(i)) await del.run(i.id);
   const kept = new Set(current.filter((i) => !untouched(i)).map((i) => i.label.trim().toLowerCase()));
-  const fresh = seedsFor(hackathonId).filter((s) => !kept.has(s.label.trim().toLowerCase()));
+  const fresh = (await seedsFor(hackathonId)).filter((s) => !kept.has(s.label.trim().toLowerCase()));
   // Rule items go first; whatever you kept follows in its old order.
   insertSeeds(hackathonId, fresh, -fresh.length);
 }
 
-export function listChecklist(hackathonId: string): ChecklistItem[] {
-  const read = () => (db().prepare("SELECT * FROM checklist_items WHERE hackathon_id = ? ORDER BY sort, id").all(hackathonId) as Row[]).map(toItem);
-  let items = read();
+export async function listChecklist(hackathonId: string): Promise<ChecklistItem[]> {
+  const read = async () => ((await all("SELECT * FROM checklist_items WHERE hackathon_id = ? ORDER BY sort, id", hackathonId)) as Row[]).map(toItem);
+  let items = await read();
   if (items.length === 0) {
-    insertSeeds(hackathonId, seedsFor(hackathonId), 0);
-    items = read();
-  } else if (rulesKnown(hackathonId) && !items.some((i) => i.origin === "rules") && items.every((i) => i.origin === "custom" || untouched(i))) {
+    insertSeeds(hackathonId, await seedsFor(hackathonId), 0);
+    items = await read();
+  } else if (await rulesKnown(hackathonId) && !items.some((i) => i.origin === "rules") && items.every((i) => i.origin === "custom" || untouched(i))) {
     // Built before the AI had read the rules: now that it has, swap the generic list for the real one.
-    rebuildChecklist(hackathonId);
-    items = read();
+    await rebuildChecklist(hackathonId);
+    items = await read();
   }
   return items;
 }
 
-export function addChecklistItem(hackathonId: string, label: string, kind: ChecklistKind, required: boolean) {
-  const max = db().prepare("SELECT MAX(sort) AS m FROM checklist_items WHERE hackathon_id = ?").get(hackathonId) as { m: number | null };
-  db()
-    .prepare("INSERT INTO checklist_items (hackathon_id, label, kind, required, origin, sort) VALUES (?, ?, ?, ?, 'custom', ?)")
-    .run(hackathonId, label, kind, required ? 1 : 0, (max.m ?? 0) + 1);
+export async function addChecklistItem(hackathonId: string, label: string, kind: ChecklistKind, required: boolean) {
+  const max = (await get("SELECT MAX(sort) AS m FROM checklist_items WHERE hackathon_id = ?", hackathonId)) as { m: number | null };
+  (await run("INSERT INTO checklist_items (hackathon_id, label, kind, required, origin, sort) VALUES (?, ?, ?, ?, 'custom', ?)", hackathonId, label, kind, required ? 1 : 0, (max.m ?? 0) + 1));
 }
 
-export function itemHackathon(id: number): string | null {
-  const r = db().prepare("SELECT hackathon_id FROM checklist_items WHERE id = ?").get(id) as { hackathon_id: string } | undefined;
+export async function itemHackathon(id: number): Promise<string | null> {
+  const r = (await get("SELECT hackathon_id FROM checklist_items WHERE id = ?", id)) as { hackathon_id: string } | undefined;
   return r?.hackathon_id ?? null;
 }
 
-export function updateChecklistItem(
+export async function updateChecklistItem(
   id: number,
   patch: { done?: boolean; value?: string | null; file?: string | null; mime?: string | null; meta?: ChecklistItem["meta"]; label?: string; required?: boolean },
 ) {
-  const cur = db().prepare("SELECT * FROM checklist_items WHERE id = ?").get(id) as Row | undefined;
+  const cur = (await get("SELECT * FROM checklist_items WHERE id = ?", id)) as Row | undefined;
   if (!cur) throw new Error("Item not found");
   const item = toItem(cur);
-  if (patch.file !== undefined && item.file && patch.file !== item.file) deleteFile(item.file);
+  if (patch.file !== undefined && item.file && patch.file !== item.file) await deleteFile(item.file);
   const next = { ...item, ...Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)) };
   // Duration describes this upload, not the checklist requirement. Never carry it to a replacement.
   if (patch.file !== undefined && patch.file !== item.file) {
@@ -141,18 +137,14 @@ export function updateChecklistItem(
   }
   // Attaching proof ticks the item off.
   if ((patch.value || patch.file) && patch.done === undefined) next.done = true;
-  db()
-    .prepare("UPDATE checklist_items SET done = ?, value = ?, file = ?, mime = ?, meta = ?, label = ?, required = ? WHERE id = ?")
-    .run(
-      next.done ? 1 : 0, next.value || null, next.file, next.mime, next.meta ? JSON.stringify(next.meta) : null,
-      next.label.trim() || item.label, next.required ? 1 : 0, id,
-    );
+  (await run("UPDATE checklist_items SET done = ?, value = ?, file = ?, mime = ?, meta = ?, label = ?, required = ? WHERE id = ?", next.done ? 1 : 0, next.value || null, next.file, next.mime, next.meta ? JSON.stringify(next.meta) : null,
+      next.label.trim() || item.label, next.required ? 1 : 0, id,));
 }
 
-export function deleteChecklistItem(id: number) {
-  const r = db().prepare("SELECT file FROM checklist_items WHERE id = ?").get(id) as { file: string | null } | undefined;
-  deleteFile(r?.file);
-  db().prepare("DELETE FROM checklist_items WHERE id = ?").run(id);
+export async function deleteChecklistItem(id: number) {
+  const r = (await get("SELECT file FROM checklist_items WHERE id = ?", id)) as { file: string | null } | undefined;
+  await deleteFile(r?.file);
+  (await run("DELETE FROM checklist_items WHERE id = ?", id));
 }
 
 // ---------- verification ----------
@@ -194,7 +186,7 @@ async function checkGithub(url: string, label: string, itemId: number | null): P
 }
 
 async function checkScreenshot(item: ChecklistItem): Promise<SubmissionCheck | null> {
-  const data = item.file ? readFile(item.file) : null;
+  const data = item.file ? await readFile(item.file) : null;
   if (!data || !item.mime?.startsWith("image/")) return null;
   try {
     const res = await generateJson<{ matches: boolean; reason: string }>({
@@ -221,14 +213,14 @@ async function checkScreenshot(item: ChecklistItem): Promise<SubmissionCheck | n
  * and an AI read-through against the rules.
  */
 export async function verifySubmission(hackathonId: string): Promise<{ checks: SubmissionCheck[]; summary: string | null }> {
-  const h = getHackathon(hackathonId);
+  const h = await getHackathon(hackathonId);
   if (!h) throw new Error("Unknown hackathon");
-  const items = listChecklist(hackathonId);
-  const project = getProject(hackathonId);
+  const items = await listChecklist(hackathonId);
+  const project = await getProject(hackathonId);
   const checks: SubmissionCheck[] = [];
 
   // Deadline
-  const tracked = listTracked().find((t) => t.hackathonId === hackathonId);
+  const tracked = (await listTracked()).find((t) => t.hackathonId === hackathonId);
   const due = tracked?.deadlines.find((d) => d.kind === "submission")?.dueAt ?? h.endsAt;
   if (due) {
     const hours = (new Date(due).getTime() - Date.now()) / 3600_000;
@@ -240,9 +232,9 @@ export async function verifySubmission(hackathonId: string): Promise<{ checks: S
   }
 
   // Team size
-  const max = getDetails(hackathonId)?.info?.teamSize.max ?? h.teamMax;
-  const size = listTeam(hackathonId).filter((t) => t.confirmed).length + 1;
-  const min = getDetails(hackathonId)?.info?.teamSize.min ?? h.teamMin;
+  const max = (await getDetails(hackathonId))?.info?.teamSize.max ?? h.teamMax;
+  const size = (await listTeam(hackathonId)).filter((t) => t.confirmed).length + 1;
+  const min = (await getDetails(hackathonId))?.info?.teamSize.min ?? h.teamMin;
   if (min && size < min) checks.push({ itemId: null, label: "Team size", status: "fail", detail: `Your team has ${size} people; at least ${min} are required.` });
   if (max && size > max) checks.push({ itemId: null, label: "Team size", status: "fail", detail: `Your team has ${size} people; the limit is ${max}.` });
 
@@ -300,7 +292,7 @@ export async function verifySubmission(hackathonId: string): Promise<{ checks: S
   // AI read-through against the rules
   let summary: string | null = null;
   try {
-    const info = getDetails(hackathonId)?.info;
+    const info = (await getDetails(hackathonId))?.info;
     const res = await generateJson<{ summary: string; issues: { level: "fail" | "warn" | "info"; text: string }[] }>({
       task: "review",
       temperature: 0.2,
@@ -312,7 +304,7 @@ Reply with JSON { "summary": string (one or two sentences: ready or not?), "issu
           content: `${factsBlock(h)}
 Rules / deliverables: ${JSON.stringify({ deliverables: info?.deliverables, alerts: info?.alerts, eligibility: info?.eligibility, rules: info?.rules })}
 
-${projectBlock(hackathonId)}
+${await projectBlock(hackathonId)}
 
 Checklist: ${JSON.stringify(items.map((i) => ({ label: i.label, required: i.required, done: i.done || Boolean(i.value || i.file), value: i.value, hasFile: Boolean(i.file) })))}`,
         },

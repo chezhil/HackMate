@@ -25,16 +25,16 @@ async function patch(req: Request, { params }: Ctx) {
     return Response.json({ error: "Bad result" }, { status: 400 });
   }
   try {
-    updateTracked(id, patch);
+    await updateTracked(id, patch);
   } catch (e) {
     return Response.json({ error: (e as Error).message }, { status: 404 });
   }
-  return Response.json({ tracked: listTracked() });
+  return Response.json({ tracked: await listTracked() });
 }
 
 async function remove(_req: Request, { params }: Ctx) {
-  untrackHackathon(decodeURIComponent((await params).id));
-  return Response.json({ tracked: listTracked() });
+  await untrackHackathon(decodeURIComponent((await params).id));
+  return Response.json({ tracked: await listTracked() });
 }
 
 // Every request reads and writes the signed-in person's own data.

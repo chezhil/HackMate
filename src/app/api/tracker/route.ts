@@ -5,7 +5,7 @@ import { readJson, text } from "@/lib/validation";
 
 async function get() {
   await connection();
-  return Response.json({ tracked: listTracked() });
+  return Response.json({ tracked: await listTracked() });
 }
 
 /** Pin a hackathon to the tracker. Body: { hackathonId } */
@@ -13,11 +13,11 @@ async function post(req: Request) {
   const body = await readJson(req);
   if (body instanceof Response) return body;
   const { hackathonId } = body;
-  if (!text(hackathonId) || !getHackathon(hackathonId)) {
+  if (!text(hackathonId) || !await getHackathon(hackathonId)) {
     return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   }
-  trackHackathon(hackathonId);
-  return Response.json({ tracked: listTracked() });
+  await trackHackathon(hackathonId);
+  return Response.json({ tracked: await listTracked() });
 }
 
 // Every request reads and writes the signed-in person's own data.

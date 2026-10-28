@@ -5,7 +5,7 @@ import { connection } from "next/server";
 
 async function get() {
   await connection();
-  return Response.json({ lastSync: lastSync() });
+  return Response.json({ lastSync: await lastSync() });
 }
 
 /**
@@ -13,9 +13,9 @@ async function get() {
  * every few minutes; otherwise you get the last result. (The server also refreshes on its own every 30 minutes.)
  */
 async function post() {
-  const last = lastSync();
+  const last = await lastSync();
   const recent = last && Date.now() - new Date(last.at).getTime() < 5 * 60_000;
-  if (recent || !allow("sync", 1, 5 * 60_000)) return Response.json({ ...(last ?? {}), skipped: "Refreshed in the last few minutes" });
+  if (recent || !await allow("sync", 1, 5 * 60_000)) return Response.json({ ...(last ?? {}), skipped: "Refreshed in the last few minutes" });
   return Response.json(await syncAll());
 }
 

@@ -12,11 +12,11 @@ async function post(req: Request) {
   if (!Object.hasOwn(DEADLINE_LABELS, body.kind) || !isDate(body.dueAt)) {
     return Response.json({ error: "Need a valid kind and dueAt" }, { status: 400 });
   }
-  if (!listTracked().some((t) => t.hackathonId === body.hackathonId)) {
+  if (!(await listTracked()).some((t) => t.hackathonId === body.hackathonId)) {
     return Response.json({ error: "Track the hackathon first" }, { status: 400 });
   }
-  addDeadline(body.hackathonId, body.kind, body.label?.trim() ?? "", new Date(body.dueAt).toISOString());
-  return Response.json({ tracked: listTracked() });
+  await addDeadline(body.hackathonId, body.kind, body.label?.trim() ?? "", new Date(body.dueAt).toISOString());
+  return Response.json({ tracked: await listTracked() });
 }
 
 // Every request reads and writes the signed-in person's own data.

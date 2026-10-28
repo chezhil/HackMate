@@ -6,24 +6,24 @@ import { connection } from "next/server";
 
 async function get() {
   await connection();
-  return Response.json({ certificates: listCertificates(), missing: missingCertificates() });
+  return Response.json({ certificates: await listCertificates(), missing: await missingCertificates() });
 }
 
 /** Multipart: hackathonId, title, status ("pending" | "received"), url?, file? */
 async function post(req: Request) {
   const form = await req.formData();
   const hackathonId = String(form.get("hackathonId") ?? "");
-  if (!getHackathon(hackathonId)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
+  if (!await getHackathon(hackathonId)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   try {
     const file = await fileFromForm(form);
-    addCertificate(hackathonId, {
+    await addCertificate(hackathonId, {
       title: String(form.get("title") ?? "").trim(),
       status: form.get("status") === "received" ? "received" : "pending",
       url: String(form.get("url") ?? "").trim() || null,
-      file: file ? saveFile(file.data, file.mime) : null,
+      file: file ? await saveFile(file.data, file.mime) : null,
       mime: file?.mime ?? null,
     });
-    return Response.json({ certificates: listCertificates(), missing: missingCertificates() });
+    return Response.json({ certificates: await listCertificates(), missing: await missingCertificates() });
   } catch (e) {
     return Response.json({ error: (e as Error).message }, { status: e instanceof UploadError ? e.status : 400 });
   }

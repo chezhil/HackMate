@@ -1,34 +1,32 @@
 import "server-only";
 import { generateJson } from "./ai";
-import { db } from "./db";
+import { all, get, run } from "./db";
 import { factsBlock, getDetails } from "./details";
 import { projectBlock } from "./project";
 import { getHackathon } from "./repo";
 import type { AiOutput, AiOutputKind, DeckRoast, PitchScript, QaGrade, QaTurn, VideoScript, Writeup } from "./types";
 
-function context(hackathonId: string) {
-  const h = getHackathon(hackathonId);
+async function context(hackathonId: string) {
+  const h = await getHackathon(hackathonId);
   if (!h) throw new Error("Unknown hackathon");
-  const info = getDetails(hackathonId)?.info;
+  const info = (await getDetails(hackathonId))?.info;
   const rules = [
     `Judging criteria: ${JSON.stringify(info?.judgingCriteria ?? [])}`,
     `Tracks: ${JSON.stringify(info?.tracks ?? [])}`,
     `Deliverables: ${JSON.stringify(info?.deliverables ?? [])}`,
     `Judges: ${JSON.stringify(info?.judges ?? [])}`,
   ].join("\n");
-  return { h, info, text: `${factsBlock(h)}\n${rules}\n\n${projectBlock(hackathonId)}` };
+  return { h, info, text: `${factsBlock(h)}\n${rules}\n\n${await projectBlock(hackathonId)}` };
 }
 
-function save<T>(hackathonId: string, kind: AiOutputKind, params: Record<string, unknown>, content: T, provider: string): AiOutput<T> {
-  const r = db()
-    .prepare("INSERT INTO ai_outputs (hackathon_id, kind, params, content, provider, created_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at")
-    .get(hackathonId, kind, JSON.stringify(params), JSON.stringify(content), provider, new Date().toISOString()) as { id: number; created_at: string };
+async function save<T>(hackathonId: string, kind: AiOutputKind, params: Record<string, unknown>, content: T, provider: string): Promise<AiOutput<T>> {
+  const r = (await get("INSERT INTO ai_outputs (hackathon_id, kind, params, content, provider, created_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at", hackathonId, kind, JSON.stringify(params), JSON.stringify(content), provider, new Date().toISOString())) as { id: number; created_at: string };
   return { id: r.id, kind, params, content, provider, createdAt: r.created_at };
 }
 
-export function listOutputs(hackathonId: string): AiOutput[] {
+export async function listOutputs(hackathonId: string): Promise<AiOutput[]> {
   return (
-    db().prepare("SELECT * FROM ai_outputs WHERE hackathon_id = ? ORDER BY id DESC LIMIT 60").all(hackathonId) as Record<string, string | number>[]
+    (await all("SELECT * FROM ai_outputs WHERE hackathon_id = ? ORDER BY id DESC LIMIT 60", hackathonId)) as Record<string, string | number>[]
   ).map((r) => ({
     id: r.id as number,
     kind: r.kind as AiOutputKind,
@@ -39,13 +37,13 @@ export function listOutputs(hackathonId: string): AiOutput[] {
   }));
 }
 
-export function deleteOutput(id: number) {
-  db().prepare("DELETE FROM ai_outputs WHERE id = ?").run(id);
+export async function deleteOutput(id: number) {
+  (await run("DELETE FROM ai_outputs WHERE id = ?", id));
 }
 
 /** Pull "2 minutes" / "90 seconds" style limits out of the deliverables, in seconds. */
-export function videoLimitSec(hackathonId: string): number | null {
-  const items = getDetails(hackathonId)?.info?.deliverables ?? [];
+export async function videoLimitSec(hackathonId: string): Promise<number | null> {
+  const items = (await getDetails(hackathonId))?.info?.deliverables ?? [];
   const video = items.find((d) => /video|demo/i.test(d.item));
   const text = `${video?.item ?? ""} ${video?.limit ?? ""}`;
   const words: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
@@ -58,7 +56,7 @@ export function videoLimitSec(hackathonId: string): number | null {
 // ---------- pitch & video script ----------
 
 export async function generatePitch(hackathonId: string, minutes: number, audience: string) {
-  const { text } = context(hackathonId);
+  const { text } = await context(hackathonId);
   const res = await generateJson<PitchScript>({
     task: "pitch",
     temperature: 0.6,
@@ -72,7 +70,7 @@ Section seconds must add up to about ${minutes * 60}. Never invent metrics or us
 }
 
 export async function generateVideoScript(hackathonId: string, seconds: number) {
-  const { text } = context(hackathonId);
+  const { text } = await context(hackathonId);
   const res = await generateJson<VideoScript>({
     task: "pitch",
     temperature: 0.6,
@@ -87,7 +85,7 @@ Reply with JSON { "title": string, "totalSeconds": number, "scenes": [{ "start":
 // ---------- deck roaster ----------
 
 export async function roastDeck(hackathonId: string, script: string) {
-  const { text } = context(hackathonId);
+  const { text } = await context(hackathonId);
   const res = await generateJson<DeckRoast>({
     task: "roast",
     temperature: 0.3,
@@ -111,7 +109,7 @@ const PLATFORM_RULES: Record<Writeup["platform"], string> = {
 };
 
 export async function generateWriteup(hackathonId: string, platform: Writeup["platform"], extra: string) {
-  const { text } = context(hackathonId);
+  const { text } = await context(hackathonId);
   const res = await generateJson<Writeup>({
     task: "writeup",
     temperature: 0.7,
@@ -138,12 +136,12 @@ function toTurn(r: Record<string, string | number | null>): QaTurn {
   };
 }
 
-export function listQa(hackathonId: string): QaTurn[] {
-  return (db().prepare("SELECT * FROM qa_turns WHERE hackathon_id = ? ORDER BY id").all(hackathonId) as Record<string, string | number | null>[]).map(toTurn);
+export async function listQa(hackathonId: string): Promise<QaTurn[]> {
+  return ((await all("SELECT * FROM qa_turns WHERE hackathon_id = ? ORDER BY id", hackathonId)) as Record<string, string | number | null>[]).map(toTurn);
 }
 
-function judgePanel(hackathonId: string): string {
-  const judges = getDetails(hackathonId)?.info?.judges ?? [];
+async function judgePanel(hackathonId: string): Promise<string> {
+  const judges = (await getDetails(hackathonId))?.info?.judges ?? [];
   if (judges.length) return judges.slice(0, 4).map((j) => `${j.name}${j.title ? ` (${j.title})` : ""}`).join("; ");
   return "Priya (technical judge, staff engineer); Marcus (product/business judge, startup founder); Lena (design & UX judge)";
 }
@@ -151,33 +149,31 @@ function judgePanel(hackathonId: string): string {
 const QA_SYSTEM = (panel: string) => `You run a realistic mock judging Q&A for a hackathon. The panel: ${panel}.
 Judges ask the hard questions real judges ask: technical depth, feasibility, what's actually built vs. mocked, differentiation, users/impact, business model, scalability, privacy/ethics, what they'd do with more time. Rotate judges; one question at a time; ground questions in the project and judging criteria.`;
 
-function insertTurn(hackathonId: string, session: number, q: { judge: string; question: string }) {
-  db()
-    .prepare("INSERT INTO qa_turns (hackathon_id, session, judge, question, created_at) VALUES (?, ?, ?, ?, ?)")
-    .run(hackathonId, session, q.judge, q.question, new Date().toISOString());
+async function insertTurn(hackathonId: string, session: number, q: { judge: string; question: string }) {
+  (await run("INSERT INTO qa_turns (hackathon_id, session, judge, question, created_at) VALUES (?, ?, ?, ?, ?)", hackathonId, session, q.judge, q.question, new Date().toISOString()));
 }
 
 export async function startQa(hackathonId: string): Promise<QaTurn[]> {
-  const { text } = context(hackathonId);
-  const last = db().prepare("SELECT MAX(session) AS s FROM qa_turns WHERE hackathon_id = ?").get(hackathonId) as { s: number | null };
+  const { text } = await context(hackathonId);
+  const last = (await get("SELECT MAX(session) AS s FROM qa_turns WHERE hackathon_id = ?", hackathonId)) as { s: number | null };
   const session = (last.s ?? 0) + 1;
   const res = await generateJson<{ judge: string; question: string }>({
     task: "qa",
     temperature: 0.7,
-    system: `${QA_SYSTEM(judgePanel(hackathonId))}\nAsk the opening question. Reply with JSON { "judge": string (name), "question": string }.`,
+    system: `${QA_SYSTEM(await judgePanel(hackathonId))}\nAsk the opening question. Reply with JSON { "judge": string (name), "question": string }.`,
     messages: [{ role: "user", content: text }],
   });
-  insertTurn(hackathonId, session, res.data);
+  await insertTurn(hackathonId, session, res.data);
   return listQa(hackathonId);
 }
 
 /** Grade the answer to the open question and, unless the round is over, ask the next one. */
 export async function answerQa(hackathonId: string, turnId: number, answer: string): Promise<QaTurn[]> {
-  const turn = listQa(hackathonId).find((t) => t.id === turnId);
+  const turn = (await listQa(hackathonId)).find((t) => t.id === turnId);
   if (!turn) throw new Error("Question not found");
   if (turn.answer) throw new Error("Already answered");
-  const { text } = context(hackathonId);
-  const sessionTurns = listQa(hackathonId).filter((t) => t.session === turn.session);
+  const { text } = await context(hackathonId);
+  const sessionTurns = (await listQa(hackathonId)).filter((t) => t.session === turn.session);
   const isLast = sessionTurns.length >= QA_ROUNDS;
   const transcript = sessionTurns
     .filter((t) => t.answer)
@@ -187,7 +183,7 @@ export async function answerQa(hackathonId: string, turnId: number, answer: stri
   const res = await generateJson<{ grade: QaGrade; next: { judge: string; question: string } | null }>({
     task: "qa",
     temperature: 0.4,
-    system: `${QA_SYSTEM(judgePanel(hackathonId))}
+    system: `${QA_SYSTEM(await judgePanel(hackathonId))}
 Grade the team's answer to the latest question like a coach: { "score": 1-10, "feedback": string (what worked / didn't, 2-3 sentences), "missed": string[] (points a great answer would make), "modelAnswer": string (a strong 3-5 sentence answer in the team's voice, using only facts about the project; mark unknowns as [placeholder]) }.
 ${isLast ? 'This was the final question: set "next" to null.' : 'Then ask the next question (a different judge, possibly a follow-up that probes a weak spot in the answer).'}
 Reply with JSON { "grade": {...}, "next": { "judge": string, "question": string } | null }.`,
@@ -198,13 +194,13 @@ Reply with JSON { "grade": {...}, "next": { "judge": string, "question": string 
       },
     ],
   });
-  db().prepare("UPDATE qa_turns SET answer = ?, grade = ? WHERE id = ?").run(answer, JSON.stringify(res.data.grade), turnId);
-  if (!isLast && res.data.next) insertTurn(hackathonId, turn.session, res.data.next);
+  (await run("UPDATE qa_turns SET answer = ?, grade = ? WHERE id = ?", answer, JSON.stringify(res.data.grade), turnId));
+  if (!isLast && res.data.next) await insertTurn(hackathonId, turn.session, res.data.next);
   return listQa(hackathonId);
 }
 
-export function clearQa(hackathonId: string) {
-  db().prepare("DELETE FROM qa_turns WHERE hackathon_id = ?").run(hackathonId);
+export async function clearQa(hackathonId: string) {
+  (await run("DELETE FROM qa_turns WHERE hackathon_id = ?", hackathonId));
 }
 
 export { QA_ROUNDS };

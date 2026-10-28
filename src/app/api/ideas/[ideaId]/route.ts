@@ -25,12 +25,12 @@ async function patch(req: Request, { params }: Ctx) {
   if (body instanceof Response) return body;
   const title = body.title;
   if (typeof title !== "string" || !title.trim()) return badRequest("Name the idea");
-  if (title?.trim()) renameIdea(Number((await params).ideaId), title.trim());
+  if (title?.trim()) await renameIdea(Number((await params).ideaId), title.trim());
   return Response.json({ ok: true });
 }
 
 async function remove(_req: Request, { params }: Ctx) {
-  deleteIdea(Number((await params).ideaId));
+  await deleteIdea(Number((await params).ideaId));
   return Response.json({ ok: true });
 }
 

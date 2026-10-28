@@ -4,7 +4,7 @@ import { connection } from "next/server";
 /** Everyone who has made an account, with their public profile (never their email). */
 async function get() {
   await connection();
-  return Response.json({ members: listMembers() });
+  return Response.json({ members: await listMembers() });
 }
 
 // Every request reads and writes the signed-in person's own data.

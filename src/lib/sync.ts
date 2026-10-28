@@ -1,5 +1,6 @@
 import "server-only";
-import { getSetting, setSetting, allScopes, runAs } from "./db";
+import { background } from "./request";
+import { allScopes, getSetting, runAs, setSetting } from "./db";
 import { geocodePending } from "./geocode";
 import { syncAllAutoDeadlines, upsertHackathons } from "./repo";
 import { fetchDevfolio } from "./sources/devfolio";
@@ -34,20 +35,20 @@ export const STALE_AFTER_MS = 6 * 3600_000;
 
 let inFlight: Promise<SyncReport> | null = null;
 
-export function lastSync(): SyncReport | null {
-  const raw = getSetting("lastSync");
+export async function lastSync(): Promise<SyncReport | null> {
+  const raw = await getSetting("lastSync");
   return raw ? (JSON.parse(raw) as SyncReport) : null;
 }
 
 /** Wait for an initial refresh when an app update adds a source to an existing installation. */
-export function needsInitialSync() {
-  const last = lastSync();
+export async function needsInitialSync() {
+  const last = await lastSync();
   return !last || Object.keys(FETCHERS).some((source) => !Object.hasOwn(last.sources, source));
 }
 
-export function isStale() {
-  const last = lastSync();
-  return needsInitialSync() || !last || Date.now() - new Date(last.at).getTime() > STALE_AFTER_MS;
+export async function isStale() {
+  const last = await lastSync();
+  return await needsInitialSync() || !last || Date.now() - new Date(last.at).getTime() > STALE_AFTER_MS;
 }
 
 /** Pull every feed, store the results, refresh tracked deadlines, then geocode in the background. */
@@ -59,7 +60,7 @@ export function syncAll(): Promise<SyncReport> {
       (Object.keys(FETCHERS) as FeedSource[]).map(async (source) => {
         try {
           const list = await FETCHERS[source]();
-          upsertHackathons(list, at);
+          await upsertHackathons(list, at);
           return [source, { ok: true, count: list.length }] as const;
         } catch (e) {
           console.error(`[sync] ${source} failed:`, e);
@@ -68,10 +69,10 @@ export function syncAll(): Promise<SyncReport> {
       }),
     );
     // Every account's tracked deadlines follow the new dates, not just whoever pressed Refresh.
-    for (const id of allScopes()) runAs(id, syncAllAutoDeadlines);
+    for (const id of await allScopes()) await runAs(id, syncAllAutoDeadlines);
     const report: SyncReport = { at, sources: Object.fromEntries(entries) as SyncReport["sources"] };
-    setSetting("lastSync", JSON.stringify(report));
-    void geocodePending().catch((e) => console.error("[geocode]", e));
+    await setSetting("lastSync", JSON.stringify(report));
+    background("geocode", geocodePending);
     return report;
   })().finally(() => {
     inFlight = null;

@@ -1,13 +1,56 @@
 import "server-only";
 import { AsyncLocalStorage } from "node:async_hooks";
-import { DatabaseSync } from "node:sqlite";
-import { mkdirSync, readdirSync } from "node:fs";
-import path from "node:path";
 import { randomBytes } from "node:crypto";
+import path from "node:path";
+
+// ---------- where the data lives ----------
+//
+// Postgres. With DATABASE_URL set (Supabase in production) it's a real server; without it (your own machine,
+// tests) it's PGlite, Postgres running inside this process, kept in data/pg. Same SQL, same rules either way.
 
 export const DATA_DIR = path.join(process.cwd(), "data");
 
+// ---------- whose data ----------
+//
+// Hackathon listings, AI-read rules, accounts, the AI cache and uploads are shared. Everything personal
+// (tracker, deadlines, ideas, team, standups, project, pitch history, checklist, prizes, certificates, retros,
+// chat and settings) has a user_id column, and Postgres row-level security shows and changes only the rows of
+// the account the query runs as. So a query can't reach someone else's data even if it forgets to filter.
+//
+// Signed out on your own machine you're account 0 (the data from before accounts). A signed-out visitor on a
+// public HackMate is ANONYMOUS: they match no rows at all.
+
+export const PERSONAL_TABLES = [
+  "tracked", "deadlines", "reminders_sent", "email_log", "settings", "chat_messages", "ideas", "idea_versions",
+  "teammates", "standups", "projects", "ai_outputs", "qa_turns", "checklist_items", "certificates", "prizes", "retros",
+];
+
+/** Shared by everyone; still closed to every database role except the app's (see SCHEMA). */
+const SHARED_TABLES = ["hackathons", "geocache", "users", "sessions", "ai_cache", "hackathon_details", "past_winners", "files", "rate_hits", "app_settings", "hackmate_meta"];
+
+export const ANONYMOUS = -1;
+/** Signed out, on your own machine: the data kept before accounts existed. */
+export const LOCAL = 0;
+
+/** null = signed out (LOCAL). Set per request by withAccount() in auth.ts. */
+const scope = new AsyncLocalStorage<number | null>();
+
+/** Run fn as this account (or signed out, for null); every query inside uses that account's data. */
+export function runAs<T>(userId: number | null, fn: () => T): T {
+  return scope.run(userId, fn);
+}
+
+export const currentScope = (): number | null => scope.getStore() ?? null;
+const uid = () => currentScope() ?? LOCAL;
+
+// ---------- schema ----------
+
+/** The part every personal table starts with: whose row it is, filled in from the account the query runs as. */
+const OWNER = `user_id INTEGER NOT NULL DEFAULT current_setting('app.uid')::int`;
+
 const SCHEMA = `
+CREATE TABLE IF NOT EXISTS hackmate_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+
 CREATE TABLE IF NOT EXISTS hackathons (
   id TEXT PRIMARY KEY,
   source TEXT NOT NULL,
@@ -20,82 +63,41 @@ CREATE TABLE IF NOT EXISTS hackathons (
   state TEXT,
   country TEXT,
   venue TEXT,
-  lat REAL,
-  lng REAL,
+  lat DOUBLE PRECISION,
+  lng DOUBLE PRECISION,
   starts_at TEXT,
   ends_at TEXT,
   reg_starts_at TEXT,
   reg_ends_at TEXT,
   prize_text TEXT,
-  prize_usd REAL,
+  prize_usd DOUBLE PRECISION,
   entry_fee TEXT,
   themes TEXT NOT NULL DEFAULT '[]',
   organizer TEXT,
-  last_seen_at TEXT NOT NULL
+  last_seen_at TEXT NOT NULL,
+  description TEXT,
+  team_min INTEGER,
+  team_max INTEGER
 );
 CREATE INDEX IF NOT EXISTS hackathons_ends ON hackathons(ends_at);
 
-CREATE TABLE IF NOT EXISTS tracked (
-  hackathon_id TEXT PRIMARY KEY REFERENCES hackathons(id),
-  status TEXT NOT NULL DEFAULT 'interested',
-  pinned_at TEXT NOT NULL,
-  registered_at TEXT,
-  submitted_at TEXT,
-  submission_url TEXT,
-  result TEXT,
-  result_notes TEXT,
-  notes TEXT
-);
-
-CREATE TABLE IF NOT EXISTS deadlines (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
-  kind TEXT NOT NULL,
-  label TEXT NOT NULL,
-  due_at TEXT NOT NULL,
-  auto INTEGER NOT NULL DEFAULT 0,
-  done INTEGER NOT NULL DEFAULT 0
-);
-CREATE INDEX IF NOT EXISTS deadlines_hackathon ON deadlines(hackathon_id);
-
-CREATE TABLE IF NOT EXISTS reminders_sent (
-  deadline_id INTEGER NOT NULL,
-  lead_minutes INTEGER NOT NULL,
-  due_at TEXT NOT NULL,
-  sent_at TEXT NOT NULL,
-  PRIMARY KEY (deadline_id, lead_minutes, due_at)
-);
-
-CREATE TABLE IF NOT EXISTS email_log (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  to_addr TEXT NOT NULL,
-  subject TEXT NOT NULL,
-  body TEXT NOT NULL,
-  delivered INTEGER NOT NULL,
-  error TEXT,
-  created_at TEXT NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS geocache (
   query TEXT PRIMARY KEY,
-  lat REAL,
-  lng REAL
-);
-
-CREATE TABLE IF NOT EXISTS settings (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL
+  lat DOUBLE PRECISION,
+  lng DOUBLE PRECISION
 );
 
 -- Accounts, so people can sign up and show a profile to everyone on this HackMate.
 CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  username TEXT NOT NULL UNIQUE COLLATE NOCASE,
-  email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  username TEXT NOT NULL,
+  email TEXT NOT NULL,
   password_hash TEXT NOT NULL,
   profile TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL
 );
+CREATE UNIQUE INDEX IF NOT EXISTS users_username ON users (lower(username));
+CREATE UNIQUE INDEX IF NOT EXISTS users_email ON users (lower(email));
 
 -- Only a hash of each session token is stored, so a copy of the database can't be used to sign in.
 CREATE TABLE IF NOT EXISTS sessions (
@@ -106,8 +108,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
 
--- AI answers shared by everyone, so the same request (same page, same screenshot, same first question about a
--- hackathon) is paid for once. Keyed by a hash of the request; see cached() in ai.ts.
+-- AI answers shared by everyone, so the same request is paid for once. See cached() in ai.ts.
 CREATE TABLE IF NOT EXISTS ai_cache (
   key TEXT PRIMARY KEY,
   task TEXT NOT NULL,
@@ -129,30 +130,113 @@ CREATE TABLE IF NOT EXISTS hackathon_details (
   fetched_at TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS chat_messages (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
-  role TEXT NOT NULL,
-  content TEXT NOT NULL,
-  provider TEXT,
-  created_at TEXT NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS past_winners (
   hackathon_id TEXT PRIMARY KEY REFERENCES hackathons(id),
   projects TEXT NOT NULL,
   fetched_at TEXT NOT NULL
 );
 
+-- Uploads (screenshots, certificates, voice notes). Names are random UUIDs, so they can't be guessed.
+CREATE TABLE IF NOT EXISTS files (
+  name TEXT PRIMARY KEY,
+  mime TEXT NOT NULL,
+  data BYTEA NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+-- Uses of rate-limited actions (AI calls, sign-ins, refreshes), shared by every server instance.
+CREATE TABLE IF NOT EXISTS rate_hits (
+  key TEXT NOT NULL,
+  at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS rate_hits_key ON rate_hits(key, at);
+
+-- Settings about the app itself rather than a person (when the feeds last refreshed).
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+-- ---------- personal ----------
+
+CREATE TABLE IF NOT EXISTS tracked (
+  ${OWNER},
+  hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
+  status TEXT NOT NULL DEFAULT 'interested',
+  pinned_at TEXT NOT NULL,
+  registered_at TEXT,
+  submitted_at TEXT,
+  submission_url TEXT,
+  result TEXT,
+  result_notes TEXT,
+  notes TEXT,
+  PRIMARY KEY (user_id, hackathon_id)
+);
+
+CREATE TABLE IF NOT EXISTS deadlines (
+  id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  ${OWNER},
+  hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
+  kind TEXT NOT NULL,
+  label TEXT NOT NULL,
+  due_at TEXT NOT NULL,
+  auto INTEGER NOT NULL DEFAULT 0,
+  done INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS deadlines_owner ON deadlines(user_id, hackathon_id);
+
+CREATE TABLE IF NOT EXISTS reminders_sent (
+  ${OWNER},
+  deadline_id INTEGER NOT NULL,
+  lead_minutes INTEGER NOT NULL,
+  due_at TEXT NOT NULL,
+  sent_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, deadline_id, lead_minutes, due_at)
+);
+
+CREATE TABLE IF NOT EXISTS email_log (
+  id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  ${OWNER},
+  to_addr TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  body TEXT NOT NULL,
+  delivered INTEGER NOT NULL,
+  error TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS settings (
+  ${OWNER},
+  key TEXT NOT NULL,
+  value TEXT NOT NULL,
+  PRIMARY KEY (user_id, key)
+);
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  ${OWNER},
+  hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
+  role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  provider TEXT,
+  created_at TEXT NOT NULL,
+  citations TEXT,
+  not_found INTEGER NOT NULL DEFAULT 0,
+  follow_ups TEXT
+);
+CREATE INDEX IF NOT EXISTS chat_owner ON chat_messages(user_id, hackathon_id);
+
 CREATE TABLE IF NOT EXISTS ideas (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  ${OWNER},
   hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
   title TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS idea_versions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  ${OWNER},
   idea_id INTEGER NOT NULL REFERENCES ideas(id) ON DELETE CASCADE,
   text TEXT NOT NULL,
   critique TEXT,
@@ -161,7 +245,8 @@ CREATE TABLE IF NOT EXISTS idea_versions (
 );
 
 CREATE TABLE IF NOT EXISTS teammates (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  ${OWNER},
   hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
   name TEXT NOT NULL,
   role TEXT,
@@ -172,12 +257,13 @@ CREATE TABLE IF NOT EXISTS teammates (
 );
 
 CREATE TABLE IF NOT EXISTS standups (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  ${OWNER},
   hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
   author TEXT,
   file TEXT NOT NULL,
   mime TEXT NOT NULL,
-  duration_sec REAL,
+  duration_sec DOUBLE PRECISION,
   transcript TEXT,
   summary TEXT,
   error TEXT,
@@ -186,7 +272,8 @@ CREATE TABLE IF NOT EXISTS standups (
 
 -- What you're building for a hackathon (feeds the pitch, video script, checks and write-ups).
 CREATE TABLE IF NOT EXISTS projects (
-  hackathon_id TEXT PRIMARY KEY REFERENCES hackathons(id),
+  ${OWNER},
+  hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
   name TEXT NOT NULL DEFAULT '',
   tagline TEXT NOT NULL DEFAULT '',
   problem TEXT NOT NULL DEFAULT '',
@@ -195,12 +282,14 @@ CREATE TABLE IF NOT EXISTS projects (
   repo_url TEXT NOT NULL DEFAULT '',
   demo_url TEXT NOT NULL DEFAULT '',
   video_url TEXT NOT NULL DEFAULT '',
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, hackathon_id)
 );
 
 -- Generated pitches, video scripts, deck roasts and social write-ups (history per hackathon).
 CREATE TABLE IF NOT EXISTS ai_outputs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  ${OWNER},
   hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
   kind TEXT NOT NULL,
   params TEXT NOT NULL DEFAULT '{}',
@@ -210,7 +299,8 @@ CREATE TABLE IF NOT EXISTS ai_outputs (
 );
 
 CREATE TABLE IF NOT EXISTS qa_turns (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  ${OWNER},
   hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
   session INTEGER NOT NULL,
   judge TEXT NOT NULL,
@@ -221,7 +311,8 @@ CREATE TABLE IF NOT EXISTS qa_turns (
 );
 
 CREATE TABLE IF NOT EXISTS checklist_items (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  ${OWNER},
   hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
   label TEXT NOT NULL,
   detail TEXT,
@@ -237,7 +328,8 @@ CREATE TABLE IF NOT EXISTS checklist_items (
 );
 
 CREATE TABLE IF NOT EXISTS certificates (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  ${OWNER},
   hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
   title TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
@@ -249,10 +341,11 @@ CREATE TABLE IF NOT EXISTS certificates (
 );
 
 CREATE TABLE IF NOT EXISTS prizes (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  ${OWNER},
   hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
   title TEXT NOT NULL,
-  amount REAL,
+  amount DOUBLE PRECISION,
   currency TEXT NOT NULL DEFAULT 'INR',
   kind TEXT NOT NULL DEFAULT 'cash',
   status TEXT NOT NULL DEFAULT 'won',
@@ -263,198 +356,327 @@ CREATE TABLE IF NOT EXISTS prizes (
 );
 
 CREATE TABLE IF NOT EXISTS retros (
-  hackathon_id TEXT PRIMARY KEY REFERENCES hackathons(id),
+  ${OWNER},
+  hackathon_id TEXT NOT NULL REFERENCES hackathons(id),
   rating INTEGER,
   went_well TEXT NOT NULL DEFAULT '',
   improve TEXT NOT NULL DEFAULT '',
   lessons TEXT NOT NULL DEFAULT '',
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, hackathon_id)
 );
+
+-- The role every app query runs as. It isn't the tables' owner, so row-level security applies to it.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'hackmate_app') THEN CREATE ROLE hackmate_app NOLOGIN; END IF;
+END $$;
+GRANT hackmate_app TO CURRENT_USER;
+GRANT USAGE ON SCHEMA public TO hackmate_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO hackmate_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO hackmate_app;
+${PERSONAL_TABLES.map(
+  (t) => `ALTER TABLE ${t} ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS own_rows ON ${t};
+CREATE POLICY own_rows ON ${t} TO hackmate_app
+  USING (user_id = current_setting('app.uid', true)::int)
+  WITH CHECK (user_id = current_setting('app.uid', true)::int AND user_id >= 0);`,
+).join("\n")}
+
+-- Shared tables: open to the app's role, closed to everything else. On Supabase that shuts out its public
+-- REST roles (anon, authenticated), which would otherwise be able to read tables like users and sessions.
+${SHARED_TABLES.map(
+  (t) => `ALTER TABLE ${t} ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS app_only ON ${t};
+CREATE POLICY app_only ON ${t} TO hackmate_app USING (true) WITH CHECK (true);`,
+).join("\n")}
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    EXECUTE 'REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated';
+    EXECUTE 'REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated';
+  END IF;
+END $$;
 `;
 
-// Columns added after the first release; CREATE TABLE IF NOT EXISTS won't add them to an existing DB.
-const ADDED_COLUMNS: [table: string, column: string, type: string][] = [
-  ["hackathons", "description", "TEXT"],
-  ["hackathons", "team_min", "INTEGER"],
-  ["hackathons", "team_max", "INTEGER"],
-  ["chat_messages", "citations", "TEXT"],
-  ["chat_messages", "not_found", "INTEGER NOT NULL DEFAULT 0"],
-  ["chat_messages", "follow_ups", "TEXT"],
-];
-// Bump when SCHEMA gains a table, so a running dev server creates it.
-const SCHEMA_VERSION = 3;
+/** Bump when SCHEMA changes, so every server re-applies it once. */
+const SCHEMA_VERSION = "pg-1";
 
-function migrate(conn: DatabaseSync) {
-  // New tables too: the connection outlives dev hot reloads, so SCHEMA alone wouldn't reach it.
-  conn.exec(SCHEMA);
-  for (const [table, column, type] of ADDED_COLUMNS) {
-    const cols = conn.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
-    if (!cols.some((c) => c.name === column)) conn.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
-  }
+// ---------- connections ----------
+
+export type Row = Record<string, unknown>;
+type Result = { rows: Row[]; rowCount: number };
+
+interface Conn {
+  query(sql: string, params?: unknown[]): Promise<Result>;
+  /** Several statements, no parameters. */
+  exec(sql: string): Promise<void>;
+  release(): void;
 }
 
-// ---------- whose data ----------
-//
-// Hackathon listings, AI-read rules, accounts and the geocode cache are shared. Everything personal (tracker,
-// deadlines, ideas, team, standups, project, pitch history, checklist, prizes, certificates, retros, chat and
-// settings) lives in one database file per account, data/users/<id>.db. Signed out, you use the original file's
-// personal tables, so nothing that was here before accounts is lost.
-//
-// A personal file attaches the shared one as "shared". SQLite looks a bare table name up in the personal file
-// first, then the attached one, so the same queries work in both, and a JOIN of tracked with hackathons crosses files.
+interface Driver {
+  connect(): Promise<Conn>;
+  close(): Promise<void>;
+}
 
-/** Tables that belong to whoever is using HackMate. The rest of SCHEMA is shared. */
-export const PERSONAL_TABLES = [
-  "tracked", "deadlines", "reminders_sent", "email_log", "settings", "chat_messages", "ideas", "idea_versions",
-  "teammates", "standups", "projects", "ai_outputs", "qa_turns", "checklist_items", "certificates", "prizes", "retros",
-];
+async function pgDriver(url: string): Promise<Driver> {
+  const pg = (await import("pg")).default;
+  // COUNT(*) and friends come back as bigint; they're always small here.
+  pg.types.setTypeParser(20, (v) => Number.parseInt(v, 10));
+  pg.types.setTypeParser(1700, (v) => Number.parseFloat(v));
+  // Serverless: a few connections per instance, through Supabase's pooler.
+  const pool = new pg.Pool({ connectionString: url, max: Number(process.env.DATABASE_POOL_MAX ?? 3), idleTimeoutMillis: 10_000, ssl: /localhost|127\.0\.0\.1/.test(url) ? undefined : { rejectUnauthorized: false } });
+  return {
+    async connect() {
+      const c = await pool.connect();
+      return {
+        query: async (sql, params) => {
+          const r = await c.query(sql, params as unknown[]);
+          return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+        },
+        exec: async (sql) => void (await c.query(sql)),
+        release: () => c.release(),
+      };
+    },
+    close: () => pool.end(),
+  };
+}
 
-/** The personal tables' part of SCHEMA. Foreign keys can't point into another file, so references to hackathons go. */
-const PERSONAL_SCHEMA = SCHEMA.split("\n")
-  .filter((line) => !line.trim().startsWith("--"))
-  .join("\n")
-  .split(";")
-  .filter((stmt) => {
-    const table = stmt.match(/CREATE TABLE IF NOT EXISTS (\w+)/)?.[1] ?? stmt.match(/CREATE INDEX IF NOT EXISTS \w+ ON (\w+)/)?.[1];
-    return table && PERSONAL_TABLES.includes(table);
-  })
-  .map((stmt) => stmt.replace(/\s+REFERENCES hackathons\(id\)/g, ""))
-  .join(";\n") + ";";
+async function pgliteDriver(dir: string | undefined): Promise<Driver> {
+  const { PGlite } = await import("@electric-sql/pglite");
+  const db = new PGlite(dir);
+  await db.waitReady;
+  // PGlite is one connection: hand it out one request at a time, so one account's settings never leak into
+  // another's query.
+  let queue: Promise<unknown> = Promise.resolve();
+  return {
+    connect() {
+      let release!: () => void;
+      const turn = new Promise<void>((r) => (release = r));
+      const ready = queue.then(() => undefined);
+      queue = queue.then(() => turn);
+      return ready.then(() => ({
+        query: async (sql, params) => {
+          const r = await db.query<Row>(sql, params as unknown[]);
+          return { rows: r.rows, rowCount: r.affectedRows ?? r.rows.length };
+        },
+        exec: async (sql) => void (await db.exec(sql)),
+        release,
+      }));
+    },
+    close: () => db.close(),
+  };
+}
+
+const g = globalThis as unknown as { hackmateDriver?: Promise<Driver>; hackmateSchema?: Promise<void> };
+
+async function driver(): Promise<Driver> {
+  if (!g.hackmateDriver) {
+    const url = process.env.DATABASE_URL;
+    // Tests set HACKMATE_PG_MEMORY to keep everything in memory.
+    g.hackmateDriver = url ? pgDriver(url) : pgliteDriver(process.env.HACKMATE_PG_MEMORY ? undefined : (process.env.HACKMATE_PG_DIR ?? path.join(DATA_DIR, "pg")));
+  }
+  return g.hackmateDriver;
+}
+
+/** Create or update the tables once per server (cheap when they're current). */
+function ensureSchema(): Promise<void> {
+  if (!g.hackmateSchema) {
+    g.hackmateSchema = (async () => {
+      const c = await (await driver()).connect();
+      try {
+        const have = await c
+          .query("SELECT value FROM hackmate_meta WHERE key = 'schema'")
+          .then((r) => r.rows[0]?.value as string | undefined)
+          .catch(() => undefined);
+        if (have === SCHEMA_VERSION) return;
+        await c.exec(SCHEMA);
+        await c.query("INSERT INTO hackmate_meta (key, value) VALUES ('schema', $1) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [SCHEMA_VERSION]);
+      } finally {
+        c.release();
+      }
+    })().catch((e) => {
+      g.hackmateSchema = undefined;
+      throw e;
+    });
+  }
+  return g.hackmateSchema;
+}
+
+/** For scripts: create or update the tables now. */
+export const prepareSchema = () => ensureSchema();
+
+/** For tests and scripts: close the connection so the process can exit. */
+export async function closeDb() {
+  const d = g.hackmateDriver;
+  g.hackmateDriver = undefined;
+  g.hackmateSchema = undefined;
+  if (d) await (await d).close();
+}
+
+// ---------- queries ----------
 
 /**
- * A signed-out visitor on a public HackMate: they see empty personal data in a throwaway in-memory database,
- * never the original file's. (They can't write anything either; withAccount turns those requests away.)
+ * SQLite-style SQL in, Postgres out: `?` placeholders become $1, $2… and camelCase aliases (AS createdAt)
+ * are quoted so Postgres keeps their case.
  */
-export const ANONYMOUS = -1;
-
-/** null = signed out (the original file). Set per request by withAccount() in auth.ts. */
-const scope = new AsyncLocalStorage<number | null>();
-
-/** Run fn as this account (or signed out, for null); every db() call inside uses that account's data. */
-export function runAs<T>(userId: number | null, fn: () => T): T {
-  return scope.run(userId, fn);
-}
-
-export const currentScope = (): number | null => scope.getStore() ?? null;
-
-const globalForDb = globalThis as unknown as { hackmateDb?: DatabaseSync; hackmateMigrated?: number; hackmateUserDbs?: Map<number, DatabaseSync>; hackmateAnonDb?: DatabaseSync };
-const SHARED_FILE = () => path.join(DATA_DIR, "hackmate.db");
-const USERS_DIR = path.join(DATA_DIR, "users");
-
-/** The original file: shared tables, plus the signed-out personal data. */
-export function sharedDb(): DatabaseSync {
-  if (!globalForDb.hackmateDb) {
-    mkdirSync(DATA_DIR, { recursive: true });
-    const conn = new DatabaseSync(SHARED_FILE());
-    conn.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
-    conn.exec(SCHEMA);
-    globalForDb.hackmateDb = conn;
+function toPg(sql: string): string {
+  let n = 0;
+  let out = "";
+  let quote: string | null = null;
+  for (const ch of sql) {
+    if (quote) {
+      if (ch === quote) quote = null;
+      out += ch;
+    } else if (ch === "'" || ch === '"') {
+      quote = ch;
+      out += ch;
+    } else out += ch === "?" ? `$${++n}` : ch;
   }
-  // The connection survives dev hot reloads, so re-run the column migration whenever the list grows.
-  if (globalForDb.hackmateMigrated !== ADDED_COLUMNS.length + SCHEMA_VERSION * 1000) {
-    migrate(globalForDb.hackmateDb);
-    globalForDb.hackmateUserDbs?.forEach(migratePersonal);
-    globalForDb.hackmateMigrated = ADDED_COLUMNS.length + SCHEMA_VERSION * 1000;
-  }
-  return globalForDb.hackmateDb;
+  return out.replace(/\bAS ([a-z]+[A-Z]\w*)\b/g, 'AS "$1"');
 }
 
-function migratePersonal(conn: DatabaseSync) {
-  conn.exec(PERSONAL_SCHEMA);
-  for (const [table, column, type] of ADDED_COLUMNS) {
-    if (!PERSONAL_TABLES.includes(table)) continue;
-    const cols = conn.prepare(`PRAGMA main.table_info(${table})`).all() as { name: string }[];
-    if (!cols.some((c) => c.name === column)) conn.exec(`ALTER TABLE main.${table} ADD COLUMN ${column} ${type}`);
-  }
+/** The open transaction of tx(), so queries inside it join it. */
+const inTx = new AsyncLocalStorage<{ conn: Conn; uid: number; owner: boolean }>();
+
+/** Start a transaction as the current account: its rows only, its id on new rows. */
+async function begin(conn: Conn, userId: number, owner: boolean) {
+  // The id is a plain integer, so it's safe inline; it rides in one round trip with BEGIN.
+  const role = owner ? "" : "SET LOCAL ROLE hackmate_app; ";
+  await conn.exec(`BEGIN; ${role}SELECT set_config('app.uid', '${Math.trunc(userId)}', true);`);
 }
 
-function userDb(userId: number): DatabaseSync {
-  sharedDb(); // shared file exists and is migrated before anything attaches it
-  const dbs = (globalForDb.hackmateUserDbs ??= new Map());
-  let conn = dbs.get(userId);
-  if (!conn) {
-    mkdirSync(USERS_DIR, { recursive: true });
-    conn = new DatabaseSync(path.join(USERS_DIR, `${userId}.db`));
-    conn.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
-    conn.prepare("ATTACH DATABASE ? AS shared").run(SHARED_FILE());
-    migratePersonal(conn);
-    dbs.set(userId, conn);
-  }
-  return conn;
-}
-
-function anonymousDb(): DatabaseSync {
-  sharedDb();
-  if (!globalForDb.hackmateAnonDb) {
-    const conn = new DatabaseSync(":memory:");
-    conn.prepare("ATTACH DATABASE ? AS shared").run(SHARED_FILE());
-    migratePersonal(conn);
-    globalForDb.hackmateAnonDb = conn;
-  }
-  return globalForDb.hackmateAnonDb;
-}
-
-/** The connection for whoever this request is for. */
-export function db(): DatabaseSync {
-  const id = currentScope();
-  return id == null ? sharedDb() : id === ANONYMOUS ? anonymousDb() : userDb(id);
-}
-
-/** Every account with data, plus signed out: for background jobs (reminders, refreshing deadlines after a sync). */
-export function allScopes(): (number | null)[] {
-  let files: string[] = [];
+async function exec(sql: string, params: unknown[], owner = false): Promise<Result> {
+  const open = inTx.getStore();
+  const userId = uid();
+  if (open && open.uid === userId && open.owner === owner) return open.conn.query(toPg(sql), params);
+  await ensureSchema();
+  const conn = await (await driver()).connect();
   try {
-    files = readdirSync(USERS_DIR);
-  } catch {
-    // No accounts yet.
-  }
-  return [null, ...files.map((f) => f.match(/^(\d+)\.db$/)?.[1]).filter(Boolean).map(Number)];
-}
-
-/** Give a new account a copy of the signed-out data, so the first person to sign up keeps what they'd built. */
-export function copySignedOutData(userId: number) {
-  const conn = userDb(userId);
-  conn.exec("BEGIN");
-  try {
-    for (const t of PERSONAL_TABLES) {
-      const mine = new Set((conn.prepare(`PRAGMA main.table_info(${t})`).all() as { name: string }[]).map((c) => c.name));
-      const cols = (conn.prepare(`PRAGMA shared.table_info(${t})`).all() as { name: string }[]).map((c) => c.name).filter((c) => mine.has(c));
-      const list = cols.join(", ");
-      // Feed state isn't personal, and the calendar link must stay unique to whoever owns it.
-      const skip = [...GLOBAL_SETTINGS, "calendarToken"];
-      const where = t === "settings" ? ` WHERE key NOT IN (${skip.map(() => "?").join(", ")})` : "";
-      conn.prepare(`INSERT OR IGNORE INTO main.${t} (${list}) SELECT ${list} FROM shared.${t}${where}`).run(...(t === "settings" ? skip : []));
-    }
-    conn.exec("COMMIT");
+    await begin(conn, userId, owner);
+    const r = await conn.query(toPg(sql), params);
+    await conn.exec("COMMIT");
+    return r;
   } catch (e) {
-    conn.exec("ROLLBACK");
+    await conn.exec("ROLLBACK").catch(() => {});
     throw e;
+  } finally {
+    conn.release();
   }
 }
 
-/** Settings about the app itself rather than a person: kept in the shared file. */
-const GLOBAL_SETTINGS = ["lastSync"];
-const settingsDb = (key: string) => (GLOBAL_SETTINGS.includes(key) ? sharedDb() : db());
+/** Every matching row. */
+export async function all<T = Row>(sql: string, ...params: unknown[]): Promise<T[]> {
+  return (await exec(sql, params)).rows as T[];
+}
 
-export function getSetting(key: string): string | null {
-  const row = settingsDb(key).prepare("SELECT value FROM main.settings WHERE key = ?").get(key) as
-    | { value: string }
-    | undefined;
+/** The first matching row, or undefined. */
+export async function get<T = Row>(sql: string, ...params: unknown[]): Promise<T | undefined> {
+  return (await exec(sql, params)).rows[0] as T | undefined;
+}
+
+/** A write; how many rows it touched. */
+export async function run(sql: string, ...params: unknown[]): Promise<{ changes: number }> {
+  return { changes: (await exec(sql, params)).rowCount };
+}
+
+/** Several queries that succeed or fail together, as the current account. */
+export async function tx<T>(fn: () => Promise<T>, opts: { owner?: boolean } = {}): Promise<T> {
+  const owner = !!opts.owner;
+  const open = inTx.getStore();
+  if (open && open.uid === uid() && open.owner === owner) return fn();
+  await ensureSchema();
+  const conn = await (await driver()).connect();
+  try {
+    await begin(conn, uid(), owner);
+    const out = await inTx.run({ conn, uid: uid(), owner }, fn);
+    await conn.exec("COMMIT");
+    return out;
+  } catch (e) {
+    await conn.exec("ROLLBACK").catch(() => {});
+    throw e;
+  } finally {
+    conn.release();
+  }
+}
+
+/**
+ * Queries that must see every account's rows (finding whose calendar link this is, handing signed-out data to
+ * the first account). Runs as the tables' owner, so row-level security doesn't apply: use sparingly.
+ */
+export const asOwner = {
+  all: async <T = Row>(sql: string, ...params: unknown[]) => (await exec(sql, params, true)).rows as T[],
+  get: async <T = Row>(sql: string, ...params: unknown[]) => (await exec(sql, params, true)).rows[0] as T | undefined,
+  run: async (sql: string, ...params: unknown[]) => ({ changes: (await exec(sql, params, true)).rowCount }),
+};
+
+// ---------- accounts and background jobs ----------
+
+/** Every account, plus signed out: for background jobs (reminders, refreshing deadlines after a sync). */
+export async function allScopes(): Promise<(number | null)[]> {
+  const rows = await asOwner.all<{ id: number }>("SELECT id FROM users ORDER BY id");
+  return [null, ...rows.map((r) => r.id)];
+}
+
+/** The first account to sign up takes over the signed-out data, so they keep what they'd built. */
+export async function giveSignedOutDataTo(userId: number) {
+  await tx(
+    async () => {
+      for (const t of PERSONAL_TABLES) {
+        // The calendar link stays unique to whoever owns it; a new one is made for the account.
+        const skip = t === "settings" ? " AND key <> 'calendarToken'" : "";
+        await exec(`UPDATE ${t} SET user_id = ? WHERE user_id = ?${skip}`, [userId, LOCAL], true);
+      }
+    },
+    { owner: true },
+  );
+}
+
+// ---------- settings ----------
+
+/** Settings about the app itself rather than a person: kept in app_settings. */
+const GLOBAL_SETTINGS = ["lastSync"];
+
+export async function getSetting(key: string): Promise<string | null> {
+  const table = GLOBAL_SETTINGS.includes(key) ? "app_settings" : "settings";
+  const row = await get<{ value: string }>(`SELECT value FROM ${table} WHERE key = ?`, key);
   return row?.value ?? null;
 }
 
-export function setSetting(key: string, value: string) {
-  settingsDb(key)
-    .prepare("INSERT INTO main.settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
-    .run(key, value);
+export async function setSetting(key: string, value: string) {
+  if (GLOBAL_SETTINGS.includes(key)) {
+    await run("INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", key, value);
+  } else {
+    await run("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (user_id, key) DO UPDATE SET value = excluded.value", key, value);
+  }
 }
 
 /** Secret token that guards the calendar subscription feed. Created on first use. */
-export function calendarToken(): string {
-  let token = getSetting("calendarToken");
+export async function calendarToken(): Promise<string> {
+  if (currentScope() === ANONYMOUS) return ""; // a signed-out visitor has no calendar
+  let token = await getSetting("calendarToken");
   if (!token) {
     token = randomBytes(18).toString("base64url");
-    setSetting("calendarToken", token);
+    await setSetting("calendarToken", token);
   }
   return token;
+}
+
+/** Whose calendar link this is (an account id, or null for signed out), or undefined when it's no one's. */
+export async function calendarOwner(token: string): Promise<number | null | undefined> {
+  const r = await asOwner.get<{ user_id: number }>("SELECT user_id FROM settings WHERE key = 'calendarToken' AND value = ?", token);
+  if (!r) return undefined;
+  return r.user_id === LOCAL ? null : r.user_id;
+}
+
+/** For the health check. */
+export async function ping() {
+  await get("SELECT 1 AS ok");
+}
+
+/** A statement to run several times, like the old prepared statements. */
+export function stmt(sql: string) {
+  return {
+    all: <T = Row>(...params: unknown[]) => all<T>(sql, ...params),
+    get: <T = Row>(...params: unknown[]) => get<T>(sql, ...params),
+    run: (...params: unknown[]) => run(sql, ...params),
+  };
 }
