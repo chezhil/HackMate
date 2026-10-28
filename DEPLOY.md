@@ -18,13 +18,14 @@ HackMate runs on Vercel with its data in Supabase Postgres. With `DATABASE_URL` 
 
 ## A server of your own (Railway, Fly, a VPS)
 
-HackMate is one Node server that keeps its data in SQLite files and runs background jobs (reminder emails every
-5 minutes, feed refresh every 30). So it needs:
+Here HackMate runs as one Node server with its own background jobs (reminder emails every 5 minutes, feed refresh
+every 30). Without `DATABASE_URL` its data is PGlite in `/app/data/pg`, so it needs:
 
-- **one always-on machine** (not serverless: Vercel and Netlify lose the files and can't run the jobs), and
-- **a persistent volume mounted at `/app/data`**: the shared database, one file per account, and uploads.
+- **one always-on machine**, and
+- **a persistent volume mounted at `/app/data`**.
 
-Run exactly **one** instance. SQLite lives on one volume, so two machines would each have their own data.
+Run exactly **one** instance with PGlite, since it lives on one volume. Set `DATABASE_URL` to a Postgres server
+instead (Supabase works) to keep the data outside the machine.
 
 The Docker image turns on **public mode** (`HACKMATE_REQUIRE_LOGIN=1`): visitors can browse hackathons and
 people, but need an account for anything personal. Each account has its own tracker, ideas and results, and a
