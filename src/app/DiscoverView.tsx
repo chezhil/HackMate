@@ -20,7 +20,7 @@ import { THEMES } from "@/lib/themes";
 import type { Hackathon, Source } from "@/lib/types";
 import { SOURCE_LABELS } from "@/lib/types";
 import {
-  activeFilters, clearAll, filtersToQuery, LENGTH_OPTIONS, matches, MODE_OPTIONS, parseFilters, PRIZE_OPTIONS,
+  activeFilters, clearAll, filtersToQuery, isOver, LENGTH_OPTIONS, matches, MODE_OPTIONS, parseFilters, PRIZE_OPTIONS,
   sortHackathons, WHEN_OPTIONS, type Filters, type Sort, type View,
 } from "./discoverFilters";
 
@@ -116,14 +116,19 @@ function HackathonsView() {
   }, [hackathons]);
 
   const filtered = useMemo(() => {
+    // Discover is for what's still ahead: finished ones (including ones you pinned or added as done) live in
+    // Tracker and Results.
+    const done = new Set(tracked.filter((t) => t.status === "results").map((t) => t.hackathonId));
     const list = hackathons.filter((h) => {
-      if (h.endsAt && new Date(h.endsAt).getTime() < now && !trackedIds.has(h.id)) return false;
+      if (isOver(h, now) || done.has(h.id)) return false;
       if (!matches(h, f, now)) return false;
       if (f.hideClashing && !trackedIds.has(h.id) && clashesWithTracked(h, tracked).length) return false;
       return true;
     });
-    return sortHackathons(list, f.sort);
+    return sortHackathons(list, f.sort, now);
   }, [hackathons, tracked, trackedIds, now, f]);
+
+  const upcoming = useMemo(() => hackathons.filter((h) => !isOver(h, now)).length, [hackathons, now]);
 
   // "Search as I move the map" narrows the list to what's in view; the map itself keeps every match.
   const mapOn = f.view !== "list";
@@ -140,7 +145,7 @@ function HackathonsView() {
         <div className="min-w-0">
           <h1 className="page-title">Discover hackathons</h1>
           <p className="text-sm text-muted" aria-live="polite">
-            {loading ? "Pulling hackathon feeds…" : `${shown.length} of ${hackathons.length} upcoming`}
+            {loading ? "Pulling hackathon feeds…" : `${shown.length} of ${upcoming} upcoming`}
             {lastSync && ` · updated ${relative(lastSync.at)}`}
           </p>
         </div>

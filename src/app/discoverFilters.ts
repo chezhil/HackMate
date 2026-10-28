@@ -127,11 +127,40 @@ export function matches(h: Hackathon, f: Filters, now: number): boolean {
   return true;
 }
 
-export function sortHackathons(list: Hackathon[], sort: Sort) {
-  const regTime = (h: Hackathon) => (h.regEndsAt ? new Date(h.regEndsAt).getTime() : Infinity);
-  return list.sort((a, b) =>
-    sort === "prize" ? (b.prizeUsd ?? 0) - (a.prizeUsd ?? 0) : sort === "regClosing" ? regTime(a) - regTime(b) : startOf(a) - startOf(b),
-  );
+const time = (iso: string | null) => (iso ? new Date(iso).getTime() : NaN);
+const ahead = (iso: string | null, now: number) => {
+  const t = time(iso);
+  return Number.isFinite(t) && t >= now ? t : Infinity;
+};
+
+/** Over: the last date it lists (end, else registration close, else start) has passed. No dates at all: not over. */
+export function isOver(h: Hackathon, now: number): boolean {
+  const last = time(h.endsAt ?? h.regEndsAt ?? h.startsAt);
+  return Number.isFinite(last) && last < now;
+}
+
+/**
+ * The next thing that happens: registration closing, the start, or the end, whichever is still ahead. An event
+ * that's already running sorts by when it ends, not by a start months ago; one with no dates goes last.
+ */
+export function nextDate(h: Hackathon, now: number): number {
+  return Math.min(ahead(h.regEndsAt, now), ahead(h.startsAt, now), ahead(h.endsAt, now));
+}
+
+export function sortHackathons(list: Hackathon[], sort: Sort, now = Date.now()) {
+  const byNext = (a: Hackathon, b: Hackathon) => {
+    const x = nextDate(a, now), y = nextDate(b, now);
+    return x === y ? a.title.localeCompare(b.title) : x === Infinity ? 1 : y === Infinity ? -1 : x - y;
+  };
+  return list.sort((a, b) => {
+    if (sort === "prize") return (b.prizeUsd ?? 0) - (a.prizeUsd ?? 0) || byNext(a, b);
+    if (sort === "regClosing") {
+      // Open registrations by how soon they close; closed or unknown ones after, soonest first among them.
+      const x = ahead(a.regEndsAt, now), y = ahead(b.regEndsAt, now);
+      if (x !== y) return x === Infinity ? 1 : y === Infinity ? -1 : x - y;
+    }
+    return byNext(a, b);
+  });
 }
 
 export interface ActiveFilter {

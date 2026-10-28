@@ -251,3 +251,22 @@ test('a hackathon can be added by hand with no link, and a bad website is refuse
   const nameless = await POST(request({ action: 'create', draft: { ...draft, title: '  ' }, status: 'interested' }, 'POST'));
   assert.equal(nameless.status, 400);
 });
+
+test('Discover leaves out finished events and puts what happens next first', () => {
+  const { isOver, sortHackathons } = require('../src/app/discoverFilters.ts');
+  const now = new Date('2030-06-01T00:00:00Z').getTime();
+  const at = (d) => new Date(d).toISOString();
+  const mk = (id, startsAt, endsAt, regEndsAt = null) => ({ ...event, id, title: id, startsAt: startsAt && at(startsAt), endsAt: endsAt && at(endsAt), regEndsAt: regEndsAt && at(regEndsAt) });
+  const finished = mk('finished', '2030-01-01', '2030-01-03');
+  const regClosed = mk('reg-only-closed', null, null, '2030-05-01');
+  const running = mk('running-long', '2030-03-01', '2030-12-31');
+  const nextWeek = mk('next-week', '2030-06-08', '2030-06-09');
+  const regSoon = mk('reg-closes-soon', '2030-07-01', '2030-07-02', '2030-06-03');
+  const undated = mk('no-dates', null, null);
+  assert.equal(isOver(finished, now), true); assert.equal(isOver(regClosed, now), true);
+  assert.equal(isOver(running, now), false); assert.equal(isOver(undated, now), false);
+  const order = sortHackathons([undated, running, nextWeek, regSoon], 'soonest', now).map((h) => h.id);
+  assert.deepEqual(order, ['reg-closes-soon', 'next-week', 'running-long', 'no-dates']);
+  const byReg = sortHackathons([nextWeek, regSoon, undated], 'regClosing', now).map((h) => h.id);
+  assert.equal(byReg[0], 'reg-closes-soon');
+});
