@@ -105,8 +105,7 @@ const PROFILE_FIELDS: { key: keyof Profile; label: string; placeholder: string }
 type EditableProfile = ProfileData["profile"];
 
 function ProfileHeader({ profile, account, onSaved }: { profile: EditableProfile; account: Account | null; onSaved: (p: EditableProfile, a: Account | null) => void }) {
-  // Always opens on your profile as it is; the form only appears from Edit profile.
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(!profile.name);
   const [form, setForm] = useState(profile);
   const [skillsText, setSkillsText] = useState((profile.skills ?? []).join(", "));
   const [error, setError] = useState<string | null>(null);
@@ -174,7 +173,7 @@ function ProfileHeader({ profile, account, onSaved }: { profile: EditableProfile
         {error && <div className="md:col-span-2"><Banner tone="danger">{error}</Banner></div>}
         <div className="flex gap-2 md:col-span-2">
           <button className="btn btn-primary" onClick={() => void save()}>Save profile</button>
-          <button className="btn" onClick={() => setEditing(false)}>Cancel</button>
+          {profile.name && <button className="btn" onClick={() => setEditing(false)}>Cancel</button>}
         </div>
       </section>
     );
@@ -182,15 +181,12 @@ function ProfileHeader({ profile, account, onSaved }: { profile: EditableProfile
 
   return (
     <header className="flex flex-wrap items-start gap-4">
-      <Avatar name={profile.name || account?.username || "?"} size="lg" />
+      <Avatar name={profile.name} size="lg" />
       <div className="min-w-0 flex-1">
-        <h1 className="page-title">{profile.name || account?.username || "Your profile"}</h1>
+        <h1 className="page-title">{profile.name}</h1>
         {account && <p className="text-sm text-muted">@{account.username}</p>}
         {(profile.headline || profile.location) && <p className="text-muted">{[profile.headline, profile.location].filter(Boolean).join(" · ")}</p>}
         {profile.bio && <p className="mt-1 max-w-2xl text-sm">{profile.bio}</p>}
-        {!profile.headline && !profile.location && !profile.bio && !(profile.skills?.length) && (
-          <p className="mt-1 text-sm text-muted">Nothing here yet. Use Edit profile to add a headline, bio and skills.</p>
-        )}
         {account && (profile.lookingForTeam || (profile.skills?.length ?? 0) > 0) && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {profile.lookingForTeam && <Badge tone="ok"><Users aria-hidden className="size-3" /> Looking for a team</Badge>}
