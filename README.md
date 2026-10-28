@@ -1,11 +1,69 @@
 # HackMate
 
-HackMate keeps track of everything you need for a hackathon.
+HackMate keeps track of everything you need for a hackathon: finding one, understanding its rules, planning,
+building and pitching, submitting, and everything afterwards.
 
-## What's here so far
+Built for **No Hands: The Wispr Challenge** (Builders track), entirely by voice with Wispr Flow.
 
-**Discover**: pulls upcoming hackathons from **Unstop**, **Devfolio**, **MLH**, **WeMakeDevs**, **Devpost**, **lablab.ai**, **HackerEarth**, **Hack2skill**, and **Devsemble** into one list.
-Filter by city, online / in person / hybrid, prize pool, free entry, theme, source and date. In-person events show on a map.
+## For judges
+
+- **Live app:** https://hackmate-pied.vercel.app
+- **Test login:** email `[judge email]`, password `[password]`. This account has some demo data pinned.
+  You can also create your own account in a few seconds from **Sign in → Create account**.
+- **You don't need to sign in** to browse Discover, open any hackathon's rules and overview, or look through
+  People. Everything personal (Tracker, Calendar, Results, Profile, and the AI tools that save your work) is
+  per account.
+
+### A two-minute tour
+
+1. **Discover** lists about 470 upcoming hackathons from 10 sites in one place. Try the filters, the **Map**
+   view and the **People** tab.
+2. **Open any hackathon:**
+   - **Rules & overview** shows what the AI pulled out of the rules (deliverables, judging, team size, prizes,
+     dates), plus gotchas quoted from the rules.
+   - **Ask AI** answers only from the rules, with numbered citations; click one to see the passage.
+3. **Pin it**, then open **Tracker** and drag the card through *Pinned → Registered → Building → Submitted*.
+   Deadlines come from the hackathon's own dates.
+4. **Calendar** shows every deadline, ranks clashes by how much they matter, and lets you mark them resolved.
+5. On a hackathon page:
+   - **Ideas:** suggestions based on its tracks and past winners, and critiques of your own ideas.
+   - **Pitch script** and **Mock judge Q&A:** questions from the judges, with your answers graded.
+   - **Submit:** a checklist built from that hackathon's own rules, with link, repo, video and screenshot checks.
+6. **Add from link:** paste a Hack2skill, Unstop or Devnovate event link (even one that's over) and the form
+   fills itself in. **Add manually** works for anything else.
+7. **Results** and **Profile:** wrap-up, prizes, a certificate vault, stats and a public profile.
+
+### How Wispr Flow was used
+
+Every spec, feature request, bug report and design note that built HackMate was dictated with Wispr Flow and
+sent to an AI coding agent. So were these docs. No prompts were typed. The usage card in the submission shows
+the numbers.
+
+### How it's built
+
+- **App:** Next.js 16 (App Router) and React 19, deployed on Vercel.
+- **Data:** Postgres on Supabase. Every personal table has a `user_id`, and Postgres row-level security limits
+  each request to the signed-in account's rows. One account can't read or change another's data, even by
+  guessing an id, and the database enforces that, not just the app.
+- **AI:** Groq for frequent calls and Gemini for long reads and audio, each falling back to the other.
+  - A shared AI cache means the same question about the same hackathon is answered once for everyone.
+  - Each account has an hourly and daily AI allowance.
+- **Scheduled jobs:** Supabase's scheduler calls `/api/cron` every 5 minutes, for email reminders and feed
+  refreshes.
+- **Tests:** `npm test` runs 150 tests, including a fuzz test that sends broken and hostile input to all 44
+  API routes.
+
+## What's in it
+
+**Discover**: pulls upcoming hackathons from **Unstop**, **Devfolio**, **MLH**, **WeMakeDevs**, **Devpost**, **lablab.ai**, **HackerEarth**, **Hack2skill**, **Devsemble** and **Devnovate** into one list.
+Filter by city, online / in person / hybrid, prize pool, free entry, theme, source and date. Finished events drop
+off, and the rest are sorted by what happens next. In-person events show on a map with a near-me view. A
+hackathon that isn't listed can be added from its link (Unstop, Hack2skill and Devnovate links are read from
+those sites' own event data) or typed in by hand.
+
+**Accounts and People**: sign up to get your own tracker, ideas and results. Discover → People lists everyone
+with an account, with their skills, "looking for a team", and a public profile showing their hackathons and
+certificates.
 
 **Tracker**: pin a hackathon, then move it through *Pinned → Registered → Building → Submitted → Results*.
 Each stage has its own action: register link, project link on submit, result and notes at the end.
@@ -65,7 +123,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000. The first load pulls all nine feeds (a few seconds). After that they refresh every 6 hours,
+Open http://localhost:3000. The first load pulls all ten feeds (a few seconds). After that they refresh every 6 hours,
 or on demand with **Refresh feeds**. Map coordinates are filled in from OpenStreetMap in the background.
 
 With no `DATABASE_URL`, local Postgres data lives in `data/pg` (git-ignored). Uploads are stored in the database. See `DEPLOY.md` for hosted Postgres and deployment options.
@@ -106,6 +164,7 @@ Google and Outlook fetch the feed from their servers, so they need HackMate at a
 | HackerEarth | public Compete API, limited to hackathons that have not ended |
 | Hack2skill | public event listing API, with pagination |
 | Devsemble | public `get-all-hackathons` API, limited to published events |
+| Devnovate | the public events JSON its site reads (`devnovate.co/api/v1/events`), approved hackathons only; organisers' contact fields are never read or stored |
 
 Discover groups duplicate event listings across platforms and keeps the alternate platform links.
 Matching uses event URLs, normalized names, dates, and locations. City editions and different years
