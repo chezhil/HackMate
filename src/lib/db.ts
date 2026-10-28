@@ -613,6 +613,18 @@ export async function tx<T>(fn: () => Promise<T>, opts: { owner?: boolean } = {}
   }
 }
 
+/** Serialize related mutations across server instances, within a single transaction. */
+export function withLocks<T>(keys: string[], fn: () => Promise<T>): Promise<T> {
+  return tx(async () => {
+    // A stable order prevents deadlocks when two operations share only some of their locks.
+    for (const key of [...new Set(keys)].sort()) await get("SELECT pg_advisory_xact_lock(73421, hashtext(?))", key);
+    return fn();
+  });
+}
+
+export const withAccountLock = <T>(resource: string, fn: () => Promise<T>) =>
+  withLocks([`account:${uid()}:${resource}`], fn);
+
 /**
  * Queries that must see every account's rows (finding whose calendar link this is, handing signed-out data to
  * the first account). Runs as the tables' owner, so row-level security doesn't apply: use sparingly.
@@ -667,12 +679,11 @@ export async function setSetting(key: string, value: string) {
 /** Secret token that guards the calendar subscription feed. Created on first use. */
 export async function calendarToken(): Promise<string> {
   if (currentScope() === ANONYMOUS) return ""; // a signed-out visitor has no calendar
-  let token = await getSetting("calendarToken");
-  if (!token) {
-    token = randomBytes(18).toString("base64url");
-    await setSetting("calendarToken", token);
-  }
-  return token;
+  const row = await get<{ value: string }>(
+    "INSERT INTO settings (key, value) VALUES ('calendarToken', ?) ON CONFLICT (user_id, key) DO UPDATE SET value = settings.value RETURNING value",
+    randomBytes(18).toString("base64url"),
+  );
+  return row!.value;
 }
 
 /** Whose calendar link this is (an account id, or null for signed out), or undefined when it's no one's. */

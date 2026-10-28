@@ -1,8 +1,7 @@
 # HackMate components
 
-Built from `replica/recon.md` (component list and screen IDs) and HackMate's existing `globals.css`.
-`replica/screens/` had no screenshots when this was written, so the scale is measured from how the code
-already uses it (146× `text-xs`, 136× `text-sm`, 47× `rounded-lg`…) and snapped to one system. It is not
+Built from the initial component inventory and HackMate's existing `globals.css`.
+The scale is measured from how the code already uses it (146× `text-xs`, 136× `text-sm`, 47× `rounded-lg`…) and snapped to one system. It is not
 measured from the reference apps. When screenshots are added, check density against Linear and GitHub.
 
 Live sheet: **`/design`** (light / dark / system toggle). Code: `src/components/ui/`.

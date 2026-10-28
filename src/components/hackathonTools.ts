@@ -2,7 +2,6 @@ import {
   Clapperboard, Flame, FolderKanban, Gavel, Lightbulb, ListChecks, MessageCircleQuestion, Mic, PartyPopper, Presentation,
   ScrollText, Users,
 } from "lucide-react";
-import { hid } from "@/lib/client";
 
 export type ToolTab = "overview" | "ask" | "ideas" | "team" | "project" | "pitch" | "submit" | "standups" | "wrapup";
 export type ToolSection = "pitch" | "video" | "roast" | "qa";
@@ -57,14 +56,3 @@ export const TOOL_GROUPS: { label: string; tools: HackathonTool[] }[] = [
 ];
 
 export const TOOLS: HackathonTool[] = TOOL_GROUPS.flatMap((g) => g.tools);
-
-export const toolByKey = (key: string) => TOOLS.find((t) => t.key === key)!;
-
-/** Link straight to a tool, e.g. /hackathon/…?tab=pitch&section=qa. */
-export function toolHref(hackathonId: string, tool: HackathonTool) {
-  const q = new URLSearchParams();
-  if (tool.tab !== "overview") q.set("tab", tool.tab);
-  if (tool.section && tool.section !== "pitch") q.set("section", tool.section);
-  const qs = q.toString();
-  return `/hackathon/${hid(hackathonId)}${qs ? `?${qs}` : ""}`;
-}

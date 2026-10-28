@@ -106,16 +106,16 @@ export function HackmateProvider({ children }: { children: React.ReactNode }) {
 
   const resolveClash = useCallback(async (c: Clash, on: boolean) => {
     const key = clashKey(c);
-    // Hide (or show) it straight away; the server copy follows.
-    setResolved((cur) => {
-      const next = new Set(cur);
-      if (on) next.add(key);
-      else next.delete(key);
-      return next;
-    });
     try {
       const d = await call<{ resolved: string[] }>("/api/clashes", "POST", { key, resolved: on });
-      setResolved(new Set(d.resolved));
+      // Apply this decision only after it is saved. Other in-flight decisions keep their own state.
+      setResolved((cur) => {
+        const next = new Set(cur);
+        if (d.resolved.includes(key)) next.add(key);
+        else next.delete(key);
+        return next;
+      });
+      setError(null);
     } catch (e) {
       setError((e as Error).message);
     }

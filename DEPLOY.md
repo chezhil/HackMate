@@ -69,8 +69,9 @@ Change `primary_region` to the one nearest you, and create the volume in that sa
 - Open the site and **create your account**. The first account gets a copy of anything in the
   signed-out data (a fresh deploy has none).
 - Calendar subscriptions (Settings → Calendar) use the site's own address, so they work once it's deployed.
-- **Back up `/app/data`** now and then: `fly ssh sftp get /app/data/hackmate.db`, or Railway's volume backups.
-  The per-account files are in `/app/data/users/`.
+- **Back up the database**: for hosted Postgres use the provider's backups or `pg_dump`. For local PGlite, stop
+  the server before copying the entire `/app/data/pg` directory, or use the host's consistent volume snapshots.
+  Uploads and personal data are stored inside the database; the old SQLite file is only a migration source.
 
 ## Try the image locally
 

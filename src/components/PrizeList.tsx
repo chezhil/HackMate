@@ -7,7 +7,7 @@ import { useHackmate } from "./HackmateProvider";
 import { SOFT } from "./ui/tone";
 import { useConfirm } from "./ui/Confirm";
 import { call, hid } from "@/lib/client";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, formatMoney } from "@/lib/format";
 import type { Prize, PrizeStatus } from "@/lib/types";
 import { PRIZE_STATUS_LABELS } from "@/lib/types";
 
@@ -18,15 +18,6 @@ const STATUS_STYLE: Record<PrizeStatus, string> = {
 };
 const NEXT: Record<PrizeStatus, PrizeStatus | null> = { won: "claimed", claimed: "paid", paid: null };
 const CURRENCIES = ["INR", "USD", "EUR", "GBP"];
-
-export function money(amount: number | null, currency: string) {
-  if (amount == null) return "";
-  try {
-    return new Intl.NumberFormat(currency === "INR" ? "en-IN" : undefined, { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
-  } catch {
-    return `${amount} ${currency}`;
-  }
-}
 
 const BLANK = { title: "", amount: "", currency: "INR", kind: "cash" as Prize["kind"], status: "won" as PrizeStatus, expectedBy: "", notes: "" };
 
@@ -79,7 +70,7 @@ export function PrizeList({
                   <div className="font-medium">
                     <Trophy aria-hidden className="mr-1 inline size-4 align-text-bottom text-warn" />
                     {p.title}
-                    {p.amount != null && <span className="ml-2 text-ok">{money(p.amount, p.currency)}</span>}
+                    {p.amount != null && <span className="ml-2 text-ok">{formatMoney(p.amount, p.currency)}</span>}
                     {p.kind !== "cash" && <span className="ml-2 text-xs text-muted">({p.kind})</span>}
                   </div>
                   {!hackathonId && (

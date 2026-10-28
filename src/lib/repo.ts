@@ -1,7 +1,7 @@
 import "server-only";
 import { aiPolicy } from "./aiPolicy";
 import { deduplicateHackathons, sameHackathon } from "./deduplicate";
-import { all, get, run, tx } from "./db";
+import { all, get, run, tx, withAccountLock } from "./db";
 import type {
   Deadline,
   DeadlineKind,
@@ -77,6 +77,8 @@ const HACKATHON_COLUMNS =
 
 /** Insert or refresh hackathons from a feed, 100 rows per statement so a sync is a handful of round trips. */
 export async function upsertHackathons(list: Hackathon[], seenAt: string) {
+  // A listing can shift between pages while a feed is fetched. Postgres rejects repeated IDs in one INSERT.
+  list = [...new Map(list.map((h) => [h.id, h])).values()];
   const width = HACKATHON_COLUMNS.split(",").length;
   await tx(async () => {
     for (let i = 0; i < list.length; i += 100) {
@@ -155,17 +157,20 @@ export async function listTracked(): Promise<TrackedWithHackathon[]> {
 }
 
 export async function trackHackathon(id: string) {
-  const candidate = await getHackathon(id);
-  if (!candidate) throw new Error("Unknown hackathon");
-  const existing = (await listTracked()).find((t) => sameHackathon(candidate, t.hackathon));
-  if (existing && existing.hackathonId !== id) return;
-  const now = new Date().toISOString();
-  (await run("INSERT INTO tracked (hackathon_id, status, pinned_at) VALUES (?, 'interested', ?) ON CONFLICT DO NOTHING", id, now));
-  await syncAutoDeadlines(id);
+  return withAccountLock("tracker", async () => {
+    const candidate = await getHackathon(id);
+    if (!candidate) throw new Error("Unknown hackathon");
+    const existing = (await listTracked()).find((t) => sameHackathon(candidate, t.hackathon));
+    if (existing && existing.hackathonId !== id) return existing.hackathonId;
+    const now = new Date().toISOString();
+    (await run("INSERT INTO tracked (hackathon_id, status, pinned_at) VALUES (?, 'interested', ?) ON CONFLICT DO NOTHING", id, now));
+    await syncAutoDeadlines(id);
+    return id;
+  });
 }
 
 export async function untrackHackathon(id: string) {
-  await tx(async () => {
+  return withAccountLock("tracker", async () => {
     await run("DELETE FROM reminders_sent WHERE deadline_id IN (SELECT id FROM deadlines WHERE hackathon_id = ?)", id);
     await run("DELETE FROM deadlines WHERE hackathon_id = ?", id);
     await run("DELETE FROM tracked WHERE hackathon_id = ?", id);
@@ -181,49 +186,53 @@ export interface TrackedPatch {
 }
 
 export async function updateTracked(id: string, patch: TrackedPatch) {
-  const now = new Date().toISOString();
-  const current = (await get("SELECT * FROM tracked WHERE hackathon_id = ?", id));
-  if (!current) throw new Error("Not tracked");
-  const t = toTracked(current);
-  const next = { ...t, ...patch };
-  if (patch.status === "registered" && !t.registeredAt) next.registeredAt = now;
-  if (patch.status === "submitted" && !t.submittedAt) next.submittedAt = now;
-  (await run(`UPDATE tracked SET status = ?, registered_at = ?, submitted_at = ?, submission_url = ?,
-       result = ?, result_notes = ?, notes = ? WHERE hackathon_id = ?`, next.status, next.registeredAt, next.submittedAt, next.submissionUrl, next.result, next.resultNotes, next.notes, id));
+  return withAccountLock("tracker", async () => {
+    const now = new Date().toISOString();
+    const current = (await get("SELECT * FROM tracked WHERE hackathon_id = ?", id));
+    if (!current) throw new Error("Not tracked");
+    const t = toTracked(current);
+    const next = { ...t, ...patch };
+    if (patch.status === "registered" && !t.registeredAt) next.registeredAt = now;
+    if (patch.status === "submitted" && !t.submittedAt) next.submittedAt = now;
+    (await run(`UPDATE tracked SET status = ?, registered_at = ?, submitted_at = ?, submission_url = ?,
+         result = ?, result_notes = ?, notes = ? WHERE hackathon_id = ?`, next.status, next.registeredAt, next.submittedAt, next.submissionUrl, next.result, next.resultNotes, next.notes, id));
 
-  // Moving forward ticks off the deadlines you've now met, so they stop showing up and reminding you.
-  const rank = (s: TrackStatus) => STATUSES.findIndex((x) => x.key === s);
-  const met: DeadlineKind[] = [];
-  if (rank(next.status) >= rank("registered")) met.push("registration");
-  if (rank(next.status) >= rank("submitted")) met.push("submission");
-  if (patch.status && met.length) {
-    (await run(`UPDATE deadlines SET done = 1 WHERE hackathon_id = ? AND kind IN (${met.map(() => "?").join(",")})`, id, ...met));
-  }
+    // Moving forward ticks off the deadlines you've now met, so they stop showing up and reminding you.
+    const rank = (s: TrackStatus) => STATUSES.findIndex((x) => x.key === s);
+    const met: DeadlineKind[] = [];
+    if (rank(next.status) >= rank("registered")) met.push("registration");
+    if (rank(next.status) >= rank("submitted")) met.push("submission");
+    if (patch.status && met.length) {
+      (await run(`UPDATE deadlines SET done = 1 WHERE hackathon_id = ? AND kind IN (${met.map(() => "?").join(",")})`, id, ...met));
+    }
+  });
 }
 
 // ---------- deadlines ----------
 
 /** Create or refresh the deadlines that come straight from feed data. User-edited ones are left alone. */
 export async function syncAutoDeadlines(hackathonId: string) {
-  const h = await getHackathon(hackathonId);
-  if (!h) return;
-  const wanted: [DeadlineKind, string | null][] = [
-    ["registration", h.regEndsAt],
-    ["start", h.startsAt],
-    ["submission", h.endsAt],
-  ];
-  for (const [kind, dueAt] of wanted) {
-    const existing = await get("SELECT * FROM deadlines WHERE hackathon_id = ? AND kind = ? AND auto = 1", hackathonId, kind);
-    if (!dueAt) continue;
-    if (existing) {
-      await run("UPDATE deadlines SET due_at = ? WHERE id = ?", dueAt, existing.id as number);
-    } else {
-      const hasManual = await get("SELECT 1 AS one FROM deadlines WHERE hackathon_id = ? AND kind = ? AND auto = 0", hackathonId, kind);
-      if (!hasManual) {
-        await run("INSERT INTO deadlines (hackathon_id, kind, label, due_at, auto) VALUES (?, ?, ?, ?, 1)", hackathonId, kind, DEADLINE_LABELS[kind], dueAt);
+  return withAccountLock("tracker", async () => {
+    const h = await getHackathon(hackathonId);
+    if (!h) return;
+    const wanted: [DeadlineKind, string | null][] = [
+      ["registration", h.regEndsAt],
+      ["start", h.startsAt],
+      ["submission", h.endsAt],
+    ];
+    for (const [kind, dueAt] of wanted) {
+      const existing = await get("SELECT * FROM deadlines WHERE hackathon_id = ? AND kind = ? AND auto = 1", hackathonId, kind);
+      if (!dueAt) continue;
+      if (existing) {
+        await run("UPDATE deadlines SET due_at = ? WHERE id = ?", dueAt, existing.id as number);
+      } else {
+        const hasManual = await get("SELECT 1 AS one FROM deadlines WHERE hackathon_id = ? AND kind = ? AND auto = 0", hackathonId, kind);
+        if (!hasManual) {
+          await run("INSERT INTO deadlines (hackathon_id, kind, label, due_at, auto) VALUES (?, ?, ?, ?, 1)", hackathonId, kind, DEADLINE_LABELS[kind], dueAt);
+        }
       }
     }
-  }
+  });
 }
 
 export async function syncAllAutoDeadlines() {
@@ -232,26 +241,32 @@ export async function syncAllAutoDeadlines() {
 }
 
 export async function addDeadline(hackathonId: string, kind: DeadlineKind, label: string, dueAt: string): Promise<Deadline> {
-  const r = (await get("INSERT INTO deadlines (hackathon_id, kind, label, due_at, auto) VALUES (?, ?, ?, ?, 0) RETURNING *", hackathonId, kind, label || DEADLINE_LABELS[kind], dueAt));
-  return toDeadline(r!);
+  return withAccountLock("tracker", async () => {
+    const r = (await get("INSERT INTO deadlines (hackathon_id, kind, label, due_at, auto) VALUES (?, ?, ?, ?, 0) RETURNING *", hackathonId, kind, label || DEADLINE_LABELS[kind], dueAt));
+    return toDeadline(r!);
+  });
 }
 
 export async function updateDeadline(id: number, patch: { label?: string; dueAt?: string; done?: boolean }) {
-  const r = (await get("SELECT * FROM deadlines WHERE id = ?", id));
-  if (!r) throw new Error("Deadline not found");
-  const d = toDeadline(r);
-  const dueChanged = patch.dueAt !== undefined && patch.dueAt !== d.dueAt;
-  (await run("UPDATE deadlines SET label = ?, due_at = ?, done = ?, auto = ? WHERE id = ?", patch.label ?? d.label,
-      patch.dueAt ?? d.dueAt,
-      (patch.done ?? d.done) ? 1 : 0,
-      // once the user moves a date by hand, stop overwriting it from the feed
-      dueChanged ? 0 : d.auto ? 1 : 0,
-      id,));
+  return withAccountLock("tracker", async () => {
+    const r = (await get("SELECT * FROM deadlines WHERE id = ?", id));
+    if (!r) throw new Error("Deadline not found");
+    const d = toDeadline(r);
+    const dueChanged = patch.dueAt !== undefined && patch.dueAt !== d.dueAt;
+    (await run("UPDATE deadlines SET label = ?, due_at = ?, done = ?, auto = ? WHERE id = ?", patch.label ?? d.label,
+        patch.dueAt ?? d.dueAt,
+        (patch.done ?? d.done) ? 1 : 0,
+        // once the user moves a date by hand, stop overwriting it from the feed
+        dueChanged ? 0 : d.auto ? 1 : 0,
+        id,));
+  });
 }
 
 export async function deleteDeadline(id: number) {
-  (await run("DELETE FROM reminders_sent WHERE deadline_id = ?", id));
-  (await run("DELETE FROM deadlines WHERE id = ?", id));
+  return withAccountLock("tracker", async () => {
+    (await run("DELETE FROM reminders_sent WHERE deadline_id = ?", id));
+    (await run("DELETE FROM deadlines WHERE id = ?", id));
+  });
 }
 
 export async function listUpcomingDeadlines(): Promise<(Deadline & { hackathonTitle: string; hackathonUrl: string })[]> {

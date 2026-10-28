@@ -1,6 +1,6 @@
 import "server-only";
 import { AiUnavailableError, generate } from "./ai";
-import { all, get, run } from "./db";
+import { all, get, run, withAccountLock } from "./db";
 import { getDetails } from "./details";
 import { fmtDate } from "./format";
 import { getHackathon } from "./repo";
@@ -17,14 +17,16 @@ export async function addTeammate(hackathonId: string, t: Omit<Teammate, "id">) 
 }
 
 export async function updateTeammate(id: number, patch: Partial<Omit<Teammate, "id">>) {
-  const cur = (await get("SELECT * FROM teammates WHERE id = ?", id)) as Record<string, unknown> | undefined;
-  if (!cur) throw new Error("Teammate not found");
-  (await run("UPDATE teammates SET name = ?, role = ?, skills = ?, contact = ?, confirmed = ? WHERE id = ?", patch.name ?? (cur.name as string),
-      patch.role !== undefined ? patch.role : (cur.role as string | null),
-      patch.skills !== undefined ? patch.skills : (cur.skills as string | null),
-      patch.contact !== undefined ? patch.contact : (cur.contact as string | null),
-      patch.confirmed !== undefined ? (patch.confirmed ? 1 : 0) : (cur.confirmed as number),
-      id,));
+  return withAccountLock(`team:updateTeammate:${id}`, async () => {
+    const cur = (await get("SELECT * FROM teammates WHERE id = ?", id)) as Record<string, unknown> | undefined;
+    if (!cur) throw new Error("Teammate not found");
+    (await run("UPDATE teammates SET name = ?, role = ?, skills = ?, contact = ?, confirmed = ? WHERE id = ?", patch.name ?? (cur.name as string),
+        patch.role !== undefined ? patch.role : (cur.role as string | null),
+        patch.skills !== undefined ? patch.skills : (cur.skills as string | null),
+        patch.contact !== undefined ? patch.contact : (cur.contact as string | null),
+        patch.confirmed !== undefined ? (patch.confirmed ? 1 : 0) : (cur.confirmed as number),
+        id,));
+  });
 }
 
 export async function removeTeammate(id: number) {

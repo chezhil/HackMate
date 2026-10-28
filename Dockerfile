@@ -1,5 +1,4 @@
-# HackMate: one Node server with its SQLite data on a mounted volume at /app/data.
-# Node 24 has node:sqlite built in.
+# HackMate: a Node server using hosted Postgres, or local PGlite on a volume at /app/data.
 
 FROM node:24-slim AS deps
 WORKDIR /app

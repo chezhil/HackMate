@@ -1,7 +1,7 @@
 import "server-only";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { after } from "next/server";
-import { currentScope, get, run, runAs } from "./db";
+import { currentScope, get, run, runAs, withLocks } from "./db";
 
 /**
  * Public mode: set HACKMATE_REQUIRE_LOGIN=1 when HackMate is on the internet. Signed-out visitors can browse
@@ -72,9 +72,7 @@ export async function record(keys: string[]) {
 
 /** Record one use of `key`; false when it's already had `max` uses in the last `windowMs`. */
 export async function allow(key: string, max: number, windowMs: number): Promise<boolean> {
-  if ((await used(key, windowMs)) >= max) return false;
-  await record([key]);
-  return true;
+  return (await allowAll([{ key, max, windowMs }])) === null;
 }
 
 /**
@@ -82,9 +80,11 @@ export async function allow(key: string, max: number, windowMs: number): Promise
  * every one has room. Returns the rule that's full, or null when allowed.
  */
 export async function allowAll(rules: { key: string; max: number; windowMs: number }[]): Promise<{ key: string; max: number; windowMs: number } | null> {
-  for (const r of rules) if ((await used(r.key, r.windowMs)) >= r.max) return r;
-  await record(rules.map((r) => r.key));
-  return null;
+  return withLocks(rules.map((r) => `rate:${r.key}`), async () => {
+    for (const r of rules) if ((await used(r.key, r.windowMs)) >= r.max) return r;
+    await record(rules.map((r) => r.key));
+    return null;
+  });
 }
 
 /** Forget the uses of `key` (say, failed sign-ins once the right password comes in). */

@@ -1,5 +1,5 @@
 # Fly.io: fly launch --copy-config --no-deploy, then see DEPLOY.md.
-# One machine only: the data is SQLite on one volume.
+# One machine for local PGlite data on a volume; hosted Postgres may be configured instead.
 app = "hackmate"
 primary_region = "bom"
 

@@ -1,3 +1,4 @@
+import { canonicalUrl } from "./urls";
 import type { Hackathon } from "./types";
 
 const DAY = 86400_000;
@@ -13,12 +14,10 @@ function eventUrl(value: string): string | null {
     const url = new URL(value);
     if (!/^https?:$/.test(url.protocol)) return null;
     const host = url.hostname.toLowerCase().replace(/^www\./, "");
-    const path = decodeURIComponent(url.pathname).replace(/\/+$/, "").toLowerCase();
+    const path = url.pathname.replace(/\/+$/, "");
     // A platform home page is not an event identity.
     if ((!path || ["/hackathons", "/events", "/challenges"].includes(path)) && ["devpost.com", "devfolio.co", "unstop.com", "hack2skill.com", "devsemble.com", "lablab.ai", "hackerearth.com", "mlh.com", "wemakedevs.org"].includes(host)) return null;
-    for (const key of [...url.searchParams.keys()]) if (/^utm_|^(fbclid|gclid|ref)$/i.test(key)) url.searchParams.delete(key);
-    url.searchParams.sort();
-    return `${host}${path}${url.search}`;
+    return canonicalUrl(value);
   } catch { return null; }
 }
 

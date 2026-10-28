@@ -58,7 +58,7 @@ Each stage has its own action: register link, project link on submit, result and
 
 ## Running it
 
-Needs Node 22.5+ (uses the built-in `node:sqlite`).
+Needs Node 22.13+. Uses Postgres through `DATABASE_URL`, or an embedded PGlite database for local development.
 
 ```bash
 npm install
@@ -68,7 +68,7 @@ npm run dev
 Open http://localhost:3000. The first load pulls all nine feeds (a few seconds). After that they refresh every 6 hours,
 or on demand with **Refresh feeds**. Map coordinates are filled in from OpenStreetMap in the background.
 
-Data lives in `data/hackmate.db` (SQLite, git-ignored).
+With no `DATABASE_URL`, local Postgres data lives in `data/pg` (git-ignored). Uploads are stored in the database. See `DEPLOY.md` for hosted Postgres and deployment options.
 
 ### AI keys
 
@@ -118,7 +118,7 @@ reported on the Discover page, and the others keep working. Adapters live in `sr
 
 ## Stack
 
-Next.js 16 (App Router) · React 19 · Tailwind CSS 4 · SQLite (`node:sqlite`) · Leaflet + OpenStreetMap · Nodemailer · Groq + Gemini
+Next.js 16 (App Router) · React 19 · Tailwind CSS 4 · Postgres / PGlite · Leaflet + OpenStreetMap · Nodemailer · Groq + Gemini
 
 ## Regression checks
 
@@ -130,7 +130,7 @@ npm run build
 ```
 
 The regression suite uses Node's test runner and the existing TypeScript dependency.
-It creates a temporary SQLite database and disables AI credentials and SMTP for the test process.
+It creates an isolated in-memory Postgres database and disables AI credentials and SMTP for the test process.
 Your saved database, uploads, and environment files are not used.
 The tests cover saving partial updates, request validation, discovery filters, calendar alerts,
 submission proof and team limits, and concurrent reminder delivery.

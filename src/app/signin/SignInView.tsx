@@ -10,6 +10,7 @@ import { Banner } from "@/components/ui/Feedback";
 import { Field } from "@/components/ui/Form";
 import { Segmented } from "@/components/ui/Tabs";
 import { call } from "@/lib/client";
+import { safeReturnPath } from "@/lib/urls";
 import type { Account } from "@/lib/types";
 
 type Mode = "signin" | "signup";
@@ -18,19 +19,21 @@ const MODES = [
   { key: "signup" as const, label: "Create account" },
 ];
 
-/** Only same-site paths, so a crafted ?next= can't send you somewhere else after signing in. */
-const safeNext = (raw: string | null) => (raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/profile");
-
 export function SignInView() {
   const params = useSearchParams();
   const { user } = useAccount();
-  const [mode, setMode] = useState<Mode>(params.get("mode") === "signup" ? "signup" : "signin");
+  const mode: Mode = params.get("mode") === "signup" ? "signup" : "signin";
+  const setMode = (value: Mode) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("mode", value);
+    window.history.replaceState(null, "", url);
+  };
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const next = safeNext(params.get("next"));
+  const next = safeReturnPath(params.get("next"));
 
   const submit = async () => {
     setBusy(true);

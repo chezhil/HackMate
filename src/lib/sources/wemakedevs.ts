@@ -1,6 +1,7 @@
 import type { Hackathon, Mode } from "../types";
 import { inferThemes } from "../themes";
 import { fetchText, iso, parsePrizeUsd } from "./util";
+import { jsonObjects, rscText } from "./shared";
 
 interface WmdCard {
   id: string;
@@ -18,10 +19,13 @@ interface WmdCard {
 const BASE = "https://www.wemakedevs.org";
 
 export async function fetchWeMakeDevs(): Promise<Hackathon[]> {
-  // The hackathon list is rendered from React Server Component data embedded in the page.
-  const html = (await fetchText(`${BASE}/hackathons`)).replace(/\\"/g, '"');
+  return parseWeMakeDevs(await fetchText(`${BASE}/hackathons`));
+}
+
+export function parseWeMakeDevs(html: string): Hackathon[] {
+  const data = rscText(html) || html.replace(/\\"/g, '"');
   const cards = new Map<string, WmdCard>();
-  for (const obj of extractObjects(html, '{"id":"')) {
+  for (const obj of jsonObjects(data, '{"id":"')) {
     if (typeof obj.title === "string" && "startDate" in obj && "formats" in obj) {
       // RSC escapes strings that start with "$" as "$$"
       for (const [k, v] of Object.entries(obj)) {
@@ -30,43 +34,12 @@ export async function fetchWeMakeDevs(): Promise<Hackathon[]> {
       cards.set(obj.id as string, obj as unknown as WmdCard);
     }
   }
+  if (!cards.size) throw new Error("WeMakeDevs: could not find embedded hackathon data");
   return [...cards.values()].map(normalize);
 }
 
-/** Find every balanced JSON object starting with `prefix` and parse the ones that are valid. */
-function extractObjects(text: string, prefix: string): Record<string, unknown>[] {
-  const out: Record<string, unknown>[] = [];
-  let from = 0;
-  for (;;) {
-    const start = text.indexOf(prefix, from);
-    if (start === -1) break;
-    let depth = 0;
-    let inString = false;
-    let end = -1;
-    for (let i = start; i < text.length; i++) {
-      const c = text[i];
-      if (inString) {
-        if (c === "\\") i++;
-        else if (c === '"') inString = false;
-      } else if (c === '"') inString = true;
-      else if (c === "{") depth++;
-      else if (c === "}" && --depth === 0) {
-        end = i;
-        break;
-      }
-    }
-    if (end === -1) break;
-    try {
-      out.push(JSON.parse(text.slice(start, end + 1)));
-    } catch {
-      // not a card object; skip
-    }
-    from = start + prefix.length;
-  }
-  return out;
-}
-
 function normalize(c: WmdCard): Hackathon {
+  const prizeUsd = parsePrizeUsd(c.prize);
   const online = c.formats.includes("online");
   const offline = c.formats.includes("offline");
   const mode: Mode = online && offline ? "hybrid" : offline ? "offline" : "online";
@@ -91,8 +64,8 @@ function normalize(c: WmdCard): Hackathon {
     regStartsAt: null,
     regEndsAt: null,
     // the "prize" field is a free-form blurb; only treat it as a prize when it names an amount
-    prizeText: parsePrizeUsd(c.prize) ? c.prize : null,
-    prizeUsd: parsePrizeUsd(c.prize),
+    prizeText: prizeUsd ? c.prize : null,
+    prizeUsd,
     entryFee: "free",
     themes: inferThemes(c.title, c.prize),
     organizer: "WeMakeDevs",

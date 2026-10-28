@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useAccount } from "./useAccount";
+import { PageSkeleton } from "./PageSkeleton";
 import { EmptyState } from "./ui/Feedback";
 
 /** Pages that are all about your own data. Discover, hackathon pages and people stay open to everyone. */
@@ -15,7 +16,8 @@ export function SignInGate({ children }: { children: ReactNode }) {
   const path = usePathname();
   const { loaded, user, loginRequired } = useAccount();
   const personal = PERSONAL.some((p) => path === p || path.startsWith(`${p}/`));
-  if (!personal || !loaded || user || !loginRequired) return children;
+  if (personal && !loaded) return <PageSkeleton />;
+  if (!personal || user || !loginRequired) return children;
   const next = encodeURIComponent(path);
   return (
     <EmptyState

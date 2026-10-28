@@ -39,7 +39,6 @@ function overlaps(a: Hackathon, b: Hackathon) {
 
 /** How much a clash matters, worst first. Low ones are shown folded away and never raise a warning. */
 export type Severity = "critical" | "high" | "medium" | "low";
-export const SEVERITIES: Severity[] = ["critical", "high", "medium", "low"];
 const RANK: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
 /** Worth a warning (badge, red calendar day, Discover chip): everything except low. */

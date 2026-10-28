@@ -40,15 +40,18 @@ export async function lastSync(): Promise<SyncReport | null> {
   return raw ? (JSON.parse(raw) as SyncReport) : null;
 }
 
+const missingSources = (last: SyncReport | null) =>
+  !last || Object.keys(FETCHERS).some((source) => !Object.hasOwn(last.sources, source));
+
 /** Wait for an initial refresh when an app update adds a source to an existing installation. */
 export async function needsInitialSync() {
   const last = await lastSync();
-  return !last || Object.keys(FETCHERS).some((source) => !Object.hasOwn(last.sources, source));
+  return missingSources(last);
 }
 
 export async function isStale() {
   const last = await lastSync();
-  return await needsInitialSync() || !last || Date.now() - new Date(last.at).getTime() > STALE_AFTER_MS;
+  return missingSources(last) || !last || Date.now() - new Date(last.at).getTime() > STALE_AFTER_MS;
 }
 
 /** Pull every feed, store the results, refresh tracked deadlines, then geocode in the background. */

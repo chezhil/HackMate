@@ -1,5 +1,5 @@
 import "server-only";
-import { get, run } from "./db";
+import { get, run, withAccountLock } from "./db";
 import { listIdeas } from "./planning";
 import { getHackathon, listTracked } from "./repo";
 import { listTeam } from "./team";
@@ -48,15 +48,17 @@ export async function getProject(hackathonId: string): Promise<Project> {
 }
 
 export async function saveProject(hackathonId: string, p: Partial<Project>): Promise<Project> {
-  const cur = await getProject(hackathonId);
-  const next = { ...cur, ...p };
-  (await run(`INSERT INTO projects (hackathon_id, name, tagline, problem, solution, stack, repo_url, demo_url, video_url, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(user_id, hackathon_id) DO UPDATE SET name = excluded.name, tagline = excluded.tagline, problem = excluded.problem,
-         solution = excluded.solution, stack = excluded.stack, repo_url = excluded.repo_url, demo_url = excluded.demo_url,
-         video_url = excluded.video_url, updated_at = excluded.updated_at`, hackathonId, next.name.trim(), next.tagline.trim(), next.problem.trim(), next.solution.trim(), next.stack.trim(),
-      next.repoUrl.trim(), next.demoUrl.trim(), next.videoUrl.trim(), new Date().toISOString(),));
-  return getProject(hackathonId);
+  return withAccountLock(`project:saveProject:${hackathonId}`, async () => {
+    const cur = await getProject(hackathonId);
+    const next = { ...cur, ...p };
+    (await run(`INSERT INTO projects (hackathon_id, name, tagline, problem, solution, stack, repo_url, demo_url, video_url, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(user_id, hackathon_id) DO UPDATE SET name = excluded.name, tagline = excluded.tagline, problem = excluded.problem,
+           solution = excluded.solution, stack = excluded.stack, repo_url = excluded.repo_url, demo_url = excluded.demo_url,
+           video_url = excluded.video_url, updated_at = excluded.updated_at`, hackathonId, next.name.trim(), next.tagline.trim(), next.problem.trim(), next.solution.trim(), next.stack.trim(),
+        next.repoUrl.trim(), next.demoUrl.trim(), next.videoUrl.trim(), new Date().toISOString(),));
+    return getProject(hackathonId);
+  });
 }
 
 /** Everything the AI should know about what was built, as one text block. */

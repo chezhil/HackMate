@@ -6,7 +6,9 @@ import { isIP } from "node:net";
 import { generateJson } from "./ai";
 import { buildDetails } from "./details";
 import { all } from "./db";
-import { getHackathon, trackHackathon, updateTracked, upsertHackathons } from "./repo";
+import { canonicalUrl } from "./urls";
+import { isDate, isHttpUrl } from "./validation";
+import { getDescription, getHackathon, trackHackathon, updateTracked, upsertHackathons } from "./repo";
 import { fetchHack2skillEvent } from "./sources/hack2skill";
 import { fetchUnstopEvent } from "./sources/unstop";
 import { htmlToText, iso, parsePrizeUsd, USER_AGENT } from "./sources/util";
@@ -51,6 +53,47 @@ export interface ImportPreview {
 }
 
 export class ImportError extends Error {}
+
+/** Normalize the editable import form before any data is saved or background work starts. */
+export function validateImportDraft(value: unknown): ImportDraft {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new ImportError("Missing hackathon details");
+  const raw = value as Record<string, unknown>;
+  if (typeof raw.title !== "string" || !raw.title.trim() || typeof raw.url !== "string") throw new ImportError("Give the hackathon a name and website field");
+  if (raw.url.trim() && !isHttpUrl(raw.url.trim())) throw new ImportError("The website needs a full http:// or https:// link");
+  if (!["online", "offline", "hybrid"].includes(raw.mode as string)) throw new ImportError("Pick online, in person or hybrid");
+  const str = (key: string): string | null => {
+    const v = raw[key];
+    if (v == null || v === "") return null;
+    if (typeof v !== "string") throw new ImportError(`${key} needs to be text`);
+    return v.trim() || null;
+  };
+  const date = (key: string) => {
+    const v = str(key);
+    if (v === null) return null;
+    if (!isDate(v)) throw new ImportError(`${key} needs a valid date`);
+    return new Date(v).toISOString();
+  };
+  const team = (key: string): number | null => {
+    const v = raw[key];
+    if (v == null || v === "") return null;
+    if (typeof v !== "number" || !Number.isSafeInteger(v) || v < 1) throw new ImportError(`${key} needs a positive whole number`);
+    return v;
+  };
+  const themes = raw.themes ?? [];
+  if (!Array.isArray(themes) || !themes.every((t) => typeof t === "string" && (THEMES as readonly string[]).includes(t))) throw new ImportError("Pick valid hackathon themes");
+  const draft: ImportDraft = {
+    url: raw.url.trim(), title: raw.title.trim(), mode: raw.mode as Mode,
+    tagline: str("tagline"), organizer: str("organizer"), city: str("city"), country: str("country"),
+    startsAt: date("startsAt"), endsAt: date("endsAt"), regEndsAt: date("regEndsAt"),
+    prizeText: str("prizeText"), image: str("image"), description: str("description"),
+    themes: [...new Set(themes)], teamMin: team("teamMin"), teamMax: team("teamMax"),
+  };
+  if (draft.image && !isHttpUrl(draft.image)) throw new ImportError("The image needs a web address");
+  if (draft.startsAt && draft.endsAt && draft.startsAt > draft.endsAt) throw new ImportError("The end date must follow the start date");
+  if (draft.teamMin && draft.teamMax && draft.teamMin > draft.teamMax) throw new ImportError("The maximum team size must be at least the minimum");
+  return draft;
+}
+
 
 // ---------- sites whose pages are empty until JavaScript runs ----------
 //
@@ -111,19 +154,12 @@ function checkUrl(raw: string): URL {
   return url;
 }
 
-/** Same page regardless of tracking parameters, trailing slashes or www. */
-function normalise(u: URL) {
-  const keep = new URL(u.toString());
-  for (const k of [...keep.searchParams.keys()]) if (/^(utm_|ref$|fbclid$|gclid$)/.test(k)) keep.searchParams.delete(k);
-  return `${keep.hostname.replace(/^www\./, "")}${keep.pathname.replace(/\/+$/, "")}${keep.search}`.toLowerCase();
-}
-
 async function findExisting(u: URL): Promise<string | null> {
-  const target = normalise(u);
+  const target = canonicalUrl(u.href);
   const rows = (await all("SELECT id, url FROM hackathons")) as { id: string; url: string }[];
   for (const r of rows) {
     try {
-      if (normalise(new URL(r.url)) === target) return r.id;
+      if (canonicalUrl(r.url) === target) return r.id;
     } catch {
       // A malformed stored URL can't match.
     }
@@ -312,10 +348,12 @@ export async function createFromDraft(d: ImportDraft, choice: ImportChoice): Pro
   const url = d.url.trim() ? checkUrl(d.url) : null;
   // A link to a site with event data is saved as that site's listing (its id, link and description), so the feed
   // and the import never make two copies; your edits in the form still win.
-  const known = url ? ((await fromSite(url))?.listing ?? null) : null;
+  const existingId = url ? await findExisting(url) : null;
+  const existing = existingId ? await getHackathon(existingId) : null;
+  const known = existing ? { ...existing, description: await getDescription(existing.id) } : url ? ((await fromSite(url))?.listing ?? null) : null;
   const id =
     known?.id ??
-    (url ? `custom:${createHash("sha1").update(normalise(url)).digest("hex").slice(0, 12)}` : `custom:${randomUUID().replace(/-/g, "").slice(0, 12)}`);
+    (url ? `custom:${createHash("sha1").update(canonicalUrl(url.href)!).digest("hex").slice(0, 12)}` : `custom:${randomUUID().replace(/-/g, "").slice(0, 12)}`);
   const title = d.title.trim().slice(0, 200) || url?.hostname || "Untitled hackathon";
   const h: Hackathon = {
     ...(known ?? {}),
@@ -337,7 +375,7 @@ export async function createFromDraft(d: ImportDraft, choice: ImportChoice): Pro
     regStartsAt: known?.regStartsAt ?? null,
     regEndsAt: iso(d.regEndsAt),
     prizeText: d.prizeText?.trim() || null,
-    prizeUsd: d.prizeText === known?.prizeText ? known.prizeUsd : parsePrizeUsd(d.prizeText),
+    prizeUsd: known && d.prizeText === known.prizeText ? known.prizeUsd : parsePrizeUsd(d.prizeText),
     entryFee: known?.entryFee ?? null,
     themes: [...new Set([...d.themes, ...inferThemes(title, d.tagline)])],
     organizer: d.organizer?.trim() || null,
@@ -346,11 +384,11 @@ export async function createFromDraft(d: ImportDraft, choice: ImportChoice): Pro
     description: d.description?.trim().slice(0, 20_000) || known?.description || null,
   };
   await upsertHackathons([h], new Date().toISOString());
-  await trackHackathon(id);
+  const trackedId = await trackHackathon(id);
   if (choice.status !== "interested" || choice.result) {
-    await updateTracked(id, { status: choice.status, ...(choice.status === "results" ? { result: choice.result ?? "participated" } : {}) });
+    await updateTracked(trackedId, { status: choice.status, ...(choice.status === "results" ? { result: choice.result ?? "participated" } : {}) });
   }
   // Fills Overview, rules, Ask AI and the submission checklist from the page, like any other hackathon.
-  background("import", () => buildDetails(id));
-  return (await getHackathon(id))!.id;
+  background("import", () => buildDetails(trackedId));
+  return trackedId;
 }

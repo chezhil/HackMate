@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Check, ChevronRight, CircleCheck, Info, OctagonAlert, RotateCcw, TriangleAlert } from "lucide-react";
 import { isNotable, type Clash, type Severity } from "@/lib/clashes";
 import { fmtDate, fmtDateTime } from "@/lib/format";
@@ -33,6 +34,7 @@ const SEVERITY_ICON = { critical: OctagonAlert, high: TriangleAlert, medium: Tri
 
 function Row({ c, resolved }: { c: Clash; resolved?: boolean }) {
   const { resolveClash } = useHackmate();
+  const [saving, setSaving] = useState(false);
   const { title, detail } = describeClash(c);
   const Icon = SEVERITY_ICON[c.severity];
   return (
@@ -54,7 +56,12 @@ function Row({ c, resolved }: { c: Clash; resolved?: boolean }) {
       <button
         type="button"
         className="btn btn-sm shrink-0"
-        onClick={() => void resolveClash(c, !resolved)}
+        disabled={saving}
+        onClick={async () => {
+          setSaving(true);
+          try { await resolveClash(c, !resolved); }
+          finally { setSaving(false); }
+        }}
         title={resolved ? "Show this clash again" : "Mark as sorted out: it stops showing on the Tracker, Calendar and nav"}
       >
         {resolved ? <><RotateCcw aria-hidden className="size-3.5" /> Undo</> : <><Check aria-hidden className="size-3.5" /> Resolve</>}

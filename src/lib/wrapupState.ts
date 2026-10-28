@@ -1,14 +1,7 @@
 // Pure: decides whether a hackathon with results is fully wrapped up, and what's still open if not.
 import type { Certificate, Prize, TrackedWithHackathon } from "./types";
 
-/** Same formatting as the prize list (₹50,000 / $1,000). */
-export function formatMoney(amount: number, currency: string) {
-  try {
-    return new Intl.NumberFormat(currency === "INR" ? "en-IN" : undefined, { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
-  } catch {
-    return `${amount} ${currency}`;
-  }
-}
+import { formatMoney } from "./format";
 
 export interface WrapUpState {
   resolved: boolean;

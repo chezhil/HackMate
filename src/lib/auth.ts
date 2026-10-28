@@ -123,10 +123,17 @@ export async function signUp(input: { username: string; email: string; password:
   // The first account on this HackMate starts from the profile already filled in here.
   const first = !(await get("SELECT 1 AS one FROM users LIMIT 1"));
   const profile: MemberProfile = first ? { ...EMPTY, ...await getProfile() } : { ...EMPTY, name: username };
-  const created = (await get<UserRow>(
-    "INSERT INTO users (username, email, password_hash, profile, created_at) VALUES (?, ?, ?, ?, ?) RETURNING *",
-    username, email, await hashPassword(input.password), JSON.stringify(profile), new Date().toISOString(),
-  ))!;
+  let created: UserRow;
+  try {
+    created = (await get<UserRow>(
+      "INSERT INTO users (username, email, password_hash, profile, created_at) VALUES (?, ?, ?, ?, ?) RETURNING *",
+      username, email, await hashPassword(input.password), JSON.stringify(profile), new Date().toISOString(),
+    ))!;
+  } catch (e) {
+    // The unique indexes also handle two signups that pass the availability checks at the same time.
+    if ((e as { code?: string }).code === "23505") throw new AuthError("That username or email is already registered.", 409);
+    throw e;
+  }
   // The first account also takes over the tracker, ideas and results built here before accounts existed.
   if (first) await giveSignedOutDataTo(created.id);
   await startSession(created.id, secure);
@@ -158,10 +165,11 @@ export async function signOut() {
 export async function saveMemberProfile(patch: Partial<MemberProfile>): Promise<Account> {
   const id = await currentUserId();
   if (id == null) throw new AuthError("Sign in to edit your profile.", 401);
-  const row = (await get("SELECT * FROM users WHERE id = ?", id)) as unknown as UserRow;
-  const next = { ...EMPTY, ...JSON.parse(row.profile), ...patch };
-  (await run("UPDATE users SET profile = ? WHERE id = ?", JSON.stringify(next), id));
-  return toAccount({ ...row, profile: JSON.stringify(next) });
+  const row = await get<UserRow>(
+    "UPDATE users SET profile = (profile::jsonb || ?::jsonb)::text WHERE id = ? RETURNING *", JSON.stringify(patch), id,
+  );
+  if (!row) throw new AuthError("Sign in to edit your profile.", 401);
+  return toAccount(row);
 }
 
 // ---------- the directory ----------

@@ -1,6 +1,6 @@
 import "server-only";
 import { AiUnavailableError, generateJson } from "./ai";
-import { all, get, run, stmt } from "./db";
+import { all, get, run, stmt, withAccountLock } from "./db";
 import { factsBlock, getDetails } from "./details";
 import { deleteFile, readFile } from "./files";
 import { videoLimitSec } from "./pitch";
@@ -123,22 +123,24 @@ export async function updateChecklistItem(
   id: number,
   patch: { done?: boolean; value?: string | null; file?: string | null; mime?: string | null; meta?: ChecklistItem["meta"]; label?: string; required?: boolean },
 ) {
-  const cur = (await get("SELECT * FROM checklist_items WHERE id = ?", id)) as Row | undefined;
-  if (!cur) throw new Error("Item not found");
-  const item = toItem(cur);
-  if (patch.file !== undefined && item.file && patch.file !== item.file) await deleteFile(item.file);
-  const next = { ...item, ...Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)) };
-  // Duration describes this upload, not the checklist requirement. Never carry it to a replacement.
-  if (patch.file !== undefined && patch.file !== item.file) {
-    next.meta = { ...item.meta, ...patch.meta };
-    if (patch.meta?.durationSec === undefined) delete next.meta.durationSec;
-  } else if (patch.meta) {
-    next.meta = { ...item.meta, ...patch.meta };
-  }
-  // Attaching proof ticks the item off.
-  if ((patch.value || patch.file) && patch.done === undefined) next.done = true;
-  (await run("UPDATE checklist_items SET done = ?, value = ?, file = ?, mime = ?, meta = ?, label = ?, required = ? WHERE id = ?", next.done ? 1 : 0, next.value || null, next.file, next.mime, next.meta ? JSON.stringify(next.meta) : null,
-      next.label.trim() || item.label, next.required ? 1 : 0, id,));
+  return withAccountLock(`submission:updateChecklistItem:${id}`, async () => {
+    const cur = (await get("SELECT * FROM checklist_items WHERE id = ?", id)) as Row | undefined;
+    if (!cur) throw new Error("Item not found");
+    const item = toItem(cur);
+    if (patch.file !== undefined && item.file && patch.file !== item.file) await deleteFile(item.file);
+    const next = { ...item, ...Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)) };
+    // Duration describes this upload, not the checklist requirement. Never carry it to a replacement.
+    if (patch.file !== undefined && patch.file !== item.file) {
+      next.meta = { ...item.meta, ...patch.meta };
+      if (patch.meta?.durationSec === undefined) delete next.meta.durationSec;
+    } else if (patch.meta) {
+      next.meta = { ...item.meta, ...patch.meta };
+    }
+    // Attaching proof ticks the item off.
+    if ((patch.value || patch.file) && patch.done === undefined) next.done = true;
+    (await run("UPDATE checklist_items SET done = ?, value = ?, file = ?, mime = ?, meta = ?, label = ?, required = ? WHERE id = ?", next.done ? 1 : 0, next.value || null, next.file, next.mime, next.meta ? JSON.stringify(next.meta) : null,
+        next.label.trim() || item.label, next.required ? 1 : 0, id,));
+  });
 }
 
 export async function deleteChecklistItem(id: number) {

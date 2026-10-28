@@ -1,6 +1,6 @@
 import "server-only";
 import { generateJson } from "./ai";
-import { all, get, getSetting, run, setSetting } from "./db";
+import { all, get, getSetting, run, setSetting, withAccountLock } from "./db";
 import { factsBlock } from "./details";
 import { deleteFile } from "./files";
 import { listQa } from "./pitch";
@@ -60,13 +60,15 @@ export async function addCertificate(
 }
 
 export async function updateCertificate(id: number, patch: { title?: string; url?: string | null; file?: string | null; mime?: string | null; status?: Certificate["status"] }) {
-  const r = (await get("SELECT * FROM certificates WHERE id = ?", id)) as Row | undefined;
-  if (!r) throw new Error("Certificate not found");
-  const cur = toCert({ ...r, hackathon_title: "" });
-  if (patch.file !== undefined && cur.file && patch.file !== cur.file) await deleteFile(cur.file);
-  const next = { ...cur, ...patch };
-  if ((patch.file || patch.url) && !patch.status) next.status = "received";
-  (await run("UPDATE certificates SET title = ?, status = ?, url = ?, file = ?, mime = ?, received_at = ? WHERE id = ?", next.title, next.status, next.url, next.file, next.mime, next.status === "received" ? (cur.receivedAt ?? new Date().toISOString()) : null, id));
+  return withAccountLock(`wrapup:updateCertificate:${id}`, async () => {
+    const r = (await get("SELECT * FROM certificates WHERE id = ?", id)) as Row | undefined;
+    if (!r) throw new Error("Certificate not found");
+    const cur = toCert({ ...r, hackathon_title: "" });
+    if (patch.file !== undefined && cur.file && patch.file !== cur.file) await deleteFile(cur.file);
+    const next = { ...cur, ...patch };
+    if ((patch.file || patch.url) && !patch.status) next.status = "received";
+    (await run("UPDATE certificates SET title = ?, status = ?, url = ?, file = ?, mime = ?, received_at = ? WHERE id = ?", next.title, next.status, next.url, next.file, next.mime, next.status === "received" ? (cur.receivedAt ?? new Date().toISOString()) : null, id));
+  });
 }
 
 export async function deleteCertificate(id: number) {
@@ -108,13 +110,15 @@ export async function addPrize(hackathonId: string, p: PrizeInput) {
 }
 
 export async function updatePrize(id: number, patch: PrizeInput) {
-  const r = (await get("SELECT * FROM prizes WHERE id = ?", id)) as Row | undefined;
-  if (!r) throw new Error("Prize not found");
-  const cur = toPrize({ ...r, hackathon_title: "" });
-  const next = { ...cur, ...patch };
-  if (patch.status === "paid" && !cur.paidAt) next.paidAt = new Date().toISOString();
-  if (patch.status && patch.status !== "paid") next.paidAt = null;
-  (await run("UPDATE prizes SET title = ?, amount = ?, currency = ?, kind = ?, status = ?, expected_by = ?, paid_at = ?, notes = ? WHERE id = ?", next.title, next.amount, next.currency, next.kind, next.status, next.expectedBy, next.paidAt, next.notes, id));
+  return withAccountLock(`wrapup:updatePrize:${id}`, async () => {
+    const r = (await get("SELECT * FROM prizes WHERE id = ?", id)) as Row | undefined;
+    if (!r) throw new Error("Prize not found");
+    const cur = toPrize({ ...r, hackathon_title: "" });
+    const next = { ...cur, ...patch };
+    if (patch.status === "paid" && !cur.paidAt) next.paidAt = new Date().toISOString();
+    if (patch.status && patch.status !== "paid") next.paidAt = null;
+    (await run("UPDATE prizes SET title = ?, amount = ?, currency = ?, kind = ?, status = ?, expected_by = ?, paid_at = ?, notes = ? WHERE id = ?", next.title, next.amount, next.currency, next.kind, next.status, next.expectedBy, next.paidAt, next.notes, id));
+  });
 }
 
 export async function deletePrize(id: number) {
@@ -144,11 +148,13 @@ export async function getRetro(hackathonId: string): Promise<Retro> {
 }
 
 export async function saveRetro(hackathonId: string, patch: Partial<Retro>): Promise<Retro> {
-  const next = { ...await getRetro(hackathonId), ...patch };
-  (await run(`INSERT INTO retros (hackathon_id, rating, went_well, improve, lessons, updated_at) VALUES (?, ?, ?, ?, ?, ?)
-       ON CONFLICT(user_id, hackathon_id) DO UPDATE SET rating = excluded.rating, went_well = excluded.went_well,
-         improve = excluded.improve, lessons = excluded.lessons, updated_at = excluded.updated_at`, hackathonId, next.rating, next.wentWell, next.improve, next.lessons, new Date().toISOString()));
-  return getRetro(hackathonId);
+  return withAccountLock(`wrapup:saveRetro:${hackathonId}`, async () => {
+    const next = { ...await getRetro(hackathonId), ...patch };
+    (await run(`INSERT INTO retros (hackathon_id, rating, went_well, improve, lessons, updated_at) VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT(user_id, hackathon_id) DO UPDATE SET rating = excluded.rating, went_well = excluded.went_well,
+           improve = excluded.improve, lessons = excluded.lessons, updated_at = excluded.updated_at`, hackathonId, next.rating, next.wentWell, next.improve, next.lessons, new Date().toISOString()));
+    return getRetro(hackathonId);
+  });
 }
 
 /** Draft retro notes from what HackMate saw: standups, idea critiques, mock Q&A scores, result, prizes. */
@@ -190,8 +196,10 @@ export async function getProfile(): Promise<Profile> {
 }
 
 export async function saveProfile(p: Partial<Profile>): Promise<Profile> {
-  await setSetting("profile", JSON.stringify({ ...await getProfile(), ...p }));
-  return getProfile();
+  return withAccountLock("wrapup:saveProfile", async () => {
+    await setSetting("profile", JSON.stringify({ ...await getProfile(), ...p }));
+    return getProfile();
+  });
 }
 
 export interface PortfolioEntry {

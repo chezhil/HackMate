@@ -1,5 +1,7 @@
 "use client";
 
+import { formatMoney } from "@/lib/format";
+
 import { ArrowRight, Award, ChevronRight, Inbox, Link2, PencilLine, PinOff, Search, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -13,7 +15,7 @@ import { call, hid } from "@/lib/client";
 import { fmtDate, fmtRange } from "@/lib/format";
 import type { Certificate, Prize, ResultKind, TrackedWithHackathon } from "@/lib/types";
 import { RESULT_LABELS } from "@/lib/types";
-import { formatMoney, wrapUpState } from "@/lib/wrapupState";
+import { wrapUpState } from "@/lib/wrapupState";
 
 export const RESULT_TONE: Record<ResultKind, Tone> = {
   won: "ok",

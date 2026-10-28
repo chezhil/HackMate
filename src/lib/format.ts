@@ -47,8 +47,12 @@ export function place(h: Hackathon) {
   return [h.city, h.country].filter(Boolean).join(", ") || (h.mode === "hybrid" ? "Hybrid" : "In person");
 }
 
-export function fmtUsd(n: number) {
-  return n >= 1000 ? `$${Math.round(n / 100) / 10}k` : `$${n}`;
+/** Shared prize formatting for lists, results, and wrap-up warnings. */
+export function formatMoney(amount: number | null, currency: string) {
+  if (amount == null) return "";
+  try {
+    return new Intl.NumberFormat(currency === "INR" ? "en-IN" : undefined, { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
+  } catch { return `${amount} ${currency}`; }
 }
 
 /** Value for <input type="datetime-local"> in the viewer's time zone. */

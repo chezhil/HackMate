@@ -6,11 +6,11 @@ import { useEffect, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { CertificateList, type CertData } from "@/components/CertificateList";
 import { setAccount } from "@/components/useAccount";
-import { money, PrizeList } from "@/components/PrizeList";
+import { PrizeList } from "@/components/PrizeList";
 import { Badge, Banner, CountPill, Stars } from "@/components/ui/Feedback";
 import { Tabs } from "@/components/ui/Tabs";
 import { call, hid } from "@/lib/client";
-import { fmtDate, fmtRange } from "@/lib/format";
+import { fmtDate, fmtRange, formatMoney } from "@/lib/format";
 import type { Account, Certificate, MemberProfile, Prize, Profile, Project, Retro, Stats, TrackedWithHackathon } from "@/lib/types";
 import { RESULT_LABELS, SOURCE_LABELS } from "@/lib/types";
 
@@ -379,7 +379,7 @@ function PortfolioTab({ entries }: { entries: PortfolioEntry[] }) {
             {p.solution && <p className="line-clamp-3 text-sm">{p.solution}</p>}
             {p.stack && <p className="text-xs text-muted">Built with {p.stack}</p>}
             {prizes.length > 0 && (
-              <p className="flex items-start gap-1.5 text-sm text-ok"><Trophy aria-hidden className="mt-0.5 size-4 shrink-0" /> {prizes.map((x) => `${x.title}${x.amount ? ` (${money(x.amount, x.currency)})` : ""}`).join(", ")}</p>
+              <p className="flex items-start gap-1.5 text-sm text-ok"><Trophy aria-hidden className="mt-0.5 size-4 shrink-0" /> {prizes.map((x) => `${x.title}${x.amount ? ` (${formatMoney(x.amount, x.currency)})` : ""}`).join(", ")}</p>
             )}
             <div className="flex flex-wrap gap-3 text-sm">
               {links.map((l) => <a key={l.label} href={l.href} target="_blank" rel="noreferrer" className="text-accent hover:underline">{l.label} ↗</a>)}

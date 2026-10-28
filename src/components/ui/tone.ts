@@ -26,9 +26,3 @@ export function scoreTone(score: number): Tone {
 
 /** Eight categorical colours for calendar bars and map pins, all AA with white text. */
 export const EVENT_COLORS = Array.from({ length: 8 }, (_, i) => `var(--event-${i + 1})`);
-
-/** Resolve a token to its current value, for libraries (Leaflet) that can't take var(). */
-export function cssVar(name: string): string {
-  if (typeof window === "undefined") return "";
-  return getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim();
-}
