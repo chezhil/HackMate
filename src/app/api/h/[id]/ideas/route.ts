@@ -1,3 +1,5 @@
+import { getHackathon } from "@/lib/repo";
+import { badRequest, readJson, text, validFields } from "@/lib/validation";
 import { AiUnavailableError } from "@/lib/ai";
 import { createIdea, listIdeas, suggestIdeas } from "@/lib/planning";
 import { connection } from "next/server";
@@ -18,7 +20,11 @@ export async function GET(_req: Request, { params }: Ctx) {
  */
 export async function POST(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
-  const body = (await req.json()) as { action: string; interests?: string; title?: string; text?: string };
+  if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
+  const raw = await readJson(req);
+  if (raw instanceof Response) return raw;
+  if (!validFields(raw, { action: text, interests: text, title: text, text: text })) return badRequest("Invalid request fields");
+  const body = raw as { action: string; interests?: string; title?: string; text?: string };
   try {
     if (body.action === "suggest") return Response.json(await suggestIdeas(id, body.interests?.slice(0, 500) ?? ""));
     if (body.action === "create") {

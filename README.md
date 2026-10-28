@@ -4,7 +4,7 @@ HackMate keeps track of everything you need for a hackathon.
 
 ## What's here so far
 
-**Discover**: pulls upcoming hackathons from **Unstop**, **Devfolio**, **MLH** and **WeMakeDevs** into one list.
+**Discover**: pulls upcoming hackathons from **Unstop**, **Devfolio**, **MLH**, **WeMakeDevs**, **Devpost**, **lablab.ai**, **HackerEarth**, **Hack2skill**, and **Devsemble** into one list.
 Filter by city, online / in person / hybrid, prize pool, free entry, theme, source and date. In-person events show on a map.
 
 **Tracker**: pin a hackathon, then move it through *Pinned → Registered → Building → Submitted → Results*.
@@ -65,7 +65,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000. The first load pulls all four feeds (a few seconds). After that they refresh every 6 hours,
+Open http://localhost:3000. The first load pulls all nine feeds (a few seconds). After that they refresh every 6 hours,
 or on demand with **Refresh feeds**. Map coordinates are filled in from OpenStreetMap in the background.
 
 Data lives in `data/hackmate.db` (SQLite, git-ignored).
@@ -101,6 +101,17 @@ Google and Outlook fetch the feed from their servers, so they need HackMate at a
 | Devfolio | public search API (`api.devfolio.co/api/search/hackathons`) |
 | MLH | event JSON embedded in the season events page |
 | WeMakeDevs | hackathon cards embedded in the `/hackathons` page |
+| Devpost | public hackathon listing JSON, with pagination and explicit date-range parsing |
+| lablab.ai | hackathon records embedded in the public listing's React Server Component data |
+| HackerEarth | public Compete API, limited to hackathons that have not ended |
+| Hack2skill | public event listing API, with pagination |
+| Devsemble | public `get-all-hackathons` API, limited to published events |
+
+Discover groups duplicate event listings across platforms and keeps the alternate platform links.
+Matching uses event URLs, normalized names, dates, and locations. City editions and different years
+stay separate. Pinned identities take precedence, and adding the same event through another platform
+does not create a second tracker entry. Grouping does not delete source rows, notes, or deadlines.
+A new source automatically triggers an initial refresh on an existing installation.
 
 None of these are official, documented APIs, so a site redesign can break a source. A failing source is
 reported on the Discover page, and the others keep working. Adapters live in `src/lib/sources/`.
@@ -108,3 +119,18 @@ reported on the Discover page, and the others keep working. Adapters live in `sr
 ## Stack
 
 Next.js 16 (App Router) · React 19 · Tailwind CSS 4 · SQLite (`node:sqlite`) · Leaflet + OpenStreetMap · Nodemailer · Groq + Gemini
+
+## Regression checks
+
+```bash
+npm test
+npm run lint
+npx tsc --noEmit
+npm run build
+```
+
+The regression suite uses Node's test runner and the existing TypeScript dependency.
+It creates a temporary SQLite database and disables AI credentials and SMTP for the test process.
+Your saved database, uploads, and environment files are not used.
+The tests cover saving partial updates, request validation, discovery filters, calendar alerts,
+submission proof and team limits, and concurrent reminder delivery.

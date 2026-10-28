@@ -46,10 +46,15 @@ export function mimeOf(name: string): string {
   return Object.entries(EXT).find(([, e]) => e === ext)?.[0] ?? "application/octet-stream";
 }
 
+export class UploadError extends Error {
+  constructor(message: string, public status: number) { super(message); }
+}
+
 /** Read an uploaded file from a multipart form. */
 export async function fileFromForm(form: FormData, field = "file"): Promise<{ data: Buffer; mime: string } | null> {
   const f = form.get(field);
   if (!(f instanceof Blob) || f.size === 0) return null;
-  if (f.size > MAX_UPLOAD_BYTES) throw new Error("File is too large (max 200 MB)");
-  return { data: Buffer.from(await f.arrayBuffer()), mime: f.type || "application/octet-stream" };
+  if (f.size > MAX_UPLOAD_BYTES) throw new UploadError("File is too large (max 200 MB)", 413);
+  if (!Object.hasOwn(EXT, f.type)) throw new UploadError("Upload an image, PDF, or video", 400);
+  return { data: Buffer.from(await f.arrayBuffer()), mime: f.type };
 }

@@ -2,7 +2,7 @@ import type { AiPolicy } from "./aiPolicy";
 
 // Shared types used by the server (sync, API) and the client (pages).
 
-export type Source = "unstop" | "devfolio" | "mlh" | "wemakedevs";
+export type Source = "unstop" | "devfolio" | "mlh" | "wemakedevs" | "devpost" | "lablab" | "hackerearth" | "hack2skill" | "devsemble";
 export type Mode = "online" | "offline" | "hybrid";
 
 export const SOURCE_LABELS: Record<Source, string> = {
@@ -10,11 +10,18 @@ export const SOURCE_LABELS: Record<Source, string> = {
   devfolio: "Devfolio",
   mlh: "MLH",
   wemakedevs: "WeMakeDevs",
+  devpost: "Devpost",
+  lablab: "lablab.ai",
+  hackerearth: "HackerEarth",
+  hack2skill: "Hack2skill",
+  devsemble: "Devsemble",
 };
 
 export interface Hackathon {
   id: string; // `${source}:${sourceId}`
   source: Source;
+  /** Other platform listings grouped into this event, including the primary listing. */
+  sourceListings?: { id: string; source: Source; url: string }[];
   title: string;
   tagline: string | null;
   url: string;

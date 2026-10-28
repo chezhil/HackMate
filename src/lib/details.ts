@@ -27,8 +27,8 @@ async function gatherSourceText(h: Hackathon): Promise<string> {
         const amount = (p: (typeof prizes)[number]) => (Number(p.amount) > 0 ? ` (${Number(p.amount)} ${p.currency ?? ""})` : "");
         parts.push(`## Prize amounts\n${prizes.map((p) => `- ${p.name}${amount(p)}${p.desc ? `: ${p.desc}` : ""}`).join("\n")}`);
       }
-    } else if (h.source === "mlh" || h.source === "wemakedevs" || !feedText) {
-      // MLH and WeMakeDevs listings carry almost no detail, so read the event's own page.
+    } else if (!["unstop", "devfolio", "devsemble"].includes(h.source) || !feedText) {
+      // Sources with brief listing text need the event page for complete rules.
       parts.push(htmlToText(await fetchText(h.url, { headers: { "User-Agent": USER_AGENT } })));
     }
   } catch (e) {

@@ -24,7 +24,13 @@ function fmt(iso: string) {
  * once `now >= due - lead` (and the deadline hasn't passed) we email once and record it.
  * Keyed on due_at too, so moving a deadline re-arms its reminders.
  */
-export async function runReminders(now = new Date()): Promise<{ sent: number; skipped?: string }> {
+let inFlight: Promise<{ sent: number; skipped?: string }> | null = null;
+export function runReminders(now = new Date()): Promise<{ sent: number; skipped?: string }> {
+  if (!inFlight) inFlight = sendDueReminders(now).finally(() => { inFlight = null; });
+  return inFlight;
+}
+
+async function sendDueReminders(now: Date): Promise<{ sent: number; skipped?: string }> {
   const settings = getSettings();
   if (!settings.remindersEnabled) return { sent: 0, skipped: "Reminders are turned off" };
   if (!settings.email) return { sent: 0, skipped: "No email address set" };

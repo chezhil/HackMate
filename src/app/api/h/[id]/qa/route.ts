@@ -1,3 +1,5 @@
+import { getHackathon } from "@/lib/repo";
+import { badRequest, readJson, text, validFields } from "@/lib/validation";
 import { AiUnavailableError } from "@/lib/ai";
 import { answerQa, clearQa, listQa, QA_ROUNDS, startQa } from "@/lib/pitch";
 import { connection } from "next/server";
@@ -12,7 +14,11 @@ export async function GET(_req: Request, { params }: Ctx) {
 /** { action: "start" } | { action: "answer", turnId, answer } | { action: "clear" } */
 export async function POST(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
-  const b = (await req.json()) as { action: string; turnId?: number; answer?: string };
+  if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
+  const raw = await readJson(req);
+  if (raw instanceof Response) return raw;
+  if (!validFields(raw, { action: text, answer: text, turnId: (v) => Number.isSafeInteger(v) && Number(v) > 0 })) return badRequest("Invalid request fields");
+  const b = raw as { action: string; turnId?: number; answer?: string };
   try {
     if (b.action === "start") return Response.json({ turns: await startQa(id), rounds: QA_ROUNDS });
     if (b.action === "answer") {

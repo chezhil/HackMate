@@ -1,5 +1,6 @@
 import "server-only";
 import { aiPolicy } from "./aiPolicy";
+import { deduplicateHackathons, sameHackathon } from "./deduplicate";
 import { db } from "./db";
 import type {
   Deadline,
@@ -110,7 +111,7 @@ export function upsertHackathons(list: Hackathon[], seenAt: string) {
 /** Hackathons that haven't ended yet (or have no end date), plus anything being tracked. */
 export function listHackathons(): Hackathon[] {
   const cutoff = new Date(Date.now() - 24 * 3600_000).toISOString();
-  return (
+  const list = (
     db()
       .prepare(
         // The full rules (when the AI has read them) win over the feed description for the AI policy.
@@ -121,6 +122,8 @@ export function listHackathons(): Hackathon[] {
       )
       .all(cutoff) as Record<string, unknown>[]
   ).map((r) => ({ ...toHackathon(r), aiPolicy: aiPolicy(r.policy_text as string | null) }));
+  const trackedIds = new Set((db().prepare("SELECT hackathon_id FROM tracked").all() as { hackathon_id: string }[]).map((r) => r.hackathon_id));
+  return deduplicateHackathons(list, trackedIds);
 }
 
 export function getDescription(id: string): string | null {
@@ -164,6 +167,10 @@ export function listTracked(): TrackedWithHackathon[] {
 }
 
 export function trackHackathon(id: string) {
+  const candidate = getHackathon(id);
+  if (!candidate) throw new Error("Unknown hackathon");
+  const existing = listTracked().find((t) => sameHackathon(candidate, t.hackathon));
+  if (existing && existing.hackathonId !== id) return;
   const now = new Date().toISOString();
   db()
     .prepare("INSERT INTO tracked (hackathon_id, status, pinned_at) VALUES (?, 'interested', ?) ON CONFLICT DO NOTHING")

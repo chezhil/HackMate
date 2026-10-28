@@ -8,6 +8,8 @@ import { getProject, projectBlock } from "./project";
 import { getHackathon, listTracked } from "./repo";
 import { USER_AGENT } from "./sources/util";
 import { listTeam } from "./team";
+import { isHttpUrl } from "./validation";
+import { checklistComplete } from "./checklist";
 import type { ChecklistItem, ChecklistKind, SubmissionCheck } from "./types";
 
 type Row = Record<string, string | number | null>;
@@ -61,7 +63,7 @@ function seedsFor(hackathonId: string): Seed[] {
       ];
   const always = [
     { label: "Project submitted on the hackathon platform", detail: "Before the submission deadline", kind: "check", required: true, meta: null, origin: "default" },
-    (info?.teamSize.max ?? 1) > 1 && { label: "All teammates added to the submission", detail: null, kind: "check", required: true, meta: null, origin: "default" },
+    (info?.teamSize.max ?? getHackathon(hackathonId)?.teamMax ?? 1) > 1 && { label: "All teammates added to the submission", detail: null, kind: "check", required: true, meta: null, origin: "default" },
   ].filter(Boolean) as Seed[];
   return [...fromRules, ...suggestions, ...always];
 }
@@ -129,13 +131,20 @@ export function updateChecklistItem(
   if (!cur) throw new Error("Item not found");
   const item = toItem(cur);
   if (patch.file !== undefined && item.file && patch.file !== item.file) deleteFile(item.file);
-  const next = { ...item, ...patch };
+  const next = { ...item, ...Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)) };
+  // Duration describes this upload, not the checklist requirement. Never carry it to a replacement.
+  if (patch.file !== undefined && patch.file !== item.file) {
+    next.meta = { ...item.meta, ...patch.meta };
+    if (patch.meta?.durationSec === undefined) delete next.meta.durationSec;
+  } else if (patch.meta) {
+    next.meta = { ...item.meta, ...patch.meta };
+  }
   // Attaching proof ticks the item off.
   if ((patch.value || patch.file) && patch.done === undefined) next.done = true;
   db()
     .prepare("UPDATE checklist_items SET done = ?, value = ?, file = ?, mime = ?, meta = ?, label = ?, required = ? WHERE id = ?")
     .run(
-      next.done ? 1 : 0, next.value || null, next.file, next.mime, next.meta ? JSON.stringify({ ...item.meta, ...next.meta }) : null,
+      next.done ? 1 : 0, next.value || null, next.file, next.mime, next.meta ? JSON.stringify(next.meta) : null,
       next.label.trim() || item.label, next.required ? 1 : 0, id,
     );
 }
@@ -159,8 +168,10 @@ async function head(url: string): Promise<{ ok: boolean; status: number; finalUr
 }
 
 async function checkGithub(url: string, label: string, itemId: number | null): Promise<SubmissionCheck[]> {
-  const m = url.match(/github\.com\/([\w.-]+)\/([\w.-]+)/);
-  if (!m) return [];
+  const parsed = new URL(url);
+  if (!["github.com", "www.github.com"].includes(parsed.hostname)) return [];
+  const m = parsed.pathname.match(/^\/([\w.-]+)\/([\w.-]+)(?:\/|$)/);
+  if (!m) return [{ itemId, label, status: "fail", detail: "Use a GitHub repository link, including the owner and repository name." }];
   const repo = `${m[1]}/${m[2].replace(/\.git$/, "")}`;
   const api = (p: string) => fetch(`https://api.github.com/repos/${repo}${p}`, { headers: { "User-Agent": "HackMate" }, signal: AbortSignal.timeout(12_000) });
   try {
@@ -229,20 +240,26 @@ export async function verifySubmission(hackathonId: string): Promise<{ checks: S
   // Team size
   const max = getDetails(hackathonId)?.info?.teamSize.max ?? h.teamMax;
   const size = listTeam(hackathonId).filter((t) => t.confirmed).length + 1;
+  const min = getDetails(hackathonId)?.info?.teamSize.min ?? h.teamMin;
+  if (min && size < min) checks.push({ itemId: null, label: "Team size", status: "fail", detail: `Your team has ${size} people; at least ${min} are required.` });
   if (max && size > max) checks.push({ itemId: null, label: "Team size", status: "fail", detail: `Your team has ${size} people; the limit is ${max}.` });
 
   // Items
   const linkChecks: Promise<SubmissionCheck[]>[] = [];
   for (const item of items) {
-    const missing = item.kind === "link" ? !item.value && !item.file : item.kind === "file" ? !item.file : !item.done;
+    const missing = !checklistComplete(item);
     if (missing) {
       checks.push({ itemId: item.id, label: item.label, status: item.required ? "fail" : "warn", detail: item.required ? "Missing — required." : "Not done (optional)." });
       continue;
     }
-    if (item.value && /^https?:\/\//.test(item.value)) {
+    if (item.kind === "link" && item.value && !isHttpUrl(item.value)) {
+      checks.push({ itemId: item.id, label: item.label, status: "fail", detail: "Enter a valid http:// or https:// link." });
+      continue;
+    }
+    if (item.value && isHttpUrl(item.value)) {
       linkChecks.push(
         (async () => {
-          if (/github\.com\//.test(item.value!)) return checkGithub(item.value!, item.label, item.id);
+          if (["github.com", "www.github.com"].includes(new URL(item.value!).hostname)) return checkGithub(item.value!, item.label, item.id);
           const r = await head(item.value!);
           const out: SubmissionCheck[] = [
             r.ok

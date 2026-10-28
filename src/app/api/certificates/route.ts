@@ -1,4 +1,4 @@
-import { fileFromForm, saveFile } from "@/lib/files";
+import { fileFromForm, saveFile, UploadError } from "@/lib/files";
 import { getHackathon } from "@/lib/repo";
 import { addCertificate, listCertificates, missingCertificates } from "@/lib/wrapup";
 import { connection } from "next/server";
@@ -24,6 +24,6 @@ export async function POST(req: Request) {
     });
     return Response.json({ certificates: listCertificates(), missing: missingCertificates() });
   } catch (e) {
-    return Response.json({ error: (e as Error).message }, { status: 413 });
+    return Response.json({ error: (e as Error).message }, { status: e instanceof UploadError ? e.status : 400 });
   }
 }

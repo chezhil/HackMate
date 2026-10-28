@@ -51,18 +51,12 @@ export function HackathonView() {
   const [error, setError] = useState<string | null>(null);
   const params = useSearchParams();
   // The tab lives in the URL (?tab=submit) so a link can open straight onto it.
-  const [tab, setTabState] = useState<Tab>(() => {
-    const t = params.get("tab");
-    return isTab(t) ? t : "overview";
-  });
+  const requestedTab = params.get("tab");
+  const tab: Tab = isTab(requestedTab) ? requestedTab : "overview";
   // The Pitch tab's tool (?section=qa) lives there too, so shortcuts can land on the Deck roaster or Mock Q&A.
-  const [section, setSectionState] = useState<PitchSection>(() => {
-    const s = params.get("section");
-    return isPitchSection(s) ? s : "pitch";
-  });
+  const requestedSection = params.get("section");
+  const section: PitchSection = isPitchSection(requestedSection) ? requestedSection : "pitch";
   const go = (t: Tab, s?: PitchSection) => {
-    setTabState(t);
-    if (s) setSectionState(s);
     const url = new URL(window.location.href);
     if (t === "overview") url.searchParams.delete("tab");
     else url.searchParams.set("tab", t);

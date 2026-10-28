@@ -1,10 +1,14 @@
 import { addDeadline, listTracked } from "@/lib/repo";
 import { DEADLINE_LABELS, type DeadlineKind } from "@/lib/types";
+import { badRequest, isDate, readJson, text } from "@/lib/validation";
 
 /** Add a deadline to a tracked hackathon. Body: { hackathonId, kind, label?, dueAt } */
 export async function POST(req: Request) {
-  const body = (await req.json()) as { hackathonId: string; kind: DeadlineKind; label?: string; dueAt: string };
-  if (!(body.kind in DEADLINE_LABELS) || Number.isNaN(new Date(body.dueAt).getTime())) {
+  const raw = await readJson(req);
+  if (raw instanceof Response) return raw;
+  if (!text(raw.hackathonId) || !text(raw.kind) || (raw.label !== undefined && !text(raw.label))) return badRequest("Invalid deadline fields");
+  const body = raw as { hackathonId: string; kind: DeadlineKind; label?: string; dueAt: string };
+  if (!Object.hasOwn(DEADLINE_LABELS, body.kind) || !isDate(body.dueAt)) {
     return Response.json({ error: "Need a valid kind and dueAt" }, { status: 400 });
   }
   if (!listTracked().some((t) => t.hackathonId === body.hackathonId)) {

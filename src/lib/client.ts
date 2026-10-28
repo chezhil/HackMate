@@ -5,8 +5,9 @@ export async function call<T>(url: string, method = "GET", body?: unknown): Prom
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`);
+  if (data === null) throw new Error("The server returned an invalid response. Please try again.");
   return data as T;
 }
 

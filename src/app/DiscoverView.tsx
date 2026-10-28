@@ -3,7 +3,7 @@
 import { MapPinned, RefreshCw, Search, SearchX, SlidersHorizontal, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { HackathonCard } from "@/components/HackathonCard";
 import { useHackmate } from "@/components/HackmateProvider";
 import type { MapBounds } from "@/components/MapView";
@@ -47,19 +47,17 @@ const inBounds = (h: Hackathon, b: MapBounds) =>
 export function DiscoverView() {
   const { hackathons, tracked, trackedIds, now, loading, syncing, lastSync, error, refresh, syncNow, track, untrack } = useHackmate();
   const params = useSearchParams();
-  const [f, setF] = useState<Filters>(() => parseFilters(new URLSearchParams(params.toString())));
+  const f = parseFilters(new URLSearchParams(params.toString()));
+  const setF = (next: Filters | ((current: Filters) => Filters)) => {
+    const value = typeof next === "function" ? next(parseFilters(new URLSearchParams(window.location.search))) : next;
+    const qs = filtersToQuery(value);
+    window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+  };
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [searchInMap, setSearchInMap] = useState(false);
   const [bounds, setBounds] = useState<MapBounds | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-
-  // Keep the URL in step with the filters without adding a history entry per keystroke.
-  useEffect(() => {
-    const qs = filtersToQuery(f);
-    const next = `${window.location.pathname}${qs ? `?${qs}` : ""}`;
-    if (next !== `${window.location.pathname}${window.location.search}`) window.history.replaceState(null, "", next);
-  }, [f]);
 
   const set = (patch: Partial<Filters>) => setF((x) => ({ ...x, ...patch }));
 
@@ -94,7 +92,7 @@ export function DiscoverView() {
         <div className="min-w-0">
           <h1 className="page-title">Discover hackathons</h1>
           <p className="text-sm text-muted" aria-live="polite">
-            {loading ? "Pulling feeds from Unstop, Devfolio, MLH and WeMakeDevs…" : `${shown.length} of ${hackathons.length} upcoming`}
+            {loading ? "Pulling hackathon feeds…" : `${shown.length} of ${hackathons.length} upcoming`}
             {lastSync && ` · updated ${relative(lastSync.at)}`}
           </p>
         </div>

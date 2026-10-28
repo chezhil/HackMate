@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CalendarSync } from "@/components/CalendarSync";
 import { Badge, Banner } from "@/components/ui/Feedback";
 import { fmtDateTime } from "@/lib/format";
+import { call } from "@/lib/client";
 import type { Settings } from "@/lib/types";
 import { LEAD_OPTIONS } from "@/lib/types";
 
@@ -26,40 +27,39 @@ export function SettingsView() {
   const [saving, setSaving] = useState(false);
 
   const loadOutbox = useCallback(async () => {
-    const data = (await (await fetch("/api/outbox")).json()) as { emails: Email[] };
+    const data = await call<{ emails: Email[] }>("/api/outbox");
     setEmails(data.emails);
   }, []);
 
   useEffect(() => {
     void (async () => {
-      const data = (await (await fetch("/api/settings")).json()) as { settings: Settings; smtpConfigured: boolean };
+      const data = await call<{ settings: Settings; smtpConfigured: boolean }>("/api/settings");
       setSettings(data.settings);
       setSmtp(data.smtpConfigured);
       await loadOutbox();
-    })();
+    })().catch((e: Error) => setStatus(e.message));
   }, [loadOutbox]);
 
+  if (!settings && status) return <Banner tone="danger">{status}</Banner>;
   if (!settings) return <div className="h-64 animate-pulse rounded-xl bg-surface-2" />;
 
   const save = async (patch: Partial<Settings>) => {
     setSaving(true);
-    const res = await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...settings, ...patch }),
-    });
-    const data = (await res.json()) as { settings: Settings };
-    setSettings(data.settings);
-    setSaving(false);
-    setStatus("Saved");
-    setTimeout(() => setStatus(null), 1500);
+    try {
+      const data = await call<{ settings: Settings }>("/api/settings", "PUT", patch);
+      setSettings(data.settings);
+      setStatus("Saved");
+      setTimeout(() => setStatus(null), 1500);
+    } catch (e) { setStatus((e as Error).message); }
+    finally { setSaving(false); }
   };
 
   const post = async (url: string, done: (data: Record<string, unknown>) => string) => {
-    const res = await fetch(url, { method: "POST" });
-    const data = await res.json();
-    setStatus(res.ok ? done(data) : data.error);
-    await loadOutbox();
+    try {
+      const data = await call<Record<string, unknown>>(url, "POST");
+      setStatus(done(data));
+      await loadOutbox();
+    } catch (e) { setStatus((e as Error).message); }
   };
 
   const toggleLead = (m: number) => {

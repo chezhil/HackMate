@@ -1,3 +1,5 @@
+import { getHackathon } from "@/lib/repo";
+import { badRequest, readJson, text, validFields } from "@/lib/validation";
 import { AiUnavailableError } from "@/lib/ai";
 import { generatePitch, generateVideoScript, generateWriteup, listOutputs, roastDeck, videoLimitSec } from "@/lib/pitch";
 import type { Writeup } from "@/lib/types";
@@ -8,6 +10,7 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function GET(_req: Request, { params }: Ctx) {
   await connection();
   const id = decodeURIComponent((await params).id);
+  if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   return Response.json({ outputs: listOutputs(id), videoLimitSec: videoLimitSec(id) });
 }
 
@@ -17,7 +20,11 @@ export async function GET(_req: Request, { params }: Ctx) {
  */
 export async function POST(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
-  const b = (await req.json()) as { kind: string; minutes?: number; audience?: string; seconds?: number; script?: string; platform?: Writeup["platform"]; extra?: string };
+  if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
+  const raw = await readJson(req);
+  if (raw instanceof Response) return raw;
+  if (!validFields(raw, { kind: text, audience: text, script: text, extra: text, platform: text, minutes: (v) => typeof v === "number" && Number.isFinite(v), seconds: (v) => typeof v === "number" && Number.isFinite(v) })) return badRequest("Invalid request fields");
+  const b = raw as { kind: string; minutes?: number; audience?: string; seconds?: number; script?: string; platform?: Writeup["platform"]; extra?: string };
   try {
     let output;
     if (b.kind === "pitch") output = await generatePitch(id, Math.min(10, Math.max(0.5, Number(b.minutes) || 3)), b.audience?.slice(0, 200) ?? "");

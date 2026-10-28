@@ -20,23 +20,31 @@ export function ProjectCard({ id, onSaved, standalone }: { id: string; onSaved?:
   const [project, setProject] = useState<Project | null>(null);
   const [open, setOpen] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     call<{ project: Project }>(`/api/h/${hid(id)}/project`).then((d) => {
       setProject(d.project);
       setOpen(!d.project.updatedAt); // open the form until it's been filled in once
-    });
+    }, (e: Error) => setError(e.message));
   }, [id]);
 
+  if (!project && error) return <p className="text-sm text-danger" role="alert">{error}</p>;
   if (!project) return <div className="h-14 animate-pulse rounded-xl bg-surface-2" />;
 
   const save = async () => {
-    const d = await call<{ project: Project }>(`/api/h/${hid(id)}/project`, "PUT", project);
-    setProject(d.project);
-    setSaved(true);
-    if (!standalone) setOpen(false);
-    setTimeout(() => setSaved(false), 1500);
-    onSaved?.(d.project);
+    setSaving(true);
+    setError(null);
+    try {
+      const d = await call<{ project: Project }>(`/api/h/${hid(id)}/project`, "PUT", project);
+      setProject(d.project);
+      setSaved(true);
+      if (!standalone) setOpen(false);
+      setTimeout(() => setSaved(false), 1500);
+      onSaved?.(d.project);
+    } catch (e) { setError((e as Error).message); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -56,6 +64,7 @@ export function ProjectCard({ id, onSaved, standalone }: { id: string; onSaved?:
           {!standalone && <button className="btn btn-sm" onClick={() => setOpen(!open)}>{open ? "Close" : "Edit project"}</button>}
         </div>
       </div>
+      {error && <p className="mt-2 text-sm text-danger" role="alert">{error}</p>}
       {(open || standalone) && (
         <div className="mt-3 grid gap-2 md:grid-cols-2">
           {FIELDS.map((f) => (
@@ -79,7 +88,7 @@ export function ProjectCard({ id, onSaved, standalone }: { id: string; onSaved?:
             </label>
           ))}
           <div className="md:col-span-2">
-            <button className="btn btn-primary" onClick={save}>Save project</button>
+            <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? "Saving…" : "Save project"}</button>
           </div>
         </div>
       )}

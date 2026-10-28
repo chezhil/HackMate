@@ -37,9 +37,10 @@ function where(h: Hackathon) {
 }
 
 export function hackathonEvent(h: Hackathon, status?: string): string[] {
-  const end = h.endsAt ?? h.startsAt;
-  if (!end) return [];
-  const start = h.startsAt ?? new Date(new Date(end).getTime() - 3600_000).toISOString();
+  if (!h.startsAt && !h.endsAt) return [];
+  const start = h.startsAt ?? new Date(new Date(h.endsAt!).getTime() - 3600_000).toISOString();
+  const end = h.endsAt && new Date(h.endsAt) > new Date(start)
+    ? h.endsAt : new Date(new Date(start).getTime() + 3600_000).toISOString();
   return [
     "BEGIN:VEVENT",
     `UID:${h.id.replace(":", "-")}@hackmate`,
@@ -70,7 +71,7 @@ export function deadlineEvent(d: Deadline, h: Hackathon, alarmMinutes: number[])
       "BEGIN:VALARM",
       "ACTION:DISPLAY",
       `DESCRIPTION:${escape(`${d.label} — ${h.title}`)}`,
-      `TRIGGER:-PT${m}M`,
+      `TRIGGER;RELATED=END:-PT${m}M`,
       "END:VALARM",
     ]),
     "END:VEVENT",

@@ -137,6 +137,15 @@ export function HackathonCard({
           <span>{fmtRange(h)}</span>
           <span>·</span>
           <span>{SOURCE_LABELS[h.source]}</span>
+          {h.sourceListings && h.sourceListings.length > 1 && (
+            <span className="inline-flex flex-wrap gap-x-2" aria-label="Other listings of this event">
+              {h.sourceListings.filter((other) => other.id !== h.id).map((other) => (
+                <a key={other.id} href={other.url} target="_blank" rel="noreferrer" className="text-accent hover:underline" onClick={(e) => e.stopPropagation()}>
+                  Also on {SOURCE_LABELS[other.source]} ↗
+                </a>
+              ))}
+            </span>
+          )}
         </div>
         {h.tagline && h.tagline !== h.prizeText && <p className="mt-1 line-clamp-1 break-words text-sm text-muted">{h.tagline}</p>}
         <div className="mt-2 flex flex-wrap gap-1.5">

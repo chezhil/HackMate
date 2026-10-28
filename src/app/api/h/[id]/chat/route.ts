@@ -1,3 +1,4 @@
+import { badRequest, readJson } from "@/lib/validation";
 import { AiUnavailableError } from "@/lib/ai";
 import { askQuestion, clearChat, listChat } from "@/lib/details";
 import { connection } from "next/server";
@@ -11,7 +12,10 @@ export async function GET(_req: Request, { params }: Ctx) {
 
 export async function POST(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
-  const { question } = (await req.json()) as { question?: string };
+  const body = await readJson(req);
+  if (body instanceof Response) return body;
+  const question = body.question;
+  if (typeof question !== "string") return badRequest("Ask a question");
   if (!question?.trim()) return Response.json({ error: "Ask a question" }, { status: 400 });
   try {
     return Response.json({ messages: await askQuestion(id, question.trim().slice(0, 2000)) });

@@ -64,11 +64,11 @@ const list = (v: string | null) => (v ? v.split(",").filter(Boolean) : []);
 export function parseFilters(p: URLSearchParams): Filters {
   return {
     q: p.get("q") ?? "",
-    sources: list(p.get("src")).filter((s): s is Source => s in SOURCE_LABELS),
+    sources: list(p.get("src")).filter((s): s is Source => Object.hasOwn(SOURCE_LABELS, s)),
     mode: pick(p.get("mode"), ["all", "online", "offline", "hybrid"] as const, "all"),
     city: p.get("city") ?? "",
     themes: list(p.get("themes")).filter((t) => (THEMES as readonly string[]).includes(t)),
-    minPrize: Number(p.get("prize")) || 0,
+    minPrize: Number.isFinite(Number(p.get("prize"))) ? Math.max(0, Number(p.get("prize"))) : 0,
     freeOnly: p.get("free") === "1",
     when: pick(p.get("when"), ["any", "7", "30", "reg"] as const, "any"),
     length: pick(p.get("len"), ["any", "short", "week", "long"] as const, "any"),
@@ -111,14 +111,18 @@ export function startOf(h: Hackathon) {
 export function matches(h: Hackathon, f: Filters, now: number): boolean {
   const needle = f.q.trim().toLowerCase();
   if (needle && !`${h.title} ${h.tagline ?? ""} ${h.organizer ?? ""} ${h.city ?? ""}`.toLowerCase().includes(needle)) return false;
-  if (f.sources.length && !f.sources.includes(h.source)) return false;
+  if (f.sources.length && !f.sources.includes(h.source) && !h.sourceListings?.some((s) => f.sources.includes(s.source))) return false;
   if (f.mode !== "all" && h.mode !== f.mode) return false;
   if (f.city && h.city !== f.city) return false;
   if (f.themes.length && !h.themes.some((t) => f.themes.includes(t))) return false;
   if (f.minPrize && (h.prizeUsd ?? 0) < f.minPrize) return false;
-  if (f.freeOnly && h.entryFee === "paid") return false;
-  if (f.when === "reg" && !(h.regEndsAt && new Date(h.regEndsAt).getTime() > now)) return false;
-  if ((f.when === "7" || f.when === "30") && startOf(h) > now + Number(f.when) * DAY) return false;
+  if (f.freeOnly && h.entryFee !== "free") return false;
+  if (f.when === "reg" && (!(h.regEndsAt && new Date(h.regEndsAt).getTime() > now)
+    || (h.regStartsAt && new Date(h.regStartsAt).getTime() > now))) return false;
+  if (f.when === "7" || f.when === "30") {
+    const start = startOf(h);
+    if ((!h.startsAt && !h.endsAt) || !Number.isFinite(start) || start < now || start > now + Number(f.when) * DAY) return false;
+  }
   if (f.length !== "any" && lengthOf(h) !== f.length) return false;
   return true;
 }

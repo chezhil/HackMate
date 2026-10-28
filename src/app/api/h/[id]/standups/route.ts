@@ -1,3 +1,4 @@
+import { badRequest, readJson, text, validFields } from "@/lib/validation";
 import { getHackathon } from "@/lib/repo";
 import { listStandups, MAX_AUDIO_BYTES, saveStandup, saveTextStandup, transcribeStandup } from "@/lib/standups";
 import { connection } from "next/server";
@@ -17,7 +18,10 @@ export async function POST(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
   if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   if (req.headers.get("content-type")?.includes("application/json")) {
-    const b = (await req.json()) as { author?: string; note?: string; done?: string[]; next?: string[]; blockers?: string[] };
+    const raw = await readJson(req);
+  if (raw instanceof Response) return raw;
+  if (!validFields(raw, { author: text, note: text, done: (v) => Array.isArray(v) && v.every(text), next: (v) => Array.isArray(v) && v.every(text), blockers: (v) => Array.isArray(v) && v.every(text) })) return badRequest("Invalid request fields");
+  const b = raw as { author?: string; note?: string; done?: string[]; next?: string[]; blockers?: string[] };
     const list = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").map((x) => x.trim()).filter(Boolean).slice(0, 30) : []);
     const note = (b.note ?? "").trim().slice(0, 5000);
     const parts = { done: list(b.done), next: list(b.next), blockers: list(b.blockers) };

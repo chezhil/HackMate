@@ -6,6 +6,11 @@ import { fetchDevfolio } from "./sources/devfolio";
 import { fetchMlh } from "./sources/mlh";
 import { fetchUnstop } from "./sources/unstop";
 import { fetchWeMakeDevs } from "./sources/wemakedevs";
+import { fetchDevpost } from "./sources/devpost";
+import { fetchLablab } from "./sources/lablab";
+import { fetchHackerEarth } from "./sources/hackerearth";
+import { fetchHack2skill } from "./sources/hack2skill";
+import { fetchDevsemble } from "./sources/devsemble";
 import type { Hackathon, Source } from "./types";
 
 const FETCHERS: Record<Source, () => Promise<Hackathon[]>> = {
@@ -13,6 +18,11 @@ const FETCHERS: Record<Source, () => Promise<Hackathon[]>> = {
   devfolio: fetchDevfolio,
   mlh: fetchMlh,
   wemakedevs: fetchWeMakeDevs,
+  devsemble: fetchDevsemble,
+  hack2skill: fetchHack2skill,
+  hackerearth: fetchHackerEarth,
+  lablab: fetchLablab,
+  devpost: fetchDevpost,
 };
 
 export interface SyncReport {
@@ -29,9 +39,15 @@ export function lastSync(): SyncReport | null {
   return raw ? (JSON.parse(raw) as SyncReport) : null;
 }
 
+/** Wait for an initial refresh when an app update adds a source to an existing installation. */
+export function needsInitialSync() {
+  const last = lastSync();
+  return !last || Object.keys(FETCHERS).some((source) => !Object.hasOwn(last.sources, source));
+}
+
 export function isStale() {
   const last = lastSync();
-  return !last || Date.now() - new Date(last.at).getTime() > STALE_AFTER_MS;
+  return needsInitialSync() || !last || Date.now() - new Date(last.at).getTime() > STALE_AFTER_MS;
 }
 
 /** Pull every feed, store the results, refresh tracked deadlines, then geocode in the background. */

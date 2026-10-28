@@ -34,15 +34,25 @@ export function StandupsTab({ id }: { id: string }) {
   const chunks = useRef<Blob[]>([]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const started = useRef(0);
+  const disposed = useRef(false);
 
   useEffect(() => {
     call<{ standups: Standup[] }>(`/api/h/${hid(id)}/standups`).then((d) => setStandups(d.standups), () => {});
     call<{ team: Teammate[] }>(`/api/h/${hid(id)}/team`).then((d) => setTeam(d.team), () => {});
   }, [id]);
 
-  useEffect(() => () => {
-    if (timer.current) clearInterval(timer.current);
-    recorder.current?.stream.getTracks().forEach((t) => t.stop());
+  useEffect(() => {
+    disposed.current = false;
+    return () => {
+      disposed.current = true;
+      if (timer.current) clearInterval(timer.current);
+      const rec = recorder.current;
+      if (rec) {
+        rec.onstop = null;
+        if (rec.state !== "inactive") rec.stop();
+        rec.stream.getTracks().forEach((t) => t.stop());
+      }
+    };
   }, []);
 
   const upload = async (blob: Blob, duration: number) => {
@@ -64,21 +74,24 @@ export function StandupsTab({ id }: { id: string }) {
   };
 
   const stop = () => {
-    recorder.current?.stop();
+    if (recorder.current?.state === "recording") recorder.current.stop();
     if (timer.current) clearInterval(timer.current);
     setRecording(false);
   };
 
   const start = async () => {
     setError(null);
+    let stream: MediaStream | null = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (disposed.current) { stream.getTracks().forEach((t) => t.stop()); return; }
+      const activeStream = stream;
       const mime = pickMime();
       const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
       chunks.current = [];
       rec.ondataavailable = (e) => e.data.size && chunks.current.push(e.data);
       rec.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
+        activeStream.getTracks().forEach((t) => t.stop());
         const duration = (Date.now() - started.current) / 1000;
         void upload(new Blob(chunks.current, { type: rec.mimeType || "audio/webm" }), duration);
       };
@@ -93,6 +106,7 @@ export function StandupsTab({ id }: { id: string }) {
         if (s >= MAX_SECONDS) stop();
       }, 250);
     } catch {
+      stream?.getTracks().forEach((t) => t.stop());
       setError("Microphone access was blocked. Allow it in the browser's site settings to record.");
     }
   };

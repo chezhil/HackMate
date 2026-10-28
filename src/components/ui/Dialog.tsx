@@ -21,7 +21,11 @@ export function Dialog({ open, onClose, title, children, footer }: { open: boole
       ref={ref}
       aria-labelledby={titleId}
       onClose={onClose}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onClick={(e) => {
+        if (e.target !== e.currentTarget) return;
+        const r = e.currentTarget.getBoundingClientRect();
+        if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) onClose();
+      }}
       className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-2xl border-(length:--line) border-border bg-surface p-0 text-text shadow-pop backdrop:bg-(--scrim)"
     >
       <div className="flex items-center justify-between gap-2 border-b-(length:--line) border-border bg-warn-soft px-4 py-3">

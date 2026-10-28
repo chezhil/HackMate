@@ -18,7 +18,7 @@ export function getSettings(): Settings {
 export function saveSettings(patch: Partial<Omit<Settings, "calendarToken">>): Settings {
   const { calendarToken: _ignored, ...current } = getSettings();
   void _ignored;
-  const next = { ...current, ...patch };
+  const next = { ...current, ...Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)) };
   if (next.leadMinutes) next.leadMinutes = [...new Set(next.leadMinutes.map(Number))].sort((a, b) => b - a);
   setSetting("prefs", JSON.stringify(next));
   return getSettings();

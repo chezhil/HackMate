@@ -1,12 +1,13 @@
 "use client";
 
 import { FileText, Pencil, RefreshCw, Video, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CopyButton } from "@/components/CopyButton";
 import { Badge, CheckRow, CheckSummary } from "@/components/ui/Feedback";
 import { useConfirm } from "@/components/ui/Confirm";
 import { ProjectNote } from "@/components/ProjectCard";
 import { call, hid } from "@/lib/client";
+import { checklistComplete } from "@/lib/checklist";
 import type { AiOutput, ChecklistItem, ChecklistKind, SubmissionCheck, Writeup } from "@/lib/types";
 
 const ACCEPT = { image: "image/*", video: "video/*", pdf: "application/pdf", any: "image/*,video/*,application/pdf" };
@@ -16,12 +17,20 @@ function videoDuration(file: File): Promise<number | null> {
   return new Promise((resolve) => {
     const v = document.createElement("video");
     v.preload = "metadata";
-    v.onloadedmetadata = () => {
-      URL.revokeObjectURL(v.src);
-      resolve(Number.isFinite(v.duration) ? v.duration : null);
+    const url = URL.createObjectURL(file);
+    const finish = (duration: number | null) => {
+      clearTimeout(timeout);
+      v.onloadedmetadata = null;
+      v.onerror = null;
+      v.removeAttribute("src");
+      v.load();
+      URL.revokeObjectURL(url);
+      resolve(duration);
     };
-    v.onerror = () => resolve(null);
-    v.src = URL.createObjectURL(file);
+    const timeout = setTimeout(() => finish(null), 10_000);
+    v.onloadedmetadata = () => finish(Number.isFinite(v.duration) ? v.duration : null);
+    v.onerror = () => finish(null);
+    v.src = url;
   });
 }
 
@@ -32,12 +41,17 @@ export function SubmitTab({ id, onOpenProject }: { id: string; onOpenProject: ()
   const [newItem, setNewItem] = useState({ label: "", kind: "check" as ChecklistKind });
   const [error, setError] = useState<string | null>(null);
 
+  const applyItems = useCallback((next: ChecklistItem[]) => { setItems(next); setResult(null); setError(null); }, []);
+  const changeItems = async (url: string, method: string, body?: unknown) => {
+    try { applyItems((await call<{ items: ChecklistItem[] }>(url, method, body)).items); }
+    catch (e) { setError((e as Error).message); }
+  };
   useEffect(() => {
-    call<{ items: ChecklistItem[] }>(`/api/h/${hid(id)}/checklist`).then((d) => setItems(d.items));
-  }, [id]);
+    call<{ items: ChecklistItem[] }>(`/api/h/${hid(id)}/checklist`).then((d) => applyItems(d.items), (e: Error) => setError(e.message));
+  }, [id, applyItems]);
 
   const patch = (item: ChecklistItem, body: { done?: boolean; value?: string | null; label?: string; required?: boolean }) =>
-    call<{ items: ChecklistItem[] }>(`/api/checklist/${item.id}`, "PATCH", body).then((d) => setItems(d.items));
+    changeItems(`/api/checklist/${item.id}`, "PATCH", body);
 
   const upload = async (item: ChecklistItem, file: File) => {
     setError(null);
@@ -47,10 +61,12 @@ export function SubmitTab({ id, onOpenProject }: { id: string; onOpenProject: ()
       const d = await videoDuration(file);
       if (d) form.append("durationSec", String(d));
     }
-    const res = await fetch(`/api/checklist/${item.id}`, { method: "POST", body: form });
-    const data = await res.json();
-    if (!res.ok) setError(data.error);
-    else setItems(data.items);
+    try {
+      const res = await fetch(`/api/checklist/${item.id}`, { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      applyItems(data.items);
+    } catch (e) { setError((e as Error).message); }
   };
 
   const verify = async () => {
@@ -66,7 +82,7 @@ export function SubmitTab({ id, onOpenProject }: { id: string; onOpenProject: ()
 
   const fromRules = items.some((i) => i.origin === "rules");
   const required = items.filter((i) => i.required);
-  const ready = required.filter((i) => i.done || i.value || i.file).length;
+  const ready = required.filter(checklistComplete).length;
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-main-side">
@@ -91,7 +107,7 @@ export function SubmitTab({ id, onOpenProject }: { id: string; onOpenProject: ()
                 type="button"
                 className="btn btn-sm"
                 title="Replace untouched items with what the rules ask for now. Your own items and anything ticked or attached stay."
-                onClick={async () => setItems((await call<{ items: ChecklistItem[] }>(`/api/h/${hid(id)}/checklist`, "POST", { action: "rebuild" })).items)}
+                onClick={() => changeItems(`/api/h/${hid(id)}/checklist`, "POST", { action: "rebuild" })}
               >
                 <RefreshCw aria-hidden className="size-3.5" /> Rebuild from rules
               </button>
@@ -106,8 +122,8 @@ export function SubmitTab({ id, onOpenProject }: { id: string; onOpenProject: ()
                 checks={result?.checks.filter((c) => c.itemId === item.id) ?? []}
                 onPatch={(b) => patch(item, b)}
                 onUpload={(f) => upload(item, f)}
-                onRemoveFile={() => call<{ items: ChecklistItem[] }>(`/api/checklist/${item.id}?file`, "DELETE").then((d) => setItems(d.items))}
-                onDelete={() => call<{ items: ChecklistItem[] }>(`/api/checklist/${item.id}`, "DELETE").then((d) => setItems(d.items))}
+                onRemoveFile={() => changeItems(`/api/checklist/${item.id}?file`, "DELETE")}
+                onDelete={() => changeItems(`/api/checklist/${item.id}`, "DELETE")}
               />
             ))}
           </ul>
@@ -115,9 +131,11 @@ export function SubmitTab({ id, onOpenProject }: { id: string; onOpenProject: ()
             className="flex flex-wrap gap-2"
             onSubmit={async (e) => {
               e.preventDefault();
-              const d = await call<{ items: ChecklistItem[] }>(`/api/h/${hid(id)}/checklist`, "POST", { ...newItem, required: true });
-              setItems(d.items);
-              setNewItem({ label: "", kind: "check" });
+              try {
+                const d = await call<{ items: ChecklistItem[] }>(`/api/h/${hid(id)}/checklist`, "POST", { ...newItem, required: true });
+                applyItems(d.items);
+                setNewItem({ label: "", kind: "check" });
+              } catch (e) { setError((e as Error).message); }
             }}
           >
             <input className="input min-w-48 flex-1" placeholder="Add an item (e.g. Usage card screenshot)" value={newItem.label} onChange={(e) => setNewItem({ ...newItem, label: e.target.value })} />
@@ -165,7 +183,7 @@ function ChecklistRow({
   item: ChecklistItem;
   checks: SubmissionCheck[];
   onPatch: (b: { done?: boolean; value?: string | null; label?: string; required?: boolean }) => void;
-  onUpload: (f: File) => void;
+  onUpload: (f: File) => Promise<void>;
   onRemoveFile: () => void;
   onDelete: () => void;
 }) {
@@ -174,7 +192,7 @@ function ChecklistRow({
   const [uploading, setUploading] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const accept = item.meta?.accept ?? (item.kind === "file" ? "any" : undefined);
-  const done = item.done || Boolean(item.value || item.file);
+  const done = item.done;
   const worst = checks.find((c) => c.status === "fail") ?? checks.find((c) => c.status === "warn");
 
   return (
@@ -244,8 +262,8 @@ function ChecklistRow({
                   const f = e.target.files?.[0];
                   if (!f) return;
                   setUploading(true);
-                  await onUpload(f);
-                  setUploading(false);
+                  try { await onUpload(f); }
+                  finally { setUploading(false); e.target.value = ""; }
                 }}
               />
             </label>

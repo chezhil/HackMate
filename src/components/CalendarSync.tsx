@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { call } from "@/lib/client";
 import type { Settings } from "@/lib/types";
 import { Banner } from "@/components/ui/Feedback";
 
@@ -21,16 +22,17 @@ export function CalendarSync() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    void (async () => {
-      const res = await fetch("/api/settings");
-      const data = (await res.json()) as { settings: Settings };
+    call<{ settings: Settings }>("/api/settings").then((data) => {
       setSettings(data.settings);
-      setOrigin(process.env.NEXT_PUBLIC_BASE_URL || window.location.origin);
-    })();
+      setOrigin((process.env.NEXT_PUBLIC_BASE_URL || window.location.origin).replace(/\/+$/, ""));
+    }, (e: Error) => setError(e.message));
   }, []);
 
+  if (!settings && error) return <Banner tone="danger">{error}</Banner>;
   if (!settings) return <div className="h-40 animate-pulse rounded-xl bg-surface-2" />;
 
   const provider = settings.calendarProvider;
@@ -39,23 +41,32 @@ export function CalendarSync() {
   const isLocal = /\/\/(localhost|127\.0\.0\.1|\[::1\])/.test(origin);
 
   const choose = async (p: Provider) => {
-    setSettings({ ...settings, calendarProvider: p });
-    await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ calendarProvider: p }) });
+    setSaving(true);
+    setError(null);
+    try {
+      const data = await call<{ settings: Settings }>("/api/settings", "PUT", { calendarProvider: p });
+      setSettings(data.settings);
+    } catch (e) { setError((e as Error).message); }
+    finally { setSaving(false); }
   };
 
   const copy = async () => {
-    await navigator.clipboard.writeText(feed);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(feed);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { setError("Couldn't copy. Select and copy the feed URL below."); }
   };
 
   return (
     <div className="space-y-3 text-sm">
+      {error && <Banner tone="danger">{error}</Banner>}
       <div className="flex rounded-lg border border-border p-0.5">
         {PROVIDERS.map((p) => (
           <button
             key={p.key}
             onClick={() => choose(p.key)}
+            disabled={saving}
             className={`flex-1 rounded-md px-2 py-1 text-xs ${provider === p.key ? "bg-surface-2 font-medium" : "text-muted"}`}
           >
             {p.label}
