@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowRight, Award, ChevronRight, Inbox, PinOff, Search, Trophy } from "lucide-react";
+import { ArrowRight, Award, ChevronRight, Inbox, Link2, PinOff, Search, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { AddHackathonDialog } from "@/components/AddHackathonDialog";
 import { useHackmate } from "@/components/HackmateProvider";
 import { useConfirm } from "@/components/ui/Confirm";
 import { Badge, Banner, EmptyState, Skeleton } from "@/components/ui/Feedback";
@@ -66,6 +67,7 @@ export function ResultsView() {
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [outcome, setOutcome] = useState<Outcome>("all");
+  const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
     Promise.all([call<{ prizes: Prize[] }>("/api/prizes"), call<{ certificates: Certificate[] }>("/api/certificates")]).then(
@@ -104,10 +106,17 @@ export function ResultsView() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="page-title">Results</h1>
-        <p className="text-sm text-muted">Hackathons that have announced results. Finish wrapping them up, then they file themselves into the archive.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="page-title">Results</h1>
+          <p className="text-sm text-muted">Hackathons that have announced results. Finish wrapping them up, then they file themselves into the archive.</p>
+        </div>
+        {/* Past hackathons you took part in but never tracked here, from any site. */}
+        <button type="button" className="btn" onClick={() => setAddOpen(true)}>
+          <Link2 aria-hidden className="size-4" /> Add a past hackathon
+        </button>
       </div>
+      <AddHackathonDialog open={addOpen} onClose={() => setAddOpen(false)} defaultStage="results" />
       {error && <Banner tone="danger">{error}</Banner>}
 
       {!ready && (

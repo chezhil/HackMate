@@ -1,12 +1,13 @@
 "use client";
 
-import { MapPinned, RefreshCw, Search, SearchX, SlidersHorizontal, X } from "lucide-react";
+import { Link2, MapPinned, RefreshCw, Search, SearchX, SlidersHorizontal, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { HackathonCard } from "@/components/HackathonCard";
 import { useHackmate } from "@/components/HackmateProvider";
 import type { MapBounds } from "@/components/MapView";
+import { AddHackathonDialog } from "@/components/AddHackathonDialog";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Banner, EmptyState, Skeleton } from "@/components/ui/Feedback";
@@ -58,6 +59,7 @@ export function DiscoverView() {
   const [searchInMap, setSearchInMap] = useState(false);
   const [bounds, setBounds] = useState<MapBounds | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   const set = (patch: Partial<Filters>) => setF((x) => ({ ...x, ...patch }));
 
@@ -96,10 +98,15 @@ export function DiscoverView() {
             {lastSync && ` · updated ${relative(lastSync.at)}`}
           </p>
         </div>
-        <Button onClick={syncNow} disabled={syncing} icon={<RefreshCw aria-hidden className={`size-4 ${syncing ? "animate-spin" : ""}`} />}>
-          {syncing ? "Syncing…" : "Refresh feeds"}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {/* For hackathons that aren't in any feed, or are already over. */}
+          <Button onClick={() => setAddOpen(true)} icon={<Link2 aria-hidden className="size-4" />}>Add from link</Button>
+          <Button onClick={syncNow} disabled={syncing} icon={<RefreshCw aria-hidden className={`size-4 ${syncing ? "animate-spin" : ""}`} />}>
+            {syncing ? "Syncing…" : "Refresh feeds"}
+          </Button>
+        </div>
       </div>
+      <AddHackathonDialog open={addOpen} onClose={() => setAddOpen(false)} />
 
       {failed.length > 0 && (
         <Banner tone="warn">

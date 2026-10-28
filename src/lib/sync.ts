@@ -11,9 +11,9 @@ import { fetchLablab } from "./sources/lablab";
 import { fetchHackerEarth } from "./sources/hackerearth";
 import { fetchHack2skill } from "./sources/hack2skill";
 import { fetchDevsemble } from "./sources/devsemble";
-import type { Hackathon, Source } from "./types";
+import type { FeedSource, Hackathon } from "./types";
 
-const FETCHERS: Record<Source, () => Promise<Hackathon[]>> = {
+const FETCHERS: Record<FeedSource, () => Promise<Hackathon[]>> = {
   unstop: fetchUnstop,
   devfolio: fetchDevfolio,
   mlh: fetchMlh,
@@ -27,7 +27,7 @@ const FETCHERS: Record<Source, () => Promise<Hackathon[]>> = {
 
 export interface SyncReport {
   at: string;
-  sources: Record<Source, { ok: boolean; count: number; error?: string }>;
+  sources: Record<FeedSource, { ok: boolean; count: number; error?: string }>;
 }
 
 export const STALE_AFTER_MS = 6 * 3600_000;
@@ -56,7 +56,7 @@ export function syncAll(): Promise<SyncReport> {
   inFlight = (async () => {
     const at = new Date().toISOString();
     const entries = await Promise.all(
-      (Object.keys(FETCHERS) as Source[]).map(async (source) => {
+      (Object.keys(FETCHERS) as FeedSource[]).map(async (source) => {
         try {
           const list = await FETCHERS[source]();
           upsertHackathons(list, at);

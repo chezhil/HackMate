@@ -2,7 +2,9 @@ import type { AiPolicy } from "./aiPolicy";
 
 // Shared types used by the server (sync, API) and the client (pages).
 
-export type Source = "unstop" | "devfolio" | "mlh" | "wemakedevs" | "devpost" | "lablab" | "hackerearth" | "hack2skill" | "devsemble";
+export type Source = "unstop" | "devfolio" | "mlh" | "wemakedevs" | "devpost" | "lablab" | "hackerearth" | "hack2skill" | "devsemble" | "custom";
+/** Sources with a feed the sync pulls from. "custom" is a hackathon you added from a link. */
+export type FeedSource = Exclude<Source, "custom">;
 export type Mode = "online" | "offline" | "hybrid";
 
 export const SOURCE_LABELS: Record<Source, string> = {
@@ -15,6 +17,7 @@ export const SOURCE_LABELS: Record<Source, string> = {
   hackerearth: "HackerEarth",
   hack2skill: "Hack2skill",
   devsemble: "Devsemble",
+  custom: "Added by you",
 };
 
 export interface Hackathon {
