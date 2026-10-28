@@ -1,4 +1,6 @@
 import "server-only";
+import { createHash } from "node:crypto";
+import { sharedDb } from "./db";
 
 /**
  * One entry point for every AI call, routed by task.
@@ -48,12 +50,21 @@ export interface AiRequest {
   media?: { mime: string; base64: string };
   /** Give up on Gemini after this long and fall through to the next provider (default 120 s). */
   geminiTimeoutMs?: number;
+  /**
+   * Reuse an earlier answer to the same request, for anyone, for this long. Only for answers that don't depend
+   * on who's asking and where a fresh one wouldn't be better (reading a page, checking a screenshot); never for
+   * "give me new ideas". `key` replaces the request hash when the prompt has parts that change but don't matter
+   * (like the current time).
+   */
+  cache?: { ttlDays: number; key?: string };
 }
 
 export interface AiResult {
   text: string;
   provider: Provider;
   model: string;
+  /** Answered from the shared cache, without calling a provider. */
+  cached?: boolean;
 }
 
 export class AiUnavailableError extends Error {}
@@ -213,7 +224,56 @@ function available(p: Provider) {
   return true;
 }
 
-export async function generate(req: AiRequest): Promise<AiResult> {
+// ---------- shared cache ----------
+
+function cacheKey(req: AiRequest): string {
+  if (req.cache?.key) return `${req.task}:${req.cache.key}`;
+  const h = createHash("sha256");
+  h.update(JSON.stringify([req.task, req.system, req.messages, req.json ?? false, req.temperature ?? null, req.media?.mime ?? null]));
+  if (req.media) h.update(req.media.base64);
+  return `${req.task}:${h.digest("hex")}`;
+}
+
+/** Serve from the cache, or run and store the answer. `accept` keeps bad answers (unparseable JSON) out. */
+async function cached(req: AiRequest, run: () => Promise<AiResult>, accept: (text: string) => boolean = () => true): Promise<AiResult> {
+  if (!req.cache) return run();
+  const key = cacheKey(req);
+  const now = new Date();
+  const hit = sharedDb().prepare("SELECT text, provider, model FROM ai_cache WHERE key = ? AND expires_at > ?").get(key, now.toISOString()) as
+    | { text: string; provider: Provider; model: string }
+    | undefined;
+  if (hit) {
+    sharedDb().prepare("UPDATE ai_cache SET hits = hits + 1 WHERE key = ?").run(key);
+    return { ...hit, cached: true };
+  }
+  const result = await run();
+  if (accept(result.text)) {
+    const expires = new Date(now.getTime() + req.cache.ttlDays * 86_400_000);
+    sharedDb()
+      .prepare(
+        `INSERT INTO ai_cache (key, task, text, provider, model, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(key) DO UPDATE SET text = excluded.text, provider = excluded.provider, model = excluded.model,
+           created_at = excluded.created_at, expires_at = excluded.expires_at, hits = 0`,
+      )
+      .run(key, req.task, result.text, result.provider, result.model, now.toISOString(), expires.toISOString());
+  }
+  return result;
+}
+
+/** How much the cache has saved: answers stored, and calls answered from them. */
+export function cacheStats() {
+  const r = sharedDb().prepare("SELECT COUNT(*) AS entries, COALESCE(SUM(hits), 0) AS hits FROM ai_cache WHERE expires_at > ?").get(new Date().toISOString()) as {
+    entries: number;
+    hits: number;
+  };
+  return { entries: r.entries, savedCalls: r.hits };
+}
+
+export function generate(req: AiRequest): Promise<AiResult> {
+  return cached(req, () => callProviders(req));
+}
+
+async function callProviders(req: AiRequest): Promise<AiResult> {
   const order = ROUTES[req.task].filter(available);
   if (order.length === 0) {
     const needs = req.task === "audio" ? "GEMINI_API_KEY" : "GROQ_API_KEY or GEMINI_API_KEY";
@@ -236,10 +296,22 @@ export async function generate(req: AiRequest): Promise<AiResult> {
 
 /** Ask for JSON and parse it, tolerating ```json fences. */
 export async function generateJson<T>(req: Omit<AiRequest, "json">): Promise<AiResult & { data: T }> {
-  const result = await generate({ ...req, json: true });
-  const cleaned = result.text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+  const full = { ...req, json: true };
+  const result = await cached(full, () => callProviders(full), (text) => {
+    try {
+      parseJson(text);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  return { ...result, data: parseJson(result.text) as T };
+}
+
+function parseJson(text: string): unknown {
+  const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
   const start = cleaned.search(/[[{]/);
-  return { ...result, data: JSON.parse(start > 0 ? cleaned.slice(start) : cleaned) as T };
+  return JSON.parse(start > 0 ? cleaned.slice(start) : cleaned);
 }
 
 /** Speech-to-text with Groq's Whisper: the fallback when Gemini can't take a voice note. */
@@ -268,5 +340,6 @@ export function aiStatus() {
       coolingDown: (state.hackmateGeminiCooldownUntil ?? 0) > Date.now(),
     },
     routes: ROUTES,
+    cache: cacheStats(),
   };
 }

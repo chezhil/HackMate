@@ -106,6 +106,19 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
 
+-- AI answers shared by everyone, so the same request (same page, same screenshot, same first question about a
+-- hackathon) is paid for once. Keyed by a hash of the request; see cached() in ai.ts.
+CREATE TABLE IF NOT EXISTS ai_cache (
+  key TEXT PRIMARY KEY,
+  task TEXT NOT NULL,
+  text TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  model TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  hits INTEGER NOT NULL DEFAULT 0
+);
+
 -- AI-extracted rules, judges, deliverables etc. One row per hackathon, rebuilt on demand.
 CREATE TABLE IF NOT EXISTS hackathon_details (
   hackathon_id TEXT PRIMARY KEY REFERENCES hackathons(id),
@@ -269,7 +282,7 @@ const ADDED_COLUMNS: [table: string, column: string, type: string][] = [
   ["chat_messages", "follow_ups", "TEXT"],
 ];
 // Bump when SCHEMA gains a table, so a running dev server creates it.
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 function migrate(conn: DatabaseSync) {
   // New tables too: the connection outlives dev hot reloads, so SCHEMA alone wouldn't reach it.

@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { AiUnavailableError, generate, generateJson } from "./ai";
 import { db } from "./db";
 import { getDescription, getHackathon } from "./repo";
@@ -123,6 +124,8 @@ export function buildDetails(id: string): Promise<HackathonDetails> {
           messages: [{ role: "user", content: `${factsBlock(h)}\n\n--- PAGE TEXT ---\n${sourceText}` }],
           temperature: 0.1,
           geminiTimeoutMs: 90_000,
+          // Same page text, same answer: a refresh of an unchanged page, or a retry after a failure, costs nothing.
+          cache: { ttlDays: 30 },
         });
         info = res.data;
         provider = `${res.provider}:${res.model}`;
@@ -195,7 +198,18 @@ ${passagesBlock(passages)}`;
   let followUps: string[] = [];
   let res: { provider: string; model: string };
   try {
-    const r = await generateJson<{ answer?: string; quotes?: Record<string, string>; notFound?: boolean; followUps?: unknown }>({ task: "chat", system, messages, temperature: 0.2 });
+    // An opening question about a hackathon ("max team size?") gets the same answer for everyone, so it's
+    // shared. Keyed on the question and the page it's answered from, not the prompt (which has the time in it).
+    const firstQuestion = history.length === 0;
+    const pageHash = createHash("sha256").update(getSourceText(id)).update(JSON.stringify(details.info ?? null)).digest("hex").slice(0, 16);
+    const asked = question.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+    const r = await generateJson<{ answer?: string; quotes?: Record<string, string>; notFound?: boolean; followUps?: unknown }>({
+      task: "chat",
+      system,
+      messages,
+      temperature: 0.2,
+      ...(firstQuestion && { cache: { ttlDays: 7, key: `${id}:${pageHash}:${asked}` } }),
+    });
     if (!r.data.answer?.trim()) throw new Error("empty answer");
     ({ answer, quotes } = { answer: r.data.answer, quotes: r.data.quotes });
     notFound = r.data.notFound === true;

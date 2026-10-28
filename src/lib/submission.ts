@@ -205,6 +205,8 @@ async function checkScreenshot(item: ChecklistItem): Promise<SubmissionCheck | n
       messages: [{ role: "user", content: `Checklist item: ${item.label}${item.detail ? ` (${item.detail})` : ""}` }],
       media: { mime: item.mime, base64: data.toString("base64") },
       geminiTimeoutMs: 45_000, // it's a nice-to-have; don't hold up the whole check
+      // Re-running the checks doesn't re-send an unchanged screenshot (Gemini's free tier is small).
+      cache: { ttlDays: 30 },
     });
     return { itemId: item.id, label: item.label, status: res.data.matches ? "pass" : "warn", detail: `Screenshot check: ${res.data.reason}` };
   } catch (e) {

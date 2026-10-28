@@ -148,6 +148,8 @@ export async function previewFromUrl(raw: string): Promise<ImportPreview> {
   "teamMin": number|null, "teamMax": number|null }
 Use only what the page says; null when it doesn't say. Dates as YYYY-MM-DD, or with a time if given.`,
       messages: [{ role: "user", content: `URL: ${url}\n\n${text}` }],
+      // Two people pasting the same page get one AI read.
+      cache: { ttlDays: 7 },
     });
     const x = res.data;
     const str = (v: unknown, max = 200) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
