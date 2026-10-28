@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, CalendarDays, MapPin, Pencil, UserX, Users } from "lucide-react";
+import { ArrowLeft, Award, CalendarDays, ExternalLink, FileText, MapPin, Pencil, Trophy, UserX, Users } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -8,20 +8,26 @@ import { Avatar } from "@/components/Avatar";
 import { useAccount } from "@/components/useAccount";
 import { Badge, EmptyState, Skeleton } from "@/components/ui/Feedback";
 import { call } from "@/lib/client";
-import { fmtDate } from "@/lib/format";
-import type { Member } from "@/lib/types";
+import { RESULT_TONE } from "@/app/results/ResultsView";
+import { fmtDate, fmtRange } from "@/lib/format";
+import type { Member, MemberCertificate, MemberHackathon } from "@/lib/types";
+import { RESULT_LABELS } from "@/lib/types";
 
 /** Someone's public profile: what they chose to show under Discover → People. */
 export function PersonView() {
   const { username } = useParams<{ username: string }>();
   const { user } = useAccount();
   const [m, setM] = useState<Member | null>(null);
+  const [done, setDone] = useState<MemberHackathon[]>([]);
+  const [certs, setCerts] = useState<MemberCertificate[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    call<{ member: Member }>(`/api/people/${username}`).then(
+    call<{ member: Member; hackathons: MemberHackathon[]; certificates: MemberCertificate[] }>(`/api/people/${username}`).then(
       (d) => {
         setM(d.member);
+        setDone(d.hackathons ?? []);
+        setCerts(d.certificates ?? []);
         document.title = `${d.member.profile.name || d.member.username} · HackMate`;
       },
       (e: Error) => setError(e.message),
@@ -84,6 +90,78 @@ export function PersonView() {
           <p className="text-sm text-muted">{me?.username === m.username ? "Your profile is empty. Edit it so people know what you build." : "Nothing here yet."}</p>
         )}
       </article>
+
+      <section aria-labelledby="done" className="card space-y-3 p-5">
+        <h2 id="done" className="text-sm font-bold uppercase tracking-wide">Hackathons · {done.length}</h2>
+        {done.length === 0 ? (
+          <p className="text-sm text-muted">{me?.username === m.username ? "Hackathons you've submitted to or finished show up here." : "No finished hackathons yet."}</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {done.map((h) => (
+              <li key={h.id} className="flex flex-wrap items-start gap-x-3 gap-y-1 py-2.5 first:pt-0 last:pb-0">
+                <div className="min-w-0 flex-1">
+                  <a href={h.url} target="_blank" rel="noreferrer" className="break-words font-semibold hover:underline">{h.title}</a>
+                  <p className="text-xs text-muted">{fmtRange(h)} · {h.mode === "online" ? "Online" : "In person"}</p>
+                  {h.project && (
+                    <p className="mt-1 text-sm">
+                      Built <span className="font-semibold">{h.project.name}</span>
+                      {h.project.tagline && <span className="text-muted">: {h.project.tagline}</span>}
+                      {h.project.repoUrl && <> · <a href={h.project.repoUrl} target="_blank" rel="noreferrer nofollow" className="text-accent hover:underline">Code ↗</a></>}
+                      {h.project.demoUrl && <> · <a href={h.project.demoUrl} target="_blank" rel="noreferrer nofollow" className="text-accent hover:underline">Demo ↗</a></>}
+                    </p>
+                  )}
+                </div>
+                {h.result ? (
+                  <Badge tone={RESULT_TONE[h.result]}>{h.result === "won" && <Trophy aria-hidden className="size-3" />}{RESULT_LABELS[h.result]}</Badge>
+                ) : (
+                  <Badge>Awaiting results</Badge>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section aria-labelledby="certs" className="card space-y-3 p-5">
+        <h2 id="certs" className="text-sm font-bold uppercase tracking-wide">Certificates · {certs.length}</h2>
+        {certs.length === 0 ? (
+          <p className="text-sm text-muted">{me?.username === m.username ? "Certificates you add on a hackathon's Wrap-up page show up here." : "No certificates yet."}</p>
+        ) : (
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {certs.map((c) => {
+              const href = c.file ? `/api/files/${c.file}` : c.url;
+              const body = (
+                <>
+                  <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg border-(length:--line) border-border bg-surface-2">
+                    {c.file && c.mime?.startsWith("image/") ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={`/api/files/${c.file}`} alt="" className="h-full w-full object-cover" />
+                    ) : c.file ? (
+                      <FileText aria-hidden className="size-5 text-muted" />
+                    ) : (
+                      <Award aria-hidden className="size-5 text-accent" />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block break-words font-semibold">{c.title}</span>
+                    <span className="block text-xs text-muted">{c.hackathonTitle}{c.receivedAt && ` · ${fmtDate(c.receivedAt)}`}</span>
+                  </span>
+                  {href && <ExternalLink aria-hidden className="size-3.5 shrink-0 text-muted" />}
+                </>
+              );
+              return (
+                <li key={c.id}>
+                  {href ? (
+                    <a href={href} target="_blank" rel="noreferrer" className="card card-lift flex items-center gap-3 p-3 text-sm">{body}</a>
+                  ) : (
+                    <div className="card flex items-center gap-3 p-3 text-sm">{body}</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

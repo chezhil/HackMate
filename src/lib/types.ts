@@ -401,6 +401,21 @@ export interface Member {
   profile: MemberProfile;
 }
 
+/** A hackathon someone took part in, as shown on their public profile. Notes, retros and prize money stay private. */
+export interface MemberHackathon {
+  id: string;
+  title: string;
+  url: string;
+  image: string | null;
+  mode: Mode;
+  startsAt: string | null;
+  endsAt: string | null;
+  result: ResultKind | null;
+  project: { name: string; tagline: string; repoUrl: string; demoUrl: string } | null;
+}
+
+export type MemberCertificate = Pick<Certificate, "id" | "hackathonId" | "hackathonTitle" | "title" | "url" | "file" | "mime" | "receivedAt">;
+
 /** The signed-in person: their public side plus the email only they see. */
 export interface Account extends Member {
   email: string;

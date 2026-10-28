@@ -14,7 +14,7 @@ export function fmtDateTime(iso: string) {
   return dateTimeFmt.format(new Date(iso));
 }
 
-export function fmtRange(h: Hackathon) {
+export function fmtRange(h: Pick<Hackathon, "startsAt" | "endsAt">) {
   if (h.startsAt && h.endsAt) {
     const a = fmtDate(h.startsAt);
     const b = fmtDate(h.endsAt);

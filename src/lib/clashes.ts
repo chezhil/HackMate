@@ -162,6 +162,16 @@ export function findClashes(tracked: TrackedWithHackathon[]): Clash[] {
 }
 
 /** Worst severity in a list, or null if there are none. */
+/**
+ * Stable id for a clash, so a resolved one stays hidden. It names the hackathons and deadlines involved, and the
+ * day for same-day deadlines: if a deadline moves to another day, that's a new clash and shows again.
+ */
+export function clashKey(c: Clash): string {
+  if (c.kind === "events") return `events:${[c.a.id, c.b.id].sort().join("|")}`;
+  if (c.kind === "deadlines") return `deadlines:${c.day}:${c.items.map((i) => i.deadline.id).sort((x, y) => x - y).join("|")}`;
+  return `during:${c.deadline.id}:${c.deadline.dueAt}:${c.during.id}`;
+}
+
 export function worstSeverity(clashes: { severity: Severity }[]): Severity | null {
   return clashes.reduce<Severity | null>((w, c) => (w == null || RANK[c.severity] < RANK[w] ? c.severity : w), null);
 }

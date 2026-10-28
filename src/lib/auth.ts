@@ -3,8 +3,8 @@ import { createHash, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { cookies } from "next/headers";
 import { copySignedOutData, runAs, sharedDb } from "./db";
-import type { Account, Member, MemberProfile } from "./types";
-import { getProfile } from "./wrapup";
+import type { Account, Member, MemberCertificate, MemberHackathon, MemberProfile } from "./types";
+import { getProfile, listCertificates, portfolio } from "./wrapup";
 
 const scryptAsync = promisify(scrypt) as (pw: string, salt: Buffer, len: number) => Promise<Buffer>;
 
@@ -188,4 +188,31 @@ export function getMember(username: string): Member | null {
  */
 export function withAccount<A extends unknown[], R>(handler: (...args: A) => Promise<R>): (...args: A) => Promise<R> {
   return async (...args: A) => runAs(await currentUserId(), () => handler(...args));
+}
+
+/**
+ * What someone's done, read from their own data: finished hackathons (with the project's name and links) and
+ * the certificates they've received.
+ */
+export function memberActivity(username: string): { hackathons: MemberHackathon[]; certificates: MemberCertificate[] } | null {
+  const row = sharedDb().prepare("SELECT id FROM users WHERE username = ?").get(username) as { id: number } | undefined;
+  if (!row) return null;
+  return runAs(row.id, () => {
+    const link = (u: string) => (/^https?:\/\//i.test(u) ? u : "");
+    const hackathons = portfolio().map(({ tracked: t, project: p }): MemberHackathon => ({
+      id: t.hackathonId,
+      title: t.hackathon.title,
+      url: t.hackathon.url,
+      image: t.hackathon.image,
+      mode: t.hackathon.mode,
+      startsAt: t.hackathon.startsAt,
+      endsAt: t.hackathon.endsAt,
+      result: t.result,
+      project: p.name.trim() ? { name: p.name, tagline: p.tagline, repoUrl: link(p.repoUrl), demoUrl: link(p.demoUrl) } : null,
+    }));
+    const certificates = listCertificates()
+      .filter((c) => c.status === "received")
+      .map(({ id, hackathonId, hackathonTitle, title, url, file, mime, receivedAt }) => ({ id, hackathonId, hackathonTitle, title, url: url && link(url), file, mime, receivedAt }));
+    return { hackathons, certificates };
+  });
 }
