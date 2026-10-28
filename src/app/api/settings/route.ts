@@ -1,14 +1,15 @@
+import { withAccount } from "@/lib/auth";
 import { getSettings, saveSettings, smtpConfigured } from "@/lib/settings";
 import type { Settings } from "@/lib/types";
 import { badRequest, boolean, readJson, validFields } from "@/lib/validation";
 import { connection } from "next/server";
 
-export async function GET() {
+async function get() {
   await connection();
   return Response.json({ settings: getSettings(), smtpConfigured: smtpConfigured() });
 }
 
-export async function PUT(req: Request) {
+async function put(req: Request) {
   const body = await readJson(req);
   if (body instanceof Response) return body;
   if (!validFields(body, {
@@ -25,3 +26,7 @@ export async function PUT(req: Request) {
   });
   return Response.json({ settings, smtpConfigured: smtpConfigured() });
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const GET = withAccount(get);
+export const PUT = withAccount(put);

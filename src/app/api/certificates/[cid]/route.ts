@@ -1,3 +1,4 @@
+import { withAccount } from "@/lib/auth";
 import { fileFromForm, saveFile, UploadError } from "@/lib/files";
 import { badRequest, readJson, text, optionalUrl, validFields } from "@/lib/validation";
 import { certificateHackathon, deleteCertificate, listCertificates, missingCertificates, updateCertificate } from "@/lib/wrapup";
@@ -7,7 +8,7 @@ type Ctx = { params: Promise<{ cid: string }> };
 const payload = () => Response.json({ certificates: listCertificates(), missing: missingCertificates() });
 
 /** JSON { title?, url?, status? } or multipart with a file. */
-export async function PATCH(req: Request, { params }: Ctx) {
+async function patch(req: Request, { params }: Ctx) {
   const cid = Number((await params).cid);
   if (!certificateHackathon(cid)) return Response.json({ error: "Not found" }, { status: 404 });
   if (req.headers.get("content-type")?.includes("multipart/form-data")) {
@@ -28,7 +29,11 @@ export async function PATCH(req: Request, { params }: Ctx) {
   return payload();
 }
 
-export async function DELETE(_req: Request, { params }: Ctx) {
+async function remove(_req: Request, { params }: Ctx) {
   deleteCertificate(Number((await params).cid));
   return payload();
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const PATCH = withAccount(patch);
+export const DELETE = withAccount(remove);

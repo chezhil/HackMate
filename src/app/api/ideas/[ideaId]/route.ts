@@ -1,3 +1,4 @@
+import { withAccount } from "@/lib/auth";
 import { badRequest, readJson } from "@/lib/validation";
 import { AiUnavailableError } from "@/lib/ai";
 import { critiqueIdea, deleteIdea, renameIdea } from "@/lib/planning";
@@ -5,7 +6,7 @@ import { critiqueIdea, deleteIdea, renameIdea } from "@/lib/planning";
 type Ctx = { params: Promise<{ ideaId: string }> };
 
 /** { text } → saves a new version of the idea and critiques it. */
-export async function POST(req: Request, { params }: Ctx) {
+async function post(req: Request, { params }: Ctx) {
   const ideaId = Number((await params).ideaId);
   const body = await readJson(req);
   if (body instanceof Response) return body;
@@ -19,7 +20,7 @@ export async function POST(req: Request, { params }: Ctx) {
   }
 }
 
-export async function PATCH(req: Request, { params }: Ctx) {
+async function patch(req: Request, { params }: Ctx) {
   const body = await readJson(req);
   if (body instanceof Response) return body;
   const title = body.title;
@@ -28,7 +29,12 @@ export async function PATCH(req: Request, { params }: Ctx) {
   return Response.json({ ok: true });
 }
 
-export async function DELETE(_req: Request, { params }: Ctx) {
+async function remove(_req: Request, { params }: Ctx) {
   deleteIdea(Number((await params).ideaId));
   return Response.json({ ok: true });
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const POST = withAccount(post);
+export const PATCH = withAccount(patch);
+export const DELETE = withAccount(remove);

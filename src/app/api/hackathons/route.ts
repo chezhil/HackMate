@@ -1,8 +1,9 @@
+import { withAccount } from "@/lib/auth";
 import { listHackathons, listTracked } from "@/lib/repo";
 import { isStale, lastSync, needsInitialSync, syncAll } from "@/lib/sync";
 import { connection } from "next/server";
 
-export async function GET() {
+async function get() {
   await connection();
   if (needsInitialSync()) {
     await syncAll(); // first run: wait so the user doesn't land on an empty page
@@ -15,3 +16,6 @@ export async function GET() {
     lastSync: lastSync(),
   });
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const GET = withAccount(get);

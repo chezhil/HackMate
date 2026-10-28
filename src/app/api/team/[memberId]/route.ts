@@ -1,10 +1,11 @@
+import { withAccount } from "@/lib/auth";
 import { listTeam, removeTeammate, teamOf, updateTeammate } from "@/lib/team";
 import type { Teammate } from "@/lib/types";
 import { badRequest, boolean, nullableText, readJson, text, validFields } from "@/lib/validation";
 
 type Ctx = { params: Promise<{ memberId: string }> };
 
-export async function PATCH(req: Request, { params }: Ctx) {
+async function patch(req: Request, { params }: Ctx) {
   const memberId = Number((await params).memberId);
   const hackathonId = teamOf(memberId);
   if (!hackathonId) return Response.json({ error: "Teammate not found" }, { status: 404 });
@@ -15,9 +16,13 @@ export async function PATCH(req: Request, { params }: Ctx) {
   return Response.json({ team: listTeam(hackathonId) });
 }
 
-export async function DELETE(_req: Request, { params }: Ctx) {
+async function remove(_req: Request, { params }: Ctx) {
   const memberId = Number((await params).memberId);
   const hackathonId = teamOf(memberId);
   removeTeammate(memberId);
   return Response.json({ team: hackathonId ? listTeam(hackathonId) : [] });
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const PATCH = withAccount(patch);
+export const DELETE = withAccount(remove);

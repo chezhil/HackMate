@@ -1,9 +1,10 @@
+import { withAccount } from "@/lib/auth";
 import { deleteDeadline, listTracked, updateDeadline } from "@/lib/repo";
 import { badRequest, boolean, isDate, isPositiveId, readJson, text, validFields } from "@/lib/validation";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function PATCH(req: Request, { params }: Ctx) {
+async function patch(req: Request, { params }: Ctx) {
   const id = Number((await params).id);
   if (!isPositiveId(id)) return badRequest("Invalid deadline ID");
   const body = await readJson(req);
@@ -19,9 +20,13 @@ export async function PATCH(req: Request, { params }: Ctx) {
   return Response.json({ tracked: listTracked() });
 }
 
-export async function DELETE(_req: Request, { params }: Ctx) {
+async function remove(_req: Request, { params }: Ctx) {
   const id = Number((await params).id);
   if (!isPositiveId(id)) return badRequest("Invalid deadline ID");
   deleteDeadline(id);
   return Response.json({ tracked: listTracked() });
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const PATCH = withAccount(patch);
+export const DELETE = withAccount(remove);

@@ -1,3 +1,4 @@
+import { withAccount } from "@/lib/auth";
 import { aiStatus } from "@/lib/ai";
 import { ruleAlerts } from "@/lib/alerts";
 import { buildDetails, getDetails, getSourceText, isBuilding } from "@/lib/details";
@@ -22,7 +23,7 @@ function payload(id: string) {
  * Cached details. On the first visit this starts reading the page + AI extraction in the
  * background (Gemini can take a minute) and returns `building: true`; the client polls.
  */
-export async function GET(_req: Request, { params }: Ctx) {
+async function get(_req: Request, { params }: Ctx) {
   await connection();
   const id = decodeURIComponent((await params).id);
   if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
@@ -31,9 +32,13 @@ export async function GET(_req: Request, { params }: Ctx) {
 }
 
 /** Re-read the page and re-run extraction (in the background; poll GET). */
-export async function POST(_req: Request, { params }: Ctx) {
+async function post(_req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
   if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   void buildDetails(id).catch((e) => console.error("[details]", e));
   return Response.json(payload(id));
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const GET = withAccount(get);
+export const POST = withAccount(post);

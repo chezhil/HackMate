@@ -1,15 +1,16 @@
+import { withAccount } from "@/lib/auth";
 import { fileFromForm, saveFile, UploadError } from "@/lib/files";
 import { getHackathon } from "@/lib/repo";
 import { addCertificate, listCertificates, missingCertificates } from "@/lib/wrapup";
 import { connection } from "next/server";
 
-export async function GET() {
+async function get() {
   await connection();
   return Response.json({ certificates: listCertificates(), missing: missingCertificates() });
 }
 
 /** Multipart: hackathonId, title, status ("pending" | "received"), url?, file? */
-export async function POST(req: Request) {
+async function post(req: Request) {
   const form = await req.formData();
   const hackathonId = String(form.get("hackathonId") ?? "");
   if (!getHackathon(hackathonId)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
@@ -27,3 +28,7 @@ export async function POST(req: Request) {
     return Response.json({ error: (e as Error).message }, { status: e instanceof UploadError ? e.status : 400 });
   }
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const GET = withAccount(get);
+export const POST = withAccount(post);

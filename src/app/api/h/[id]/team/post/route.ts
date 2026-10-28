@@ -1,3 +1,4 @@
+import { withAccount } from "@/lib/auth";
 import { getHackathon } from "@/lib/repo";
 import { badRequest, readJson, text, validFields } from "@/lib/validation";
 import { draftTeammatePost, type PostInput } from "@/lib/team";
@@ -5,7 +6,7 @@ import { draftTeammatePost, type PostInput } from "@/lib/team";
 type Ctx = { params: Promise<{ id: string }> };
 
 /** Draft a "looking for teammates" post. Body: { lookingFor, aboutMe, idea } */
-export async function POST(req: Request, { params }: Ctx) {
+async function post(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
   if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   const raw = await readJson(req);
@@ -19,3 +20,6 @@ export async function POST(req: Request, { params }: Ctx) {
   };
   return Response.json(await draftTeammatePost(id, input));
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const POST = withAccount(post);

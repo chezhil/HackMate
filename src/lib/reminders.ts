@@ -1,5 +1,5 @@
 import "server-only";
-import { db } from "./db";
+import { allScopes, currentScope, db, runAs } from "./db";
 import { sendEmail } from "./mailer";
 import { listUpcomingDeadlines } from "./repo";
 import { getSettings, smtpConfigured } from "./settings";
@@ -24,10 +24,16 @@ function fmt(iso: string) {
  * once `now >= due - lead` (and the deadline hasn't passed) we email once and record it.
  * Keyed on due_at too, so moving a deadline re-arms its reminders.
  */
-let inFlight: Promise<{ sent: number; skipped?: string }> | null = null;
+// One run at a time per account (or signed out); each sends to that account's own email setting.
+const inFlight = new Map<number | null, Promise<{ sent: number; skipped?: string }>>();
 export function runReminders(now = new Date()): Promise<{ sent: number; skipped?: string }> {
-  if (!inFlight) inFlight = sendDueReminders(now).finally(() => { inFlight = null; });
-  return inFlight;
+  const who = currentScope();
+  let run = inFlight.get(who);
+  if (!run) {
+    run = sendDueReminders(now).finally(() => inFlight.delete(who));
+    inFlight.set(who, run);
+  }
+  return run;
 }
 
 async function sendDueReminders(now: Date): Promise<{ sent: number; skipped?: string }> {
@@ -73,7 +79,9 @@ const loop = globalThis as unknown as { hackmateReminderLoop?: boolean };
 export function startReminderLoop() {
   if (loop.hackmateReminderLoop) return;
   loop.hackmateReminderLoop = true;
-  const tick = () => runReminders().catch((e) => console.error("[reminders]", e));
+  const tick = () => {
+    for (const id of allScopes()) runAs(id, () => runReminders()).catch((e) => console.error("[reminders]", id ?? "signed out", e));
+  };
   setTimeout(tick, 10_000);
   setInterval(tick, 5 * 60_000).unref();
 }

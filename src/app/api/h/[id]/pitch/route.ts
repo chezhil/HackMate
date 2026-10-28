@@ -1,3 +1,4 @@
+import { withAccount } from "@/lib/auth";
 import { getHackathon } from "@/lib/repo";
 import { badRequest, readJson, text, validFields } from "@/lib/validation";
 import { AiUnavailableError } from "@/lib/ai";
@@ -7,7 +8,7 @@ import { connection } from "next/server";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function GET(_req: Request, { params }: Ctx) {
+async function get(_req: Request, { params }: Ctx) {
   await connection();
   const id = decodeURIComponent((await params).id);
   if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
@@ -18,7 +19,7 @@ export async function GET(_req: Request, { params }: Ctx) {
  * { kind: "pitch", minutes, audience } | { kind: "video", seconds } | { kind: "roast", script }
  * | { kind: "writeup", platform, extra }
  */
-export async function POST(req: Request, { params }: Ctx) {
+async function post(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
   if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   const raw = await readJson(req);
@@ -41,3 +42,7 @@ export async function POST(req: Request, { params }: Ctx) {
     return Response.json({ error: (e as Error).message }, { status: e instanceof AiUnavailableError ? 503 : 500 });
   }
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const GET = withAccount(get);
+export const POST = withAccount(post);

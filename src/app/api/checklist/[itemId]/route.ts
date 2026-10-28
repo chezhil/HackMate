@@ -1,3 +1,4 @@
+import { withAccount } from "@/lib/auth";
 import { fileFromForm, saveFile, UploadError } from "@/lib/files";
 import { deleteChecklistItem, itemHackathon, listChecklist, updateChecklistItem } from "@/lib/submission";
 import type { ChecklistItem } from "@/lib/types";
@@ -11,7 +12,7 @@ async function itemOr404(params: Ctx["params"]) {
 }
 
 /** JSON: { done?, value?, label?, required? } */
-export async function PATCH(req: Request, { params }: Ctx) {
+async function patch(req: Request, { params }: Ctx) {
   const { itemId, hackathonId } = await itemOr404(params);
   if (!hackathonId) return Response.json({ error: "Not found" }, { status: 404 });
   const b = await readJson(req);
@@ -27,7 +28,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
 }
 
 /** Multipart upload of the proof (screenshot / video / PDF). Optional `durationSec` for videos. */
-export async function POST(req: Request, { params }: Ctx) {
+async function post(req: Request, { params }: Ctx) {
   const { itemId, hackathonId } = await itemOr404(params);
   if (!hackathonId) return Response.json({ error: "Not found" }, { status: 404 });
   try {
@@ -48,7 +49,7 @@ export async function POST(req: Request, { params }: Ctx) {
   }
 }
 
-export async function DELETE(req: Request, { params }: Ctx) {
+async function remove(req: Request, { params }: Ctx) {
   const { itemId, hackathonId } = await itemOr404(params);
   if (!hackathonId) return Response.json({ error: "Not found" }, { status: 404 });
   // ?file only removes the attachment; otherwise the whole item goes
@@ -56,3 +57,8 @@ export async function DELETE(req: Request, { params }: Ctx) {
   else deleteChecklistItem(itemId);
   return Response.json({ items: listChecklist(hackathonId) });
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const PATCH = withAccount(patch);
+export const POST = withAccount(post);
+export const DELETE = withAccount(remove);

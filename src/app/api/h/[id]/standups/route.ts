@@ -1,3 +1,4 @@
+import { withAccount } from "@/lib/auth";
 import { badRequest, readJson, text, validFields } from "@/lib/validation";
 import { getHackathon } from "@/lib/repo";
 import { listStandups, MAX_AUDIO_BYTES, saveStandup, saveTextStandup, transcribeStandup } from "@/lib/standups";
@@ -5,7 +6,7 @@ import { connection } from "next/server";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function GET(_req: Request, { params }: Ctx) {
+async function get(_req: Request, { params }: Ctx) {
   await connection();
   return Response.json({ standups: listStandups(decodeURIComponent((await params).id)) });
 }
@@ -14,7 +15,7 @@ export async function GET(_req: Request, { params }: Ctx) {
  * Voice: multipart upload of audio (file), author?, duration? — saved, then transcribed + summarised.
  * Written: JSON { author?, note?, done?, next?, blockers? } — typed lists are kept as is, a bare note is summarised.
  */
-export async function POST(req: Request, { params }: Ctx) {
+async function post(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
   if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   if (req.headers.get("content-type")?.includes("application/json")) {
@@ -41,3 +42,7 @@ export async function POST(req: Request, { params }: Ctx) {
   await transcribeStandup(standupId);
   return Response.json({ standups: listStandups(id) });
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const GET = withAccount(get);
+export const POST = withAccount(post);

@@ -1,15 +1,20 @@
-import { calendarToken } from "@/lib/db";
+import { allScopes, getSetting, runAs } from "@/lib/db";
 import { trackerCalendar } from "@/lib/ics";
 import { listTracked } from "@/lib/repo";
 import { getSettings } from "@/lib/settings";
 
-/** Subscription feed of tracked hackathons + deadlines. Guarded by a per-install token. */
+/**
+ * Subscription feed of tracked hackathons + deadlines. Calendar apps send no cookie, so the secret token in the
+ * link says whose tracker it is: each account (and signed out) has its own.
+ */
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  if (url.searchParams.get("token") !== calendarToken()) {
+  const token = url.searchParams.get("token");
+  const owner = token ? allScopes().find((id) => runAs(id, () => getSetting("calendarToken")) === token) : undefined;
+  if (owner === undefined) {
     return new Response("Not found", { status: 404 });
   }
-  const body = trackerCalendar(listTracked(), getSettings().leadMinutes);
+  const body = runAs(owner, () => trackerCalendar(listTracked(), getSettings().leadMinutes));
   const download = url.searchParams.has("download");
   return new Response(body, {
     headers: {

@@ -1,10 +1,11 @@
+import { withAccount } from "@/lib/auth";
 import { listTracked, untrackHackathon, updateTracked, type TrackedPatch } from "@/lib/repo";
 import { RESULT_LABELS, STATUSES } from "@/lib/types";
 import { badRequest, nullableText, optionalUrl, readJson, validFields } from "@/lib/validation";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function PATCH(req: Request, { params }: Ctx) {
+async function patch(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
   const body = await readJson(req);
   if (body instanceof Response) return body;
@@ -31,7 +32,11 @@ export async function PATCH(req: Request, { params }: Ctx) {
   return Response.json({ tracked: listTracked() });
 }
 
-export async function DELETE(_req: Request, { params }: Ctx) {
+async function remove(_req: Request, { params }: Ctx) {
   untrackHackathon(decodeURIComponent((await params).id));
   return Response.json({ tracked: listTracked() });
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const PATCH = withAccount(patch);
+export const DELETE = withAccount(remove);

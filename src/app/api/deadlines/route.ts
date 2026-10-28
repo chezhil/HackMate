@@ -1,9 +1,10 @@
+import { withAccount } from "@/lib/auth";
 import { addDeadline, listTracked } from "@/lib/repo";
 import { DEADLINE_LABELS, type DeadlineKind } from "@/lib/types";
 import { badRequest, isDate, readJson, text } from "@/lib/validation";
 
 /** Add a deadline to a tracked hackathon. Body: { hackathonId, kind, label?, dueAt } */
-export async function POST(req: Request) {
+async function post(req: Request) {
   const raw = await readJson(req);
   if (raw instanceof Response) return raw;
   if (!text(raw.hackathonId) || !text(raw.kind) || (raw.label !== undefined && !text(raw.label))) return badRequest("Invalid deadline fields");
@@ -17,3 +18,6 @@ export async function POST(req: Request) {
   addDeadline(body.hackathonId, body.kind, body.label?.trim() ?? "", new Date(body.dueAt).toISOString());
   return Response.json({ tracked: listTracked() });
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const POST = withAccount(post);

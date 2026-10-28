@@ -1,6 +1,7 @@
 import "server-only";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { DatabaseSync } from "node:sqlite";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
 
@@ -279,34 +280,142 @@ function migrate(conn: DatabaseSync) {
   }
 }
 
-const globalForDb = globalThis as unknown as { hackmateDb?: DatabaseSync; hackmateMigrated?: number };
+// ---------- whose data ----------
+//
+// Hackathon listings, AI-read rules, accounts and the geocode cache are shared. Everything personal (tracker,
+// deadlines, ideas, team, standups, project, pitch history, checklist, prizes, certificates, retros, chat and
+// settings) lives in one database file per account, data/users/<id>.db. Signed out, you use the original file's
+// personal tables, so nothing that was here before accounts is lost.
+//
+// A personal file attaches the shared one as "shared". SQLite looks a bare table name up in the personal file
+// first, then the attached one, so the same queries work in both, and a JOIN of tracked with hackathons crosses files.
 
-export function db(): DatabaseSync {
+/** Tables that belong to whoever is using HackMate. The rest of SCHEMA is shared. */
+export const PERSONAL_TABLES = [
+  "tracked", "deadlines", "reminders_sent", "email_log", "settings", "chat_messages", "ideas", "idea_versions",
+  "teammates", "standups", "projects", "ai_outputs", "qa_turns", "checklist_items", "certificates", "prizes", "retros",
+];
+
+/** The personal tables' part of SCHEMA. Foreign keys can't point into another file, so references to hackathons go. */
+const PERSONAL_SCHEMA = SCHEMA.split("\n")
+  .filter((line) => !line.trim().startsWith("--"))
+  .join("\n")
+  .split(";")
+  .filter((stmt) => {
+    const table = stmt.match(/CREATE TABLE IF NOT EXISTS (\w+)/)?.[1] ?? stmt.match(/CREATE INDEX IF NOT EXISTS \w+ ON (\w+)/)?.[1];
+    return table && PERSONAL_TABLES.includes(table);
+  })
+  .map((stmt) => stmt.replace(/\s+REFERENCES hackathons\(id\)/g, ""))
+  .join(";\n") + ";";
+
+/** null = signed out (the original file). Set per request by withAccount() in auth.ts. */
+const scope = new AsyncLocalStorage<number | null>();
+
+/** Run fn as this account (or signed out, for null); every db() call inside uses that account's data. */
+export function runAs<T>(userId: number | null, fn: () => T): T {
+  return scope.run(userId, fn);
+}
+
+export const currentScope = (): number | null => scope.getStore() ?? null;
+
+const globalForDb = globalThis as unknown as { hackmateDb?: DatabaseSync; hackmateMigrated?: number; hackmateUserDbs?: Map<number, DatabaseSync> };
+const SHARED_FILE = () => path.join(DATA_DIR, "hackmate.db");
+const USERS_DIR = path.join(DATA_DIR, "users");
+
+/** The original file: shared tables, plus the signed-out personal data. */
+export function sharedDb(): DatabaseSync {
   if (!globalForDb.hackmateDb) {
     mkdirSync(DATA_DIR, { recursive: true });
-    const conn = new DatabaseSync(path.join(DATA_DIR, "hackmate.db"));
-    conn.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
+    const conn = new DatabaseSync(SHARED_FILE());
+    conn.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
     conn.exec(SCHEMA);
     globalForDb.hackmateDb = conn;
   }
   // The connection survives dev hot reloads, so re-run the column migration whenever the list grows.
   if (globalForDb.hackmateMigrated !== ADDED_COLUMNS.length + SCHEMA_VERSION * 1000) {
     migrate(globalForDb.hackmateDb);
+    globalForDb.hackmateUserDbs?.forEach(migratePersonal);
     globalForDb.hackmateMigrated = ADDED_COLUMNS.length + SCHEMA_VERSION * 1000;
   }
   return globalForDb.hackmateDb;
 }
 
+function migratePersonal(conn: DatabaseSync) {
+  conn.exec(PERSONAL_SCHEMA);
+  for (const [table, column, type] of ADDED_COLUMNS) {
+    if (!PERSONAL_TABLES.includes(table)) continue;
+    const cols = conn.prepare(`PRAGMA main.table_info(${table})`).all() as { name: string }[];
+    if (!cols.some((c) => c.name === column)) conn.exec(`ALTER TABLE main.${table} ADD COLUMN ${column} ${type}`);
+  }
+}
+
+function userDb(userId: number): DatabaseSync {
+  sharedDb(); // shared file exists and is migrated before anything attaches it
+  const dbs = (globalForDb.hackmateUserDbs ??= new Map());
+  let conn = dbs.get(userId);
+  if (!conn) {
+    mkdirSync(USERS_DIR, { recursive: true });
+    conn = new DatabaseSync(path.join(USERS_DIR, `${userId}.db`));
+    conn.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
+    conn.prepare("ATTACH DATABASE ? AS shared").run(SHARED_FILE());
+    migratePersonal(conn);
+    dbs.set(userId, conn);
+  }
+  return conn;
+}
+
+/** The connection for whoever this request is for. */
+export function db(): DatabaseSync {
+  const id = currentScope();
+  return id == null ? sharedDb() : userDb(id);
+}
+
+/** Every account with data, plus signed out: for background jobs (reminders, refreshing deadlines after a sync). */
+export function allScopes(): (number | null)[] {
+  let files: string[] = [];
+  try {
+    files = readdirSync(USERS_DIR);
+  } catch {
+    // No accounts yet.
+  }
+  return [null, ...files.map((f) => f.match(/^(\d+)\.db$/)?.[1]).filter(Boolean).map(Number)];
+}
+
+/** Give a new account a copy of the signed-out data, so the first person to sign up keeps what they'd built. */
+export function copySignedOutData(userId: number) {
+  const conn = userDb(userId);
+  conn.exec("BEGIN");
+  try {
+    for (const t of PERSONAL_TABLES) {
+      const mine = new Set((conn.prepare(`PRAGMA main.table_info(${t})`).all() as { name: string }[]).map((c) => c.name));
+      const cols = (conn.prepare(`PRAGMA shared.table_info(${t})`).all() as { name: string }[]).map((c) => c.name).filter((c) => mine.has(c));
+      const list = cols.join(", ");
+      // Feed state isn't personal, and the calendar link must stay unique to whoever owns it.
+      const skip = [...GLOBAL_SETTINGS, "calendarToken"];
+      const where = t === "settings" ? ` WHERE key NOT IN (${skip.map(() => "?").join(", ")})` : "";
+      conn.prepare(`INSERT OR IGNORE INTO main.${t} (${list}) SELECT ${list} FROM shared.${t}${where}`).run(...(t === "settings" ? skip : []));
+    }
+    conn.exec("COMMIT");
+  } catch (e) {
+    conn.exec("ROLLBACK");
+    throw e;
+  }
+}
+
+/** Settings about the app itself rather than a person: kept in the shared file. */
+const GLOBAL_SETTINGS = ["lastSync"];
+const settingsDb = (key: string) => (GLOBAL_SETTINGS.includes(key) ? sharedDb() : db());
+
 export function getSetting(key: string): string | null {
-  const row = db().prepare("SELECT value FROM settings WHERE key = ?").get(key) as
+  const row = settingsDb(key).prepare("SELECT value FROM main.settings WHERE key = ?").get(key) as
     | { value: string }
     | undefined;
   return row?.value ?? null;
 }
 
 export function setSetting(key: string, value: string) {
-  db()
-    .prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+  settingsDb(key)
+    .prepare("INSERT INTO main.settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
     .run(key, value);
 }
 

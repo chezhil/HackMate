@@ -1,3 +1,4 @@
+import { withAccount } from "@/lib/auth";
 import { createFromDraft, ImportError, previewFromUrl, type ImportDraft } from "@/lib/importHackathon";
 import { listTracked } from "@/lib/repo";
 import { RESULT_LABELS, STATUSES, type ResultKind, type TrackStatus } from "@/lib/types";
@@ -8,7 +9,7 @@ import { badRequest, isHttpUrl, readJson } from "@/lib/validation";
  * { action: "preview", url }                    → read the page into a draft to check
  * { action: "create", draft, status, result? }  → save it, pinned at that stage
  */
-export async function POST(req: Request) {
+async function post(req: Request) {
   const b = await readJson(req);
   if (b instanceof Response) return b;
   try {
@@ -33,3 +34,6 @@ export async function POST(req: Request) {
     return Response.json({ error: (e as Error).message }, { status });
   }
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const POST = withAccount(post);

@@ -1,10 +1,11 @@
+import { withAccount } from "@/lib/auth";
 import { badRequest, prizeRules, readJson, validFields } from "@/lib/validation";
 import type { Prize } from "@/lib/types";
 import { deletePrize, listPrizes, prizeHackathon, updatePrize } from "@/lib/wrapup";
 
 type Ctx = { params: Promise<{ pid: string }> };
 
-export async function PATCH(req: Request, { params }: Ctx) {
+async function patch(req: Request, { params }: Ctx) {
   const pid = Number((await params).pid);
   if (!prizeHackathon(pid)) return Response.json({ error: "Not found" }, { status: 404 });
   const raw = await readJson(req);
@@ -17,7 +18,11 @@ export async function PATCH(req: Request, { params }: Ctx) {
   return Response.json({ prizes: listPrizes() });
 }
 
-export async function DELETE(_req: Request, { params }: Ctx) {
+async function remove(_req: Request, { params }: Ctx) {
   deletePrize(Number((await params).pid));
   return Response.json({ prizes: listPrizes() });
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const PATCH = withAccount(patch);
+export const DELETE = withAccount(remove);

@@ -1,3 +1,4 @@
+import { withAccount } from "@/lib/auth";
 import { addChecklistItem, listChecklist, rebuildChecklist } from "@/lib/submission";
 import type { ChecklistKind } from "@/lib/types";
 import { connection } from "next/server";
@@ -6,14 +7,14 @@ import { badRequest, boolean, readJson, text, validFields } from "@/lib/validati
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function GET(_req: Request, { params }: Ctx) {
+async function get(_req: Request, { params }: Ctx) {
   await connection();
   const id = decodeURIComponent((await params).id);
   if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   return Response.json({ items: listChecklist(id) });
 }
 
-export async function POST(req: Request, { params }: Ctx) {
+async function post(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
   if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   const b = await readJson(req);
@@ -27,3 +28,7 @@ export async function POST(req: Request, { params }: Ctx) {
   addChecklistItem(id, b.label.trim(), (b.kind as ChecklistKind | undefined) ?? "check", (b.required as boolean | undefined) ?? true);
   return Response.json({ items: listChecklist(id) });
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const GET = withAccount(get);
+export const POST = withAccount(post);

@@ -1,3 +1,4 @@
+import { withAccount } from "@/lib/auth";
 import { badRequest, readJson } from "@/lib/validation";
 import { AiUnavailableError } from "@/lib/ai";
 import { askQuestion, clearChat, listChat } from "@/lib/details";
@@ -5,12 +6,12 @@ import { connection } from "next/server";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function GET(_req: Request, { params }: Ctx) {
+async function get(_req: Request, { params }: Ctx) {
   await connection();
   return Response.json({ messages: listChat(decodeURIComponent((await params).id)) });
 }
 
-export async function POST(req: Request, { params }: Ctx) {
+async function post(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
   const body = await readJson(req);
   if (body instanceof Response) return body;
@@ -25,7 +26,12 @@ export async function POST(req: Request, { params }: Ctx) {
   }
 }
 
-export async function DELETE(_req: Request, { params }: Ctx) {
+async function remove(_req: Request, { params }: Ctx) {
   clearChat(decodeURIComponent((await params).id));
   return Response.json({ messages: [] });
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const GET = withAccount(get);
+export const POST = withAccount(post);
+export const DELETE = withAccount(remove);

@@ -1,5 +1,5 @@
 import "server-only";
-import { getSetting, setSetting } from "./db";
+import { getSetting, setSetting, allScopes, runAs } from "./db";
 import { geocodePending } from "./geocode";
 import { syncAllAutoDeadlines, upsertHackathons } from "./repo";
 import { fetchDevfolio } from "./sources/devfolio";
@@ -67,7 +67,8 @@ export function syncAll(): Promise<SyncReport> {
         }
       }),
     );
-    syncAllAutoDeadlines();
+    // Every account's tracked deadlines follow the new dates, not just whoever pressed Refresh.
+    for (const id of allScopes()) runAs(id, syncAllAutoDeadlines);
     const report: SyncReport = { at, sources: Object.fromEntries(entries) as SyncReport["sources"] };
     setSetting("lastSync", JSON.stringify(report));
     void geocodePending().catch((e) => console.error("[geocode]", e));

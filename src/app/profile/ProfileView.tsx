@@ -2,7 +2,6 @@
 
 import { Eye, LogOut, ScrollText, Trophy, Users } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { CertificateList, type CertData } from "@/components/CertificateList";
@@ -106,7 +105,6 @@ const PROFILE_FIELDS: { key: keyof Profile; label: string; placeholder: string }
 type EditableProfile = ProfileData["profile"];
 
 function ProfileHeader({ profile, account, onSaved }: { profile: EditableProfile; account: Account | null; onSaved: (p: EditableProfile, a: Account | null) => void }) {
-  const router = useRouter();
   const [editing, setEditing] = useState(!profile.name);
   const [form, setForm] = useState(profile);
   const [skillsText, setSkillsText] = useState((profile.skills ?? []).join(", "));
@@ -120,7 +118,9 @@ function ProfileHeader({ profile, account, onSaved }: { profile: EditableProfile
   const signOut = async () => {
     await call("/api/auth", "POST", { action: "signout" });
     setAccount(null);
-    router.push("/signin");
+    // A full load, so nothing of this account's data stays on screen.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign("/signin");
   };
 
   const save = async () => {

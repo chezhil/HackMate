@@ -1,3 +1,4 @@
+import { withAccount } from "@/lib/auth";
 import { addTeammate, listTeam } from "@/lib/team";
 import type { Teammate } from "@/lib/types";
 import { connection } from "next/server";
@@ -6,12 +7,12 @@ import { badRequest, boolean, nullableText, readJson, text, validFields } from "
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function GET(_req: Request, { params }: Ctx) {
+async function get(_req: Request, { params }: Ctx) {
   await connection();
   return Response.json({ team: listTeam(decodeURIComponent((await params).id)) });
 }
 
-export async function POST(req: Request, { params }: Ctx) {
+async function post(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
   if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   const raw = await readJson(req);
@@ -22,3 +23,7 @@ export async function POST(req: Request, { params }: Ctx) {
   addTeammate(id, { ...body, confirmed: body.confirmed ?? true });
   return Response.json({ team: listTeam(id) });
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const GET = withAccount(get);
+export const POST = withAccount(post);

@@ -1,3 +1,4 @@
+import { withAccount } from "@/lib/auth";
 import { getHackathon } from "@/lib/repo";
 import { badRequest, readJson, text, validFields } from "@/lib/validation";
 import { AiUnavailableError } from "@/lib/ai";
@@ -9,7 +10,7 @@ type Ctx = { params: Promise<{ id: string }> };
 const fail = (e: unknown) =>
   Response.json({ error: (e as Error).message }, { status: e instanceof AiUnavailableError ? 503 : 500 });
 
-export async function GET(_req: Request, { params }: Ctx) {
+async function get(_req: Request, { params }: Ctx) {
   await connection();
   return Response.json({ ideas: listIdeas(decodeURIComponent((await params).id)) });
 }
@@ -18,7 +19,7 @@ export async function GET(_req: Request, { params }: Ctx) {
  * { action: "suggest", interests? } → AI guidelines + idea seeds (not saved)
  * { action: "create", title, text } → save an idea you'll iterate on
  */
-export async function POST(req: Request, { params }: Ctx) {
+async function post(req: Request, { params }: Ctx) {
   const id = decodeURIComponent((await params).id);
   if (!getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
   const raw = await readJson(req);
@@ -37,3 +38,7 @@ export async function POST(req: Request, { params }: Ctx) {
     return fail(e);
   }
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const GET = withAccount(get);
+export const POST = withAccount(post);

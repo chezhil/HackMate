@@ -1,10 +1,10 @@
-import { AuthError, currentUser, saveMemberProfile } from "@/lib/auth";
+import { AuthError, currentUser, saveMemberProfile, withAccount } from "@/lib/auth";
 import { badRequest, boolean, isHttpUrl, readJson, text, validFields } from "@/lib/validation";
 import type { Profile } from "@/lib/types";
 import { getProfile, listCertificates, listPrizes, missingCertificates, portfolio, saveProfile, stats } from "@/lib/wrapup";
 import { connection } from "next/server";
 
-export async function GET() {
+async function get() {
   await connection();
   const account = await currentUser();
   return Response.json({
@@ -19,7 +19,7 @@ export async function GET() {
   });
 }
 
-export async function PUT(req: Request) {
+async function put(req: Request) {
   const body = await readJson(req);
   if (body instanceof Response) return body;
   const keys = ["name", "headline", "bio", "location", "github", "linkedin", "website"];
@@ -43,3 +43,7 @@ export async function PUT(req: Request) {
     throw e;
   }
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const GET = withAccount(get);
+export const PUT = withAccount(put);

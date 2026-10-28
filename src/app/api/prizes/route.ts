@@ -1,15 +1,16 @@
+import { withAccount } from "@/lib/auth";
 import { badRequest, prizeRules, readJson, text, validFields } from "@/lib/validation";
 import { getHackathon } from "@/lib/repo";
 import type { Prize } from "@/lib/types";
 import { addPrize, listPrizes } from "@/lib/wrapup";
 import { connection } from "next/server";
 
-export async function GET() {
+async function get() {
   await connection();
   return Response.json({ prizes: listPrizes() });
 }
 
-export async function POST(req: Request) {
+async function post(req: Request) {
   const raw = await readJson(req);
   if (raw instanceof Response) return raw;
   if (raw.amount === "") raw.amount = null;
@@ -19,3 +20,7 @@ export async function POST(req: Request) {
   addPrize(b.hackathonId, { ...b, amount: b.amount != null && b.amount !== ("" as unknown) ? Number(b.amount) : null });
   return Response.json({ prizes: listPrizes() });
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const GET = withAccount(get);
+export const POST = withAccount(post);

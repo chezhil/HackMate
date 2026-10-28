@@ -1,8 +1,8 @@
-import { AuthError, currentUser, signIn, signOut, signUp } from "@/lib/auth";
+import { AuthError, currentUser, signIn, signOut, signUp, withAccount } from "@/lib/auth";
 import { badRequest, readJson } from "@/lib/validation";
 
 /** Who's signed in: { user } or { user: null }. */
-export async function GET() {
+async function get() {
   return Response.json({ user: await currentUser() });
 }
 
@@ -11,7 +11,7 @@ export async function GET() {
  * { action: "signin", email, password }
  * { action: "signout" }
  */
-export async function POST(req: Request) {
+async function post(req: Request) {
   const b = await readJson(req);
   if (b instanceof Response) return b;
   // Only send the cookie over https when the site is served over https (plain http on localhost would drop it).
@@ -30,3 +30,7 @@ export async function POST(req: Request) {
     throw e;
   }
 }
+
+// Every request reads and writes the signed-in person's own data.
+export const GET = withAccount(get);
+export const POST = withAccount(post);

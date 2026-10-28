@@ -2,7 +2,7 @@
 
 import { LogIn, UserPlus } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { setAccount, useAccount } from "@/components/useAccount";
 import { Button } from "@/components/ui/Button";
@@ -23,7 +23,6 @@ const safeNext = (raw: string | null) => (raw && raw.startsWith("/") && !raw.sta
 
 export function SignInView() {
   const params = useSearchParams();
-  const router = useRouter();
   const { user } = useAccount();
   const [mode, setMode] = useState<Mode>(params.get("mode") === "signup" ? "signup" : "signin");
   const [username, setUsername] = useState("");
@@ -40,7 +39,8 @@ export function SignInView() {
       const body = mode === "signup" ? { action: "signup", username, email, password } : { action: "signin", email, password };
       const { user } = await call<{ user: Account }>("/api/auth", "POST", body);
       setAccount(user);
-      router.push(next);
+      // A full load, so the tracker, calendar and everything else load this account's own data.
+      window.location.assign(next);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -67,7 +67,7 @@ export function SignInView() {
         <h1 className="page-title">{mode === "signup" ? "Create your account" : "Welcome back"}</h1>
         <p className="text-sm text-muted">
           {mode === "signup"
-            ? "Your profile shows up under Discover → People, so others can find you for a team. Your email stays private."
+            ? "You get your own tracker, ideas and results, and a profile under Discover → People so others can find you for a team. Your email stays private."
             : "Sign in to edit the profile others see under Discover → People."}
         </p>
       </div>
