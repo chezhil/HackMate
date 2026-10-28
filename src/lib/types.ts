@@ -389,6 +389,23 @@ export interface Profile {
   website: string;
 }
 
+/** What someone shows everyone on Discover → People. Their email is never part of it. */
+export interface MemberProfile extends Profile {
+  skills: string[];
+  lookingForTeam: boolean;
+}
+
+export interface Member {
+  username: string;
+  joinedAt: string;
+  profile: MemberProfile;
+}
+
+/** The signed-in person: their public side plus the email only they see. */
+export interface Account extends Member {
+  email: string;
+}
+
 export interface Stats {
   tracked: number;
   done: number;

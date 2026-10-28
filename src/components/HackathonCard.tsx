@@ -3,6 +3,7 @@
 import { ArrowRight, Ban, Check, ExternalLink, Globe, MapPin, Pin, Sparkles, TriangleAlert, Trophy } from "lucide-react";
 import type { AiPolicyKind } from "@/lib/aiPolicy";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { hid } from "@/lib/client";
 import { fmtRange, place } from "@/lib/format";
 import { useHackmate } from "./HackmateProvider";
@@ -56,7 +57,6 @@ export function HackathonCard({
   highlighted,
   onTrack,
   onUntrack,
-  onSelect,
   onHover,
 }: {
   h: Hackathon;
@@ -67,21 +67,22 @@ export function HackathonCard({
   highlighted?: boolean;
   onTrack: () => void;
   onUntrack: () => void;
-  onSelect?: () => void;
   /** Hover or keyboard focus, so the map can light up the matching pin. */
   onHover?: (id: string | null) => void;
 }) {
   const { now } = useHackmate();
+  const router = useRouter();
   const regOpen = h.regEndsAt && new Date(h.regEndsAt).getTime() > now;
   return (
     <article
       id={`h-${h.id}`}
-      onClick={onSelect}
+      // The whole tile opens the hackathon; the title link is the keyboard way in, and the buttons stop the click.
+      onClick={() => router.push(`/hackathon/${hid(h.id)}`)}
       onMouseEnter={onHover && (() => onHover(h.id))}
       onMouseLeave={onHover && (() => onHover(null))}
       onFocus={onHover && (() => onHover(h.id))}
       onBlur={onHover && ((e) => !e.currentTarget.contains(e.relatedTarget as Node) && onHover(null))}
-      className={`card flex gap-3 p-3 ${selected ? "bg-accent-soft" : highlighted ? "bg-warn-soft" : ""} ${onSelect ? "card-lift cursor-pointer" : "card-lift"}`}
+      className={`card flex gap-3 p-3 ${selected ? "bg-accent-soft" : highlighted ? "bg-warn-soft" : ""} card-lift cursor-pointer`}
     >
       <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border-(length:--line) border-border bg-surface-2">
         {h.image && (

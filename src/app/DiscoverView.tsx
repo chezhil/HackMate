@@ -1,6 +1,6 @@
 "use client";
 
-import { Link2, MapPinned, RefreshCw, Search, SearchX, SlidersHorizontal, X } from "lucide-react";
+import { Link2, MapPinned, RefreshCw, Search, SearchX, SlidersHorizontal, Trophy, Users, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -8,6 +8,7 @@ import { HackathonCard } from "@/components/HackathonCard";
 import { useHackmate } from "@/components/HackmateProvider";
 import type { MapBounds } from "@/components/MapView";
 import { AddHackathonDialog } from "@/components/AddHackathonDialog";
+import { PeopleDirectory } from "@/components/PeopleDirectory";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Banner, EmptyState, Skeleton } from "@/components/ui/Feedback";
@@ -45,7 +46,51 @@ const LIST_CAP = 200;
 const inBounds = (h: Hackathon, b: MapBounds) =>
   h.lat != null && h.lng != null && h.lat >= b.south && h.lat <= b.north && h.lng >= b.west && h.lng <= b.east;
 
+type Show = "hackathons" | "people";
+
+/** Discover has two halves: hackathons to enter, and people who've signed up, to team up with. */
 export function DiscoverView() {
+  const params = useSearchParams();
+  const show: Show = params.get("show") === "people" ? "people" : "hackathons";
+  const pick = (next: Show) => {
+    if (next === show) return;
+    // Each half keeps its own query (filters for hackathons), so switching starts that half fresh.
+    window.history.pushState(null, "", next === "people" ? "/?show=people" : "/");
+  };
+  return (
+    <div className="space-y-4">
+      <div role="group" aria-label="What to discover" className="flex gap-2">
+        {([
+          { key: "hackathons", label: "Hackathons", Icon: Trophy },
+          { key: "people", label: "People", Icon: Users },
+        ] as const).map(({ key, label, Icon }) => (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={show === key}
+            onClick={() => pick(key)}
+            className={`btn ${show === key ? "btn-primary" : ""}`}
+          >
+            <Icon aria-hidden className="size-4" /> {label}
+          </button>
+        ))}
+      </div>
+      {show === "people" ? (
+        <>
+          <div>
+            <h1 className="page-title">Discover people</h1>
+            <p className="text-sm text-muted">Everyone who has made a HackMate account. Find teammates by skill, place or who&apos;s looking for a team.</p>
+          </div>
+          <PeopleDirectory />
+        </>
+      ) : (
+        <HackathonsView />
+      )}
+    </div>
+  );
+}
+
+function HackathonsView() {
   const { hackathons, tracked, trackedIds, now, loading, syncing, lastSync, error, refresh, syncNow, track, untrack } = useHackmate();
   const params = useSearchParams();
   const f = parseFilters(new URLSearchParams(params.toString()));
@@ -192,7 +237,6 @@ export function DiscoverView() {
                 clashesWith={trackedIds.has(h.id) ? [] : clashesWithTracked(h, tracked)}
                 selected={selectedId === h.id}
                 highlighted={hoverId === h.id}
-                onSelect={mapOn ? () => setSelectedId(h.id) : undefined}
                 onHover={mapOn ? setHoverId : undefined}
                 onTrack={() => track(h.id)}
                 onUntrack={() => untrack(h.id)}

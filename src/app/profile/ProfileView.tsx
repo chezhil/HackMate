@@ -1,15 +1,18 @@
 "use client";
 
-import { ScrollText, Trophy } from "lucide-react";
+import { Eye, LogOut, ScrollText, Trophy, Users } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Avatar } from "@/components/Avatar";
 import { CertificateList, type CertData } from "@/components/CertificateList";
+import { setAccount } from "@/components/useAccount";
 import { money, PrizeList } from "@/components/PrizeList";
-import { Badge, CountPill, Stars } from "@/components/ui/Feedback";
+import { Badge, Banner, CountPill, Stars } from "@/components/ui/Feedback";
 import { Tabs } from "@/components/ui/Tabs";
 import { call, hid } from "@/lib/client";
 import { fmtDate, fmtRange } from "@/lib/format";
-import type { Certificate, Prize, Profile, Project, Retro, Stats, TrackedWithHackathon } from "@/lib/types";
+import type { Account, Certificate, MemberProfile, Prize, Profile, Project, Retro, Stats, TrackedWithHackathon } from "@/lib/types";
 import { RESULT_LABELS, SOURCE_LABELS } from "@/lib/types";
 
 interface PortfolioEntry {
@@ -21,7 +24,9 @@ interface PortfolioEntry {
 }
 
 interface ProfileData {
-  profile: Profile;
+  /** Your account's public profile when signed in (with skills), else the one kept on this device. */
+  profile: Profile & Partial<Pick<MemberProfile, "skills" | "lookingForTeam">>;
+  account: Account | null;
   stats: Stats;
   portfolio: PortfolioEntry[];
   prizes: Prize[];
@@ -53,7 +58,14 @@ export function ProfileView() {
 
   return (
     <div className="space-y-4">
-      <ProfileHeader profile={data.profile} onSaved={(profile) => setData({ ...data, profile })} />
+      <ProfileHeader
+        profile={data.profile}
+        account={data.account}
+        onSaved={(profile, account) => {
+          setData({ ...data, profile, account });
+          if (account) setAccount(account);
+        }}
+      />
       <Tabs
         tabs={TABS.map((t) => ({
           ...t,
@@ -91,40 +103,76 @@ const PROFILE_FIELDS: { key: keyof Profile; label: string; placeholder: string }
   { key: "website", label: "Website", placeholder: "https://you.dev" },
 ];
 
-function ProfileHeader({ profile, onSaved }: { profile: Profile; onSaved: (p: Profile) => void }) {
+type EditableProfile = ProfileData["profile"];
+
+function ProfileHeader({ profile, account, onSaved }: { profile: EditableProfile; account: Account | null; onSaved: (p: EditableProfile, a: Account | null) => void }) {
+  const router = useRouter();
   const [editing, setEditing] = useState(!profile.name);
   const [form, setForm] = useState(profile);
+  const [skillsText, setSkillsText] = useState((profile.skills ?? []).join(", "));
+  const [error, setError] = useState<string | null>(null);
   const links = [
     profile.github && { label: "GitHub", href: profile.github },
     profile.linkedin && { label: "LinkedIn", href: profile.linkedin },
     profile.website && { label: "Website", href: profile.website },
   ].filter(Boolean) as { label: string; href: string }[];
 
+  const signOut = async () => {
+    await call("/api/auth", "POST", { action: "signout" });
+    setAccount(null);
+    router.push("/signin");
+  };
+
+  const save = async () => {
+    setError(null);
+    try {
+      const body = account ? { ...form, skills: skillsText.split(",").map((s) => s.trim()).filter(Boolean) } : form;
+      const d = await call<{ profile: EditableProfile; account: Account | null }>("/api/profile", "PUT", body);
+      onSaved(d.profile, d.account);
+      setEditing(false);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
   if (editing) {
     return (
       <section className="card grid gap-2 p-4 md:grid-cols-2">
-        <h1 className="text-lg font-semibold md:col-span-2">Your profile</h1>
+        <div className="md:col-span-2">
+          <h1 className="text-lg font-semibold">Your profile</h1>
+          <p className="text-xs text-muted">
+            {account ? (
+              <>Everyone can see this under Discover → People, at /people/{account.username}. Your email stays private.</>
+            ) : (
+              <>Kept on this device only. <Link href="/signin?mode=signup" className="text-accent hover:underline">Create an account</Link> to show it to other people.</>
+            )}
+          </p>
+        </div>
         {PROFILE_FIELDS.map((f) => (
           <label key={f.key}>
             <span className="label">{f.label}</span>
             <input className="input" placeholder={f.placeholder} value={form[f.key]} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} />
           </label>
         ))}
+        {account && (
+          <>
+            <label>
+              <span className="label">Skills</span>
+              <input className="input" placeholder="React, Python, design, pitching" value={skillsText} onChange={(e) => setSkillsText(e.target.value)} />
+            </label>
+            <label className="flex items-center gap-2 self-end pb-2 text-sm">
+              <input type="checkbox" checked={!!form.lookingForTeam} onChange={(e) => setForm({ ...form, lookingForTeam: e.target.checked })} />
+              I&apos;m looking for a team
+            </label>
+          </>
+        )}
         <label className="md:col-span-2">
           <span className="label">Bio</span>
           <textarea className="input min-h-16" placeholder="What you like to build" value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} />
         </label>
+        {error && <div className="md:col-span-2"><Banner tone="danger">{error}</Banner></div>}
         <div className="flex gap-2 md:col-span-2">
-          <button
-            className="btn btn-primary"
-            onClick={async () => {
-              const d = await call<{ profile: Profile }>("/api/profile", "PUT", form);
-              onSaved(d.profile);
-              setEditing(false);
-            }}
-          >
-            Save profile
-          </button>
+          <button className="btn btn-primary" onClick={() => void save()}>Save profile</button>
           {profile.name && <button className="btn" onClick={() => setEditing(false)}>Cancel</button>}
         </div>
       </section>
@@ -133,22 +181,33 @@ function ProfileHeader({ profile, onSaved }: { profile: Profile; onSaved: (p: Pr
 
   return (
     <header className="flex flex-wrap items-start gap-4">
-      <div className="grid h-16 w-16 place-items-center rounded-2xl bg-accent text-2xl font-semibold text-accent-text">
-        {profile.name.trim()[0]?.toUpperCase() ?? "?"}
-      </div>
+      <Avatar name={profile.name} size="lg" />
       <div className="min-w-0 flex-1">
         <h1 className="page-title">{profile.name}</h1>
-        {profile.headline && <p className="text-muted">{profile.headline}{profile.location && ` · ${profile.location}`}</p>}
+        {account && <p className="text-sm text-muted">@{account.username}</p>}
+        {(profile.headline || profile.location) && <p className="text-muted">{[profile.headline, profile.location].filter(Boolean).join(" · ")}</p>}
         {profile.bio && <p className="mt-1 max-w-2xl text-sm">{profile.bio}</p>}
+        {account && (profile.lookingForTeam || (profile.skills?.length ?? 0) > 0) && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {profile.lookingForTeam && <Badge tone="ok"><Users aria-hidden className="size-3" /> Looking for a team</Badge>}
+            {profile.skills?.map((s) => <span key={s} className="chip">{s}</span>)}
+          </div>
+        )}
         {links.length > 0 && (
           <div className="mt-1 flex gap-3 text-sm">
             {links.map((l) => <a key={l.label} href={l.href} target="_blank" rel="noreferrer" className="text-accent hover:underline">{l.label} ↗</a>)}
           </div>
         )}
       </div>
-      <div className="flex gap-2 print:hidden">
+      <div className="flex flex-wrap gap-2 print:hidden">
+        {account ? (
+          <Link href={`/people/${account.username}`} className="btn btn-sm" title="Your profile as others see it"><Eye aria-hidden className="size-3.5" /> Public view</Link>
+        ) : (
+          <Link href="/signin?mode=signup" className="btn btn-sm btn-primary" title="Show your profile to other people">Create account</Link>
+        )}
         <button className="btn btn-sm" onClick={() => window.print()} title="Save your portfolio as a PDF">Save as PDF</button>
-        <button className="btn btn-sm" onClick={() => { setForm(profile); setEditing(true); }}>Edit profile</button>
+        <button className="btn btn-sm" onClick={() => { setForm(profile); setSkillsText((profile.skills ?? []).join(", ")); setEditing(true); }}>Edit profile</button>
+        {account && <button className="btn btn-sm" onClick={() => void signOut()}><LogOut aria-hidden className="size-3.5" /> Sign out</button>}
       </div>
     </header>
   );

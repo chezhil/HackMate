@@ -86,6 +86,25 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL
 );
 
+-- Accounts, so people can sign up and show a profile to everyone on this HackMate.
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  password_hash TEXT NOT NULL,
+  profile TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL
+);
+
+-- Only a hash of each session token is stored, so a copy of the database can't be used to sign in.
+CREATE TABLE IF NOT EXISTS sessions (
+  token_hash TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
+
 -- AI-extracted rules, judges, deliverables etc. One row per hackathon, rebuilt on demand.
 CREATE TABLE IF NOT EXISTS hackathon_details (
   hackathon_id TEXT PRIMARY KEY REFERENCES hackathons(id),
@@ -248,8 +267,12 @@ const ADDED_COLUMNS: [table: string, column: string, type: string][] = [
   ["chat_messages", "not_found", "INTEGER NOT NULL DEFAULT 0"],
   ["chat_messages", "follow_ups", "TEXT"],
 ];
+// Bump when SCHEMA gains a table, so a running dev server creates it.
+const SCHEMA_VERSION = 2;
 
 function migrate(conn: DatabaseSync) {
+  // New tables too: the connection outlives dev hot reloads, so SCHEMA alone wouldn't reach it.
+  conn.exec(SCHEMA);
   for (const [table, column, type] of ADDED_COLUMNS) {
     const cols = conn.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
     if (!cols.some((c) => c.name === column)) conn.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
@@ -267,9 +290,9 @@ export function db(): DatabaseSync {
     globalForDb.hackmateDb = conn;
   }
   // The connection survives dev hot reloads, so re-run the column migration whenever the list grows.
-  if (globalForDb.hackmateMigrated !== ADDED_COLUMNS.length) {
+  if (globalForDb.hackmateMigrated !== ADDED_COLUMNS.length + SCHEMA_VERSION * 1000) {
     migrate(globalForDb.hackmateDb);
-    globalForDb.hackmateMigrated = ADDED_COLUMNS.length;
+    globalForDb.hackmateMigrated = ADDED_COLUMNS.length + SCHEMA_VERSION * 1000;
   }
   return globalForDb.hackmateDb;
 }

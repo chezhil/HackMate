@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { isNotable, worstSeverity } from "@/lib/clashes";
 import { useHackmate } from "./HackmateProvider";
 import { ThemeSwitch } from "./ThemeSwitch";
+import { useAccount } from "./useAccount";
+import { Avatar } from "./Avatar";
 import { CountPill } from "./ui/Feedback";
 
 const LINKS = [
@@ -19,6 +21,7 @@ const LINKS = [
 export function Nav() {
   const path = usePathname();
   const { tracked, clashes, error } = useHackmate();
+  const { loaded, user } = useAccount();
   const active = tracked.filter((t) => t.status !== "results").length;
   // Minor clashes (long online events side by side) don't count toward the badge.
   const notable = clashes.filter(isNotable);
@@ -53,8 +56,21 @@ export function Nav() {
           })}
         </nav>
         {/* Outside the scrolling nav so it stays in reach on phones. */}
-        <div className="shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
           <ThemeSwitch />
+          {user ? (
+            <Link
+              href="/profile"
+              className="flex items-center gap-1.5 rounded-lg border-(length:--line) border-border bg-surface px-1.5 py-1 text-sm font-semibold shadow-hard-sm hover:bg-surface-2"
+              title={`Signed in as @${user.username}`}
+            >
+              <Avatar name={user.profile.name || user.username} size="sm" />
+              <span className="hidden max-w-32 truncate md:inline">@{user.username}</span>
+            </Link>
+          ) : (
+            // Hidden until we know, so it doesn't flash "Sign in" for someone who is.
+            <Link href="/signin" className={`btn btn-sm ${loaded ? "" : "invisible"}`}>Sign in</Link>
+          )}
         </div>
       </div>
       {error && (
