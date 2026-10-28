@@ -58,7 +58,7 @@ export async function draftTeammatePost(hackathonId: string, input: PostInput): 
     input.lookingFor && `Looking for: ${input.lookingFor}`,
     input.idea && `Idea: ${input.idea}`,
     max && `${max - 1 - team.length > 0 ? `${max - 1 - team.length} spot(s) open` : "Team almost full"} · max team size ${max}`,
-    `Details: ${h.url}`,
+    h.url && `Details: ${h.url}`,
     "DM me if you're interested! #hackathon",
   ]
     .filter(Boolean)

@@ -50,7 +50,7 @@ export function hackathonEvent(h: Hackathon, status?: string): string[] {
     `SUMMARY:${escape(`🏁 ${h.title}`)}`,
     `LOCATION:${escape(where(h))}`,
     `DESCRIPTION:${escape([status && `Status: ${status}`, h.tagline, h.url].filter(Boolean).join("\n"))}`,
-    `URL:${h.url}`,
+    ...(h.url ? [`URL:${h.url}`] : []),
     "END:VEVENT",
   ];
 }
@@ -65,8 +65,8 @@ export function deadlineEvent(d: Deadline, h: Hackathon, alarmMinutes: number[])
     `DTSTART:${stamp(begin.toISOString())}`,
     `DTEND:${stamp(start.toISOString())}`,
     `SUMMARY:${escape(`⏰ ${d.label} — ${h.title}`)}`,
-    `DESCRIPTION:${escape(`${d.label} for ${h.title}\n${h.url}`)}`,
-    `URL:${h.url}`,
+    `DESCRIPTION:${escape([`${d.label} for ${h.title}`, h.url].filter(Boolean).join("\n"))}`,
+    ...(h.url ? [`URL:${h.url}`] : []),
     ...alarmMinutes.flatMap((m) => [
       "BEGIN:VALARM",
       "ACTION:DISPLAY",

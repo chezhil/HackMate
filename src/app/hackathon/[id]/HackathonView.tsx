@@ -156,7 +156,7 @@ export function HackathonView() {
           {h.prizeText && <p className="mt-1 flex items-center gap-1.5 text-sm text-ok"><Trophy aria-hidden className="size-4 shrink-0" /> {h.prizeText}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
-          <a href={h.url} target="_blank" rel="noreferrer" className="btn">Open page ↗</a>
+          {h.url && <a href={h.url} target="_blank" rel="noreferrer" className="btn">Open page ↗</a>}
           {isTracked ? (
             <>
               <Link href={status === "results" ? "/results" : "/tracker"} className="btn border-ok/40 bg-ok-soft text-ok">

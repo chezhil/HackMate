@@ -1,6 +1,6 @@
 "use client";
 
-import { Link2, MapPinned, RefreshCw, Search, SearchX, SlidersHorizontal, Trophy, Users, X } from "lucide-react";
+import { Link2, MapPinned, PencilLine, RefreshCw, Search, SearchX, SlidersHorizontal, Trophy, Users, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -105,6 +105,7 @@ function HackathonsView() {
   const [bounds, setBounds] = useState<MapBounds | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [addManual, setAddManual] = useState(false);
 
   const set = (patch: Partial<Filters>) => setF((x) => ({ ...x, ...patch }));
 
@@ -145,13 +146,14 @@ function HackathonsView() {
         </div>
         <div className="flex flex-wrap gap-2">
           {/* For hackathons that aren't in any feed, or are already over. */}
-          <Button onClick={() => setAddOpen(true)} icon={<Link2 aria-hidden className="size-4" />}>Add from link</Button>
+          <Button onClick={() => { setAddManual(false); setAddOpen(true); }} icon={<Link2 aria-hidden className="size-4" />}>Add from link</Button>
+          <Button onClick={() => { setAddManual(true); setAddOpen(true); }} icon={<PencilLine aria-hidden className="size-4" />}>Add manually</Button>
           <Button onClick={syncNow} disabled={syncing} icon={<RefreshCw aria-hidden className={`size-4 ${syncing ? "animate-spin" : ""}`} />}>
             {syncing ? "Syncing…" : "Refresh feeds"}
           </Button>
         </div>
       </div>
-      <AddHackathonDialog open={addOpen} onClose={() => setAddOpen(false)} />
+      <AddHackathonDialog open={addOpen} onClose={() => setAddOpen(false)} manual={addManual} />
 
       {failed.length > 0 && (
         <Banner tone="warn">

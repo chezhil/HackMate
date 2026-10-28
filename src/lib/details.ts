@@ -28,7 +28,7 @@ async function gatherSourceText(h: Hackathon): Promise<string> {
         const amount = (p: (typeof prizes)[number]) => (Number(p.amount) > 0 ? ` (${Number(p.amount)} ${p.currency ?? ""})` : "");
         parts.push(`## Prize amounts\n${prizes.map((p) => `- ${p.name}${amount(p)}${p.desc ? `: ${p.desc}` : ""}`).join("\n")}`);
       }
-    } else if (!["unstop", "devfolio", "devsemble"].includes(h.source) || !feedText) {
+    } else if (h.url && (!["unstop", "devfolio", "devsemble"].includes(h.source) || !feedText)) {
       // Sources with brief listing text need the event page for complete rules.
       parts.push(htmlToText(await fetchText(h.url, { headers: { "User-Agent": USER_AGENT } })));
     }
@@ -42,7 +42,7 @@ function factsBlock(h: Hackathon) {
   return [
     `Title: ${h.title}`,
     h.tagline && `Tagline: ${h.tagline}`,
-    `Source: ${h.source} (${h.url})`,
+    `Source: ${h.source}${h.url ? ` (${h.url})` : ""}`,
     `Mode: ${h.mode}${h.city ? ` — ${[h.venue, h.city, h.state, h.country].filter(Boolean).join(", ")}` : ""}`,
     h.startsAt && `Starts: ${h.startsAt}`,
     h.endsAt && `Ends: ${h.endsAt}`,

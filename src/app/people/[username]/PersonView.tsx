@@ -100,7 +100,11 @@ export function PersonView() {
             {done.map((h) => (
               <li key={h.id} className="flex flex-wrap items-start gap-x-3 gap-y-1 py-2.5 first:pt-0 last:pb-0">
                 <div className="min-w-0 flex-1">
-                  <a href={h.url} target="_blank" rel="noreferrer" className="break-words font-semibold hover:underline">{h.title}</a>
+                  {h.url ? (
+                    <a href={h.url} target="_blank" rel="noreferrer" className="break-words font-semibold hover:underline">{h.title}</a>
+                  ) : (
+                    <span className="break-words font-semibold">{h.title}</span>
+                  )}
                   <p className="text-xs text-muted">{fmtRange(h)} · {h.mode === "online" ? "Online" : "In person"}</p>
                   {h.project && (
                     <p className="mt-1 text-sm">

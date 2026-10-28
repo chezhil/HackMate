@@ -118,17 +118,20 @@ export function HackathonCard({
               Open <ArrowRight aria-hidden className="size-3.5" />
               <span className="sr-only"> {h.title} in HackMate</span>
             </Link>
-            <a
-              href={h.url}
-              target="_blank"
-              rel="noreferrer"
-              className="btn btn-sm"
-              title={`Open ${h.title} on ${SOURCE_LABELS[h.source]}`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              Website <ExternalLink aria-hidden className="size-3.5" />
-              <span className="sr-only"> (opens in a new tab)</span>
-            </a>
+            {/* Hackathons added by hand may have no website. */}
+            {h.url && (
+              <a
+                href={h.url}
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-sm"
+                title={`Open ${h.title} on ${SOURCE_LABELS[h.source]}`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                Website <ExternalLink aria-hidden className="size-3.5" />
+                <span className="sr-only"> (opens in a new tab)</span>
+              </a>
+            )}
           </div>
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">

@@ -76,7 +76,7 @@ export async function projectBlock(hackathonId: string): Promise<string> {
     p.videoUrl && `Demo video: ${p.videoUrl}`,
     team.length > 0 && `Team: me + ${team.map((t) => `${t.name}${t.role ? ` (${t.role})` : ""}`).join(", ")}`,
     result?.result && `Result: ${result.result}${result.resultNotes ? ` — ${result.resultNotes}` : ""}`,
-    h && `Hackathon: ${h.title} (${h.url})`,
+    h && `Hackathon: ${h.title}${h.url ? ` (${h.url})` : ""}`,
   ]
     .filter(Boolean)
     .join("\n");

@@ -367,7 +367,7 @@ function StageActions({
     case "interested":
       return (
         <div className="flex flex-wrap gap-1.5">
-          <a href={h.url} target="_blank" rel="noreferrer" className="btn btn-primary btn-sm">Register ↗</a>
+          {h.url && <a href={h.url} target="_blank" rel="noreferrer" className="btn btn-primary btn-sm">Register ↗</a>}
           <button className="btn btn-sm" onClick={() => move("registered")}>I&apos;ve registered</button>
         </div>
       );

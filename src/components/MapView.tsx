@@ -73,7 +73,7 @@ function popupHtml(h: Hackathon) {
     <div class="hm-popup-title">${esc(h.title)}</div>
     <div>${esc(place(h))} · ${esc(fmtRange(h))}</div>
     <div class="hm-popup-meta">${SOURCE_LABELS[h.source]} · ${h.mode}${h.prizeText ? ` · ${esc(h.prizeText)}` : ""}</div>
-    <div class="hm-popup-links"><a href="/hackathon/${encodeURIComponent(h.id)}">Details</a><a href="${esc(h.url)}" target="_blank" rel="noreferrer">Open page ↗</a></div>
+    <div class="hm-popup-links"><a href="/hackathon/${encodeURIComponent(h.id)}">Details</a>${h.url ? `<a href="${esc(h.url)}" target="_blank" rel="noreferrer">Open page ↗</a>` : ""}</div>
   </div>`;
 }
 

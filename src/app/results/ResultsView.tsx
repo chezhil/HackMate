@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Award, ChevronRight, Inbox, Link2, PinOff, Search, Trophy } from "lucide-react";
+import { ArrowRight, Award, ChevronRight, Inbox, Link2, PencilLine, PinOff, Search, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AddHackathonDialog } from "@/components/AddHackathonDialog";
@@ -68,6 +68,7 @@ export function ResultsView() {
   const [q, setQ] = useState("");
   const [outcome, setOutcome] = useState<Outcome>("all");
   const [addOpen, setAddOpen] = useState(false);
+  const [addManual, setAddManual] = useState(false);
 
   useEffect(() => {
     Promise.all([call<{ prizes: Prize[] }>("/api/prizes"), call<{ certificates: Certificate[] }>("/api/certificates")]).then(
@@ -112,11 +113,16 @@ export function ResultsView() {
           <p className="text-sm text-muted">Hackathons that have announced results. Finish wrapping them up, then they file themselves into the archive.</p>
         </div>
         {/* Past hackathons you took part in but never tracked here, from any site. */}
-        <button type="button" className="btn" onClick={() => setAddOpen(true)}>
-          <Link2 aria-hidden className="size-4" /> Add a past hackathon
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn" onClick={() => { setAddManual(false); setAddOpen(true); }}>
+            <Link2 aria-hidden className="size-4" /> Add a past hackathon
+          </button>
+          <button type="button" className="btn" onClick={() => { setAddManual(true); setAddOpen(true); }}>
+            <PencilLine aria-hidden className="size-4" /> Add manually
+          </button>
+        </div>
       </div>
-      <AddHackathonDialog open={addOpen} onClose={() => setAddOpen(false)} defaultStage="results" />
+      <AddHackathonDialog open={addOpen} onClose={() => setAddOpen(false)} defaultStage="results" manual={addManual} />
       {error && <Banner tone="danger">{error}</Banner>}
 
       {!ready && (

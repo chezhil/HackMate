@@ -1,6 +1,6 @@
 "use client";
 
-import { Link2, Sparkles } from "lucide-react";
+import { Link2, PencilLine, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -29,13 +29,20 @@ interface Draft {
   teamMin: number | null;
   teamMax: number | null;
   image: string | null;
+  description?: string | null;
 }
+
+const BLANK: Draft = {
+  url: "", title: "", tagline: null, organizer: null, mode: "online", city: null, country: null, startsAt: null, endsAt: null,
+  regEndsAt: null, prizeText: null, themes: [], teamMin: null, teamMax: null, image: null, description: null,
+};
 
 interface Preview {
   draft: Draft;
   existingId: string | null;
   warning: string | null;
-  readBy: "listing" | "ai" | "page" | "none";
+  /** "manual": typed in by hand, no page was read. */
+  readBy: "listing" | "ai" | "page" | "none" | "manual";
   site?: string;
 }
 
@@ -59,7 +66,18 @@ const fromDay = (day: string) => (day ? new Date(`${day}T12:00:00`).toISOString(
  * Add a hackathon that isn't in the feeds by pasting its link. The page is read into a draft you check and
  * edit, then it's saved and pinned at whatever stage you're at — including over, with your result.
  */
-export function AddHackathonDialog({ open, onClose, defaultStage = "interested" }: { open: boolean; onClose: () => void; defaultStage?: TrackStatus }) {
+export function AddHackathonDialog({
+  open,
+  onClose,
+  defaultStage = "interested",
+  manual: startManual = false,
+}: {
+  open: boolean;
+  onClose: () => void;
+  defaultStage?: TrackStatus;
+  /** Open straight on the empty form, for a hackathon with no page to read. */
+  manual?: boolean;
+}) {
   const { refresh } = useHackmate();
   const router = useRouter();
   const [url, setUrl] = useState("");
@@ -69,6 +87,21 @@ export function AddHackathonDialog({ open, onClose, defaultStage = "interested" 
   const [result, setResult] = useState<ResultKind>("participated");
   const [busy, setBusy] = useState<"read" | "save" | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const manualPreview: Preview = { draft: BLANK, existingId: null, warning: null, readBy: "manual" };
+  const startBlank = () => {
+    setError(null);
+    setPreview(manualPreview);
+    setDraft({ ...BLANK, url: url.trim() });
+  };
+  // Opened with "Add manually": go straight to the form.
+  const [openedManual, setOpenedManual] = useState(false);
+  if (open && startManual && !openedManual) {
+    setOpenedManual(true);
+    setPreview(manualPreview);
+    setDraft(BLANK);
+  }
+  if (!open && openedManual) setOpenedManual(false);
 
   const close = () => {
     setUrl("");
@@ -116,12 +149,12 @@ export function AddHackathonDialog({ open, onClose, defaultStage = "interested" 
     <Dialog
       open={open}
       onClose={close}
-      title="Add a hackathon from a link"
+      title={preview?.readBy === "manual" ? "Add a hackathon" : "Add a hackathon from a link"}
       size="lg"
       footer={
         draft && !preview?.existingId ? (
           <>
-            <Button variant="ghost" onClick={() => { setPreview(null); setDraft(null); }}>Back</Button>
+            {!startManual && <Button variant="ghost" onClick={() => { setPreview(null); setDraft(null); }}>Back</Button>}
             <Button variant="primary" onClick={save} loading={busy === "save"} disabled={!draft.title.trim()}>
               {stage === "results" ? "Add to Results" : "Add and pin"}
             </Button>
@@ -159,6 +192,12 @@ export function AddHackathonDialog({ open, onClose, defaultStage = "interested" 
             </div>
           </label>
           {error && <Banner tone="danger">{error}</Banner>}
+          <div className="flex items-center gap-2 border-t border-border pt-3 text-muted">
+            <span>No page, or it can&apos;t be read?</span>
+            <Button type="button" size="sm" onClick={startBlank} icon={<PencilLine aria-hidden className="size-3.5" />}>
+              Enter the details yourself
+            </Button>
+          </div>
         </form>
       ) : preview?.existingId ? (
         <div className="space-y-3">
@@ -167,7 +206,9 @@ export function AddHackathonDialog({ open, onClose, defaultStage = "interested" 
         </div>
       ) : (
         <div className="space-y-4">
-          {preview?.warning ? (
+          {preview?.readBy === "manual" ? (
+            <p className="text-xs text-muted">Only the name is needed. Add what you know; you can change it later.</p>
+          ) : preview?.warning ? (
             <Banner tone="warn">{preview.warning}</Banner>
           ) : (
             <p className="flex items-center gap-1.5 text-xs text-muted">
@@ -178,8 +219,13 @@ export function AddHackathonDialog({ open, onClose, defaultStage = "interested" 
 
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Name" span>
-              <input className="input" value={draft.title} onChange={(e) => set({ title: e.target.value })} required />
+              <input className="input" value={draft.title} onChange={(e) => set({ title: e.target.value })} required autoFocus={preview?.readBy === "manual"} />
             </Field>
+            {preview?.readBy === "manual" && (
+              <Field label="Website (optional)" span>
+                <input className="input" type="url" inputMode="url" placeholder="https://…" value={draft.url} onChange={(e) => set({ url: e.target.value })} />
+              </Field>
+            )}
             <Field label="One-line description" span>
               <input className="input" value={draft.tagline ?? ""} onChange={(e) => set({ tagline: e.target.value })} />
             </Field>
@@ -215,6 +261,16 @@ export function AddHackathonDialog({ open, onClose, defaultStage = "interested" 
             <Field label="Prizes">
               <input className="input" placeholder="$10,000 in prizes" value={draft.prizeText ?? ""} onChange={(e) => set({ prizeText: e.target.value })} />
             </Field>
+            {preview?.readBy === "manual" && (
+              <Field label="Rules, prizes and notes (optional)" span>
+                <textarea
+                  className="input min-h-24"
+                  placeholder="Paste the rules or describe it: tracks, judging, deliverables, team size… Overview, Ask AI and the checklist read this."
+                  value={draft.description ?? ""}
+                  onChange={(e) => set({ description: e.target.value })}
+                />
+              </Field>
+            )}
             <fieldset className="sm:col-span-2">
               <legend className="label">Themes</legend>
               <div className="flex flex-wrap gap-1.5">

@@ -234,3 +234,20 @@ test('accounts never see or change each other\'s data, even by id', async () => 
   // Signed out (account 0) still has only its own tracker entry.
   assert.equal((await repo.listTracked()).length, 1);
 });
+
+test('a hackathon can be added by hand with no link, and a bad website is refused', async () => {
+  const { POST } = require('../src/app/api/import/route.ts');
+  const draft = { url: '', title: 'Campus Build Night', tagline: null, organizer: 'CS Club', mode: 'offline', city: 'Pune', country: 'India', startsAt: '2030-02-01T12:00:00.000Z', endsAt: '2030-02-02T12:00:00.000Z', regEndsAt: null, prizeText: '₹10,000 in prizes', themes: [], teamMin: 2, teamMax: 4, image: null, description: 'Build anything in 24 hours. Teams of 2-4.' };
+  const res = await POST(request({ action: 'create', draft, status: 'interested' }, 'POST'));
+  assert.equal(res.status, 200);
+  const { id } = await res.json();
+  assert.match(id, /^custom:/);
+  const h = await repo.getHackathon(id);
+  assert.equal(h.url, ''); assert.equal(h.title, 'Campus Build Night'); assert.equal(h.city, 'Pune'); assert.equal(h.prizeUsd > 0, true);
+  assert.equal(await repo.getDescription(id), 'Build anything in 24 hours. Teams of 2-4.');
+  assert.ok((await repo.listTracked()).some((t) => t.hackathonId === id));
+  const bad = await POST(request({ action: 'create', draft: { ...draft, url: 'javascript:alert(1)' }, status: 'interested' }, 'POST'));
+  assert.equal(bad.status, 400);
+  const nameless = await POST(request({ action: 'create', draft: { ...draft, title: '  ' }, status: 'interested' }, 'POST'));
+  assert.equal(nameless.status, 400);
+});

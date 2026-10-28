@@ -56,7 +56,7 @@ async function sendDueReminders(now: Date): Promise<{ sent: number; skipped?: st
     const tightest = Math.min(...open);
     if (await already.get(d.id, tightest, d.dueAt)) continue;
     due.push({
-      line: `• ${d.hackathonTitle} — ${d.label}: ${fmt(d.dueAt)} (${timeLeft(dueAt.getTime() - now.getTime())} left)\n  ${d.hackathonUrl}`,
+      line: `• ${d.hackathonTitle} — ${d.label}: ${fmt(d.dueAt)} (${timeLeft(dueAt.getTime() - now.getTime())} left)${d.hackathonUrl ? `\n  ${d.hackathonUrl}` : ""}`,
       mark: async () => {
         for (const m of open) await mark.run(d.id, m, d.dueAt, now.toISOString());
       },

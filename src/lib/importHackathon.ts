@@ -1,6 +1,6 @@
 import "server-only";
 import { background } from "./request";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { generateJson } from "./ai";
@@ -15,6 +15,7 @@ import type { Hackathon, Mode, ResultKind, TrackStatus } from "./types";
 
 /** What the import form shows for you to check and edit before anything is saved. */
 export interface ImportDraft {
+  /** The event's page, or "" for one added by hand without a link. */
   url: string;
   title: string;
   tagline: string | null;
@@ -30,6 +31,8 @@ export interface ImportDraft {
   teamMin: number | null;
   teamMax: number | null;
   image: string | null;
+  /** Rules, prizes, anything you know: added by hand, it's what Overview, Ask AI and the checklist read. */
+  description?: string | null;
 }
 
 export interface ImportPreview {
@@ -305,19 +308,22 @@ export interface ImportChoice {
  * rules in the background so Overview, Ask AI and the checklist work like for any other hackathon.
  */
 export async function createFromDraft(d: ImportDraft, choice: ImportChoice): Promise<string> {
-  const url = checkUrl(d.url);
+  // No link: a hackathon you're adding by hand, with whatever details you type.
+  const url = d.url.trim() ? checkUrl(d.url) : null;
   // A link to a site with event data is saved as that site's listing (its id, link and description), so the feed
   // and the import never make two copies; your edits in the form still win.
-  const known = (await fromSite(url))?.listing ?? null;
-  const id = known?.id ?? `custom:${createHash("sha1").update(normalise(url)).digest("hex").slice(0, 12)}`;
-  const title = d.title.trim().slice(0, 200) || url.hostname;
+  const known = url ? ((await fromSite(url))?.listing ?? null) : null;
+  const id =
+    known?.id ??
+    (url ? `custom:${createHash("sha1").update(normalise(url)).digest("hex").slice(0, 12)}` : `custom:${randomUUID().replace(/-/g, "").slice(0, 12)}`);
+  const title = d.title.trim().slice(0, 200) || url?.hostname || "Untitled hackathon";
   const h: Hackathon = {
     ...(known ?? {}),
     id,
     source: known?.source ?? "custom",
     title,
     tagline: d.tagline?.trim() || null,
-    url: known?.url ?? url.toString(),
+    url: known?.url ?? url?.toString() ?? "",
     image: d.image,
     mode: d.mode,
     city: d.mode === "online" ? null : d.city?.trim() || null,
@@ -337,6 +343,7 @@ export async function createFromDraft(d: ImportDraft, choice: ImportChoice): Pro
     organizer: d.organizer?.trim() || null,
     teamMin: d.teamMin,
     teamMax: d.teamMax,
+    description: d.description?.trim().slice(0, 20_000) || known?.description || null,
   };
   await upsertHackathons([h], new Date().toISOString());
   await trackHackathon(id);
