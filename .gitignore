@@ -48,3 +48,6 @@ next-env.d.ts
 replica/screens/*
 !replica/screens/README.md
 /.next-alt/
+
+# supabase CLI cache
+supabase/.temp
