@@ -321,6 +321,12 @@ const PERSONAL_SCHEMA = SCHEMA.split("\n")
   .map((stmt) => stmt.replace(/\s+REFERENCES hackathons\(id\)/g, ""))
   .join(";\n") + ";";
 
+/**
+ * A signed-out visitor on a public HackMate: they see empty personal data in a throwaway in-memory database,
+ * never the original file's. (They can't write anything either; withAccount turns those requests away.)
+ */
+export const ANONYMOUS = -1;
+
 /** null = signed out (the original file). Set per request by withAccount() in auth.ts. */
 const scope = new AsyncLocalStorage<number | null>();
 
@@ -331,7 +337,7 @@ export function runAs<T>(userId: number | null, fn: () => T): T {
 
 export const currentScope = (): number | null => scope.getStore() ?? null;
 
-const globalForDb = globalThis as unknown as { hackmateDb?: DatabaseSync; hackmateMigrated?: number; hackmateUserDbs?: Map<number, DatabaseSync> };
+const globalForDb = globalThis as unknown as { hackmateDb?: DatabaseSync; hackmateMigrated?: number; hackmateUserDbs?: Map<number, DatabaseSync>; hackmateAnonDb?: DatabaseSync };
 const SHARED_FILE = () => path.join(DATA_DIR, "hackmate.db");
 const USERS_DIR = path.join(DATA_DIR, "users");
 
@@ -377,10 +383,21 @@ function userDb(userId: number): DatabaseSync {
   return conn;
 }
 
+function anonymousDb(): DatabaseSync {
+  sharedDb();
+  if (!globalForDb.hackmateAnonDb) {
+    const conn = new DatabaseSync(":memory:");
+    conn.prepare("ATTACH DATABASE ? AS shared").run(SHARED_FILE());
+    migratePersonal(conn);
+    globalForDb.hackmateAnonDb = conn;
+  }
+  return globalForDb.hackmateAnonDb;
+}
+
 /** The connection for whoever this request is for. */
 export function db(): DatabaseSync {
   const id = currentScope();
-  return id == null ? sharedDb() : userDb(id);
+  return id == null ? sharedDb() : id === ANONYMOUS ? anonymousDb() : userDb(id);
 }
 
 /** Every account with data, plus signed out: for background jobs (reminders, refreshing deadlines after a sync). */

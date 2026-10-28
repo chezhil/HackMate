@@ -2,7 +2,8 @@ import "server-only";
 import { createHash, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { cookies } from "next/headers";
-import { copySignedOutData, runAs, sharedDb } from "./db";
+import { ANONYMOUS, copySignedOutData, runAs, sharedDb } from "./db";
+import { ipOf, loginRequired, withClient } from "./request";
 import type { Account, Member, MemberCertificate, MemberHackathon, MemberProfile } from "./types";
 import { getProfile, listCertificates, portfolio } from "./wrapup";
 
@@ -185,9 +186,24 @@ export function getMember(username: string): Member | null {
 /**
  * Wrap a route handler so everything it does reads and writes the signed-in person's own data
  * (or the signed-out data when no one is signed in).
+ *
+ * On a public HackMate (HACKMATE_REQUIRE_LOGIN), a signed-out visitor's reads see empty personal data, and
+ * anything that changes data or calls the AI is refused until they sign in. `open` lets a write through
+ * anyway (signing in and up).
  */
-export function withAccount<A extends unknown[], R>(handler: (...args: A) => Promise<R>): (...args: A) => Promise<R> {
-  return async (...args: A) => runAs(await currentUserId(), () => handler(...args));
+export function withAccount<A extends unknown[], R>(handler: (...args: A) => Promise<R>, opts: { open?: boolean } = {}): (...args: A) => Promise<R | Response> {
+  return async (...args: A) => {
+    const req = args[0] as Request | undefined;
+    const ip = ipOf(req);
+    const userId = await currentUserId();
+    if (userId == null && loginRequired()) {
+      if (req?.method && req.method !== "GET" && !opts.open) {
+        return Response.json({ error: "Sign in to save your own tracker, ideas and results.", signIn: true }, { status: 401 });
+      }
+      return withClient(ip, () => runAs(ANONYMOUS, () => handler(...args)));
+    }
+    return withClient(ip, () => runAs(userId, () => handler(...args)));
+  };
 }
 
 /**

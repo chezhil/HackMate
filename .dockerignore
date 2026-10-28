@@ -1,0 +1,13 @@
+node_modules
+.next
+.next-*
+data
+.env*
+!.env.example
+.git
+replica
+tests
+tests-setup.cjs
+tsconfig.tsbuildinfo
+*.md
+!README.md

@@ -1,5 +1,6 @@
 import { withAccount } from "@/lib/auth";
 import { lastSync, syncAll } from "@/lib/sync";
+import { allow } from "@/lib/request";
 import { connection } from "next/server";
 
 async function get() {
@@ -7,9 +8,15 @@ async function get() {
   return Response.json({ lastSync: lastSync() });
 }
 
+/**
+ * Refresh every feed now. The feeds are shared, so however many people press Refresh, they're fetched at most
+ * every few minutes; otherwise you get the last result. (The server also refreshes on its own every 30 minutes.)
+ */
 async function post() {
-  const report = await syncAll();
-  return Response.json(report);
+  const last = lastSync();
+  const recent = last && Date.now() - new Date(last.at).getTime() < 5 * 60_000;
+  if (recent || !allow("sync", 1, 5 * 60_000)) return Response.json({ ...(last ?? {}), skipped: "Refreshed in the last few minutes" });
+  return Response.json(await syncAll());
 }
 
 // Every request reads and writes the signed-in person's own data.

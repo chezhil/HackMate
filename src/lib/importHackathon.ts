@@ -1,10 +1,12 @@
 import "server-only";
 import { createHash } from "node:crypto";
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import { generateJson } from "./ai";
 import { buildDetails } from "./details";
 import { db } from "./db";
 import { getHackathon, trackHackathon, updateTracked, upsertHackathons } from "./repo";
-import { fetchText, htmlToText, iso, parsePrizeUsd } from "./sources/util";
+import { htmlToText, iso, parsePrizeUsd, USER_AGENT } from "./sources/util";
 import { inferThemes, THEMES } from "./themes";
 import type { Hackathon, Mode, ResultKind, TrackStatus } from "./types";
 
@@ -77,6 +79,43 @@ function findExisting(u: URL): string | null {
   return null;
 }
 
+/** Loopback, private, link-local, carrier-grade NAT and unique-local addresses: never fetched for an import. */
+function privateAddress(ip: string): boolean {
+  const v4 = ip.replace(/^::ffff:/i, "");
+  if (isIP(v4) === 4) {
+    const [a, b] = v4.split(".").map(Number);
+    return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127);
+  }
+  const x = ip.toLowerCase();
+  return x === "::" || x === "::1" || x.startsWith("fc") || x.startsWith("fd") || x.startsWith("fe8") || x.startsWith("fe9") || x.startsWith("fea") || x.startsWith("feb");
+}
+
+/** The name must resolve only to public addresses, so a link can't reach this server's own network. */
+async function assertPublic(u: URL) {
+  const host = u.hostname.replace(/^\[|\]$/g, "");
+  const addrs = isIP(host) ? [host] : (await lookup(host, { all: true }).catch(() => [])).map((a) => a.address);
+  if (addrs.length === 0) throw new Error("HTTP 0: name not found");
+  if (addrs.some(privateAddress)) throw new ImportError("That link points at a private network address, not a public website.");
+}
+
+/** fetch, following up to 5 redirects by hand so each hop is checked too. */
+async function fetchPublic(start: URL): Promise<string> {
+  let url = start;
+  for (let hop = 0; hop < 6; hop++) {
+    checkUrl(url.toString());
+    await assertPublic(url);
+    const res = await fetch(url, { headers: { "User-Agent": USER_AGENT, Accept: "text/html,*/*" }, redirect: "manual", signal: AbortSignal.timeout(20_000) });
+    const to = res.headers.get("location");
+    if (res.status >= 300 && res.status < 400 && to) {
+      url = new URL(to, url);
+      continue;
+    }
+    if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
+    return (await res.text()).slice(0, 2_000_000);
+  }
+  throw new Error("HTTP 0: too many redirects");
+}
+
 const meta = (html: string, name: string) =>
   html.match(new RegExp(`<meta[^>]+(?:property|name)=["']${name}["'][^>]+content=["']([^"']*)["']`, "i"))?.[1] ??
   html.match(new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]+(?:property|name)=["']${name}["']`, "i"))?.[1] ??
@@ -103,8 +142,9 @@ export async function previewFromUrl(raw: string): Promise<ImportPreview> {
 
   let html: string;
   try {
-    html = await fetchText(url.toString());
+    html = await fetchPublic(url);
   } catch (e) {
+    if (e instanceof ImportError) throw e;
     const status = Number((e as Error).message.match(/HTTP (\d{3})/)?.[1]);
     const warning =
       status === 401 || status === 403 || status === 429

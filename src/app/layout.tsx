@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { HackmateProvider } from "@/components/HackmateProvider";
 import { Nav } from "@/components/Nav";
 import { PageSkeleton } from "@/components/PageSkeleton";
+import { SignInGate } from "@/components/SignInGate";
 import { ConfirmProvider } from "@/components/ui/Confirm";
 import { ToastProvider } from "@/components/ui/Toast";
 import { themeScript } from "@/lib/themeScript";
@@ -45,7 +46,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <ConfirmProvider>
               <ToastProvider>
                 <Nav />
-                <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">{children}</main>
+                <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
+                  <SignInGate>{children}</SignInGate>
+                </main>
               </ToastProvider>
             </ConfirmProvider>
           </HackmateProvider>

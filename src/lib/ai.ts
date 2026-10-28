@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { sharedDb } from "./db";
+import { ANONYMOUS, currentScope, sharedDb } from "./db";
+import { allowAll, clientIp, retryAt } from "./request";
 
 /**
  * One entry point for every AI call, routed by task.
@@ -68,6 +69,37 @@ export interface AiResult {
 }
 
 export class AiUnavailableError extends Error {}
+
+// ---------- per-account limits ----------
+//
+// Groq and Gemini free tiers are shared by everyone on this HackMate, so each account gets an allowance of real
+// AI calls (answers from the cache don't count). Signed-out visitors on a public HackMate only ever trigger the
+// one-off read of a hackathon's rules, limited per address. Background jobs aren't limited.
+
+const HOUR = 3_600_000;
+const limit = (name: string, fallback: number) => {
+  const n = Number(process.env[name]);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+};
+
+function checkAllowance(task: Task) {
+  const who = currentScope();
+  const ip = clientIp();
+  if (ip == null) return; // not from a request
+  const rules =
+    who === ANONYMOUS
+      ? [{ key: `ai:ip:${ip}`, max: limit("AI_LIMIT_ANON_PER_HOUR", 10), windowMs: HOUR }]
+      : [
+          { key: `ai:${who ?? "local"}:h`, max: limit("AI_LIMIT_PER_HOUR", 60), windowMs: HOUR },
+          { key: `ai:${who ?? "local"}:d`, max: limit("AI_LIMIT_PER_DAY", 300), windowMs: 24 * HOUR },
+        ];
+  const full = allowAll(rules);
+  if (!full) return;
+  const when = retryAt(full.key, full.windowMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const span = full.windowMs === HOUR ? "this hour" : "today";
+  console.warn(`[ai] limit reached for ${who ?? "local"} (${full.key}) on ${task}`);
+  throw new AiUnavailableError(`You've used your AI allowance for ${span} (${full.max} requests). It frees up again around ${when}.`);
+}
 
 const KEYS: Record<Provider, () => string | undefined> = {
   groq: () => process.env.GROQ_API_KEY,
@@ -274,6 +306,7 @@ export function generate(req: AiRequest): Promise<AiResult> {
 }
 
 async function callProviders(req: AiRequest): Promise<AiResult> {
+  checkAllowance(req.task);
   const order = ROUTES[req.task].filter(available);
   if (order.length === 0) {
     const needs = req.task === "audio" ? "GEMINI_API_KEY" : "GROQ_API_KEY or GEMINI_API_KEY";
@@ -316,6 +349,7 @@ function parseJson(text: string): unknown {
 
 /** Speech-to-text with Groq's Whisper: the fallback when Gemini can't take a voice note. */
 export async function transcribe(audio: Buffer, mime: string): Promise<string> {
+  checkAllowance("audio");
   const key = KEYS.groq();
   if (!key) throw new AiUnavailableError("Transcription needs GEMINI_API_KEY or GROQ_API_KEY in .env.local.");
   const form = new FormData();
