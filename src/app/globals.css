@@ -111,7 +111,7 @@ h1, h2, h3 {
   margin: 2px;
   border-radius: 999px;
   border: var(--line) solid var(--border);
-  box-shadow: 2px 2px 0 0 var(--border);
+  box-shadow: 2px 2px 0 0 var(--ink-shadow);
   transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 .hm-pin--offline { background: var(--pin-offline); }
@@ -121,16 +121,16 @@ h1, h2, h3 {
   width: 12px;
   height: 12px;
   margin: 0;
-  box-shadow: 1px 1px 0 0 var(--border);
+  box-shadow: 1px 1px 0 0 var(--ink-shadow);
 }
 .hm-pin-wrap:hover .hm-pin,
 .hm-pin.is-hover {
   transform: translate(-1px, -1px) scale(1.25);
-  box-shadow: 3px 3px 0 0 var(--border);
+  box-shadow: 3px 3px 0 0 var(--ink-shadow);
 }
 .hm-pin.is-selected {
   transform: translate(-1px, -1px) scale(1.5);
-  box-shadow: 3px 3px 0 0 var(--border);
+  box-shadow: 3px 3px 0 0 var(--ink-shadow);
   outline: 3px solid var(--surface);
   outline-offset: 1px;
 }
@@ -146,7 +146,7 @@ h1, h2, h3 {
   border: var(--line) solid var(--border);
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
-  box-shadow: -2px 2px 0 0 var(--border);
+  box-shadow: -2px 2px 0 0 var(--ink-shadow);
 }
 .hm-you > span {
   position: absolute;
