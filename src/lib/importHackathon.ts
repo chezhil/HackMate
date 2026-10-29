@@ -4,7 +4,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { generateJson } from "./ai";
-import { buildDetails } from "./details";
+import { buildDetails, markReading } from "./details";
 import { all } from "./db";
 import { canonicalUrl } from "./urls";
 import { isDate, isHttpUrl } from "./validation";
@@ -358,6 +358,8 @@ export async function createFromDraft(d: ImportDraft, choice: ImportChoice): Pro
     await updateTracked(trackedId, { status: choice.status, ...(choice.status === "results" ? { result: choice.result ?? "participated" } : {}) });
   }
   // Fills Overview, rules, Ask AI and the submission checklist from the page, like any other hackathon.
+  // Marked first, so opening it straight away shows "Reading the rules" instead of starting a second read.
+  await markReading(trackedId);
   background("import", () => buildDetails(trackedId));
   return trackedId;
 }

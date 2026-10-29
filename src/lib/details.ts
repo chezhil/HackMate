@@ -99,8 +99,22 @@ export async function getSourceText(id: string): Promise<string> {
 
 const building = new Map<string, Promise<HackathonDetails>>();
 
-export function isBuilding(id: string) {
-  return building.has(id);
+// "Reading the rules" is recorded in the database too, not just in this server's memory: on Vercel the read runs
+// after the response and the page's polling can reach another instance, which must still see it as in progress.
+// A read that hasn't finished within 5 minutes (the function limit) is treated as failed so it can start again.
+const READING_KEY = (id: string) => `reading:${id}`;
+const READING_FOR_MS = 5 * 60_000;
+
+/** Record that a read has started: call before the response goes out, so the page polls from the first answer. */
+export async function markReading(id: string) {
+  await run("INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", READING_KEY(id), new Date().toISOString());
+}
+
+/** Whether the rules are being read right now, on any server. */
+export async function isBuilding(id: string): Promise<boolean> {
+  if (building.has(id)) return true;
+  const r = await get<{ value: string }>("SELECT value FROM app_settings WHERE key = ?", READING_KEY(id));
+  return !!r && Date.now() - new Date(r.value).getTime() < READING_FOR_MS;
 }
 
 /** Read the hackathon's page(s) and have the AI extract structured info. Cached until refreshed. */
@@ -137,7 +151,10 @@ export function buildDetails(id: string): Promise<HackathonDetails> {
          ON CONFLICT(hackathon_id) DO UPDATE SET source_text = excluded.source_text, info = excluded.info,
            provider = excluded.provider, error = excluded.error, fetched_at = excluded.fetched_at`, id, sourceText, info ? JSON.stringify(info) : null, provider, error, new Date().toISOString()));
     return (await getDetails(id))!;
-  })().finally(() => building.delete(id));
+  })().finally(() => {
+    building.delete(id);
+    void run("DELETE FROM app_settings WHERE key = ?", READING_KEY(id)).catch(() => {});
+  });
   building.set(id, job);
   return job;
 }

@@ -3,7 +3,7 @@ import { background } from "@/lib/request";
 import { withAccount } from "@/lib/auth";
 import { aiStatus } from "@/lib/ai";
 import { ruleAlerts } from "@/lib/alerts";
-import { buildDetails, getDetails, getSourceText, isBuilding } from "@/lib/details";
+import { buildDetails, getDetails, getSourceText, isBuilding, markReading } from "@/lib/details";
 import { getHackathon, listTracked } from "@/lib/repo";
 import { connection } from "next/server";
 
@@ -15,7 +15,7 @@ async function payload(id: string) {
     hackathon,
     tracked: (await listTracked()).find((t) => t.hackathonId === id) ?? null,
     details: await getDetails(id),
-    building: isBuilding(id),
+    building: await isBuilding(id),
     ruleAlerts: ruleAlerts(await getSourceText(id), { min: hackathon.teamMin, max: hackathon.teamMax }),
     ai: await aiStatus(),
   };
@@ -29,7 +29,7 @@ async function get(_req: Request, { params }: Ctx) {
   await connection();
   const id = decodeParam((await params).id);
   if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
-  if (!(await getDetails(id)) && !isBuilding(id)) background("details", () => buildDetails(id));
+  if (!(await getDetails(id)) && !(await isBuilding(id))) await startReading(id);
   return Response.json(await payload(id));
 }
 
@@ -37,8 +37,14 @@ async function get(_req: Request, { params }: Ctx) {
 async function post(_req: Request, { params }: Ctx) {
   const id = decodeParam((await params).id);
   if (!await getHackathon(id)) return Response.json({ error: "Unknown hackathon" }, { status: 404 });
-  background("details", () => buildDetails(id));
+  if (!(await isBuilding(id))) await startReading(id);
   return Response.json(await payload(id));
+}
+
+/** Mark the read as started before answering, then run it after the response. */
+async function startReading(id: string) {
+  await markReading(id);
+  background("details", () => buildDetails(id));
 }
 
 // Every request reads and writes the signed-in person's own data.
