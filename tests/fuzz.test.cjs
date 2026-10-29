@@ -12,7 +12,7 @@ const realFetch = global.fetch;
 global.fetch = async (u) => (String(u).startsWith('http://localhost') ? realFetch(u) : new Response('{}', { status: 404 }));
 // Outside a real Next request, stand in for the request-only helpers.
 const Module = require('module'); const origLoad = Module._load;
-Module._load = function (req, parent, isMain) {
+Module._load = function (req) {
   const m = origLoad.apply(this, arguments);
   if (req === 'next/server') return { ...m, connection: async () => {}, after: (fn) => { void Promise.resolve().then(fn); } };
   if (req === 'next/headers') return { ...m, cookies: async () => ({ get: () => undefined, set: () => {}, delete: () => {} }) };
