@@ -331,7 +331,8 @@ function TrackerCard({
       <StageActions t={t} move={move} />
 
       {/* Moving between columns is drag-and-drop or ← → on the grip, so there's no status dropdown here. */}
-      <div className="flex flex-wrap items-center gap-1.5 border-t border-border pt-2">
+      {/* One line even in the narrow four-column board, so Deadlines is a clock and a count. */}
+      <div className="flex items-center gap-1.5 border-t border-border pt-2 whitespace-nowrap">
         <Link href={`/hackathon/${hid(h.id)}`} className="btn btn-sm btn-primary" title="Rules, Ask AI, ideas, pitch and Q&A tools">
           Open <ArrowRight aria-hidden className="size-3.5" />
         </Link>
@@ -341,9 +342,16 @@ function TrackerCard({
             <span className="sr-only"> (opens in a new tab)</span>
           </a>
         )}
-        <button type="button" className="btn btn-sm" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <button
+          type="button"
+          className="btn btn-sm"
+          aria-expanded={open}
+          aria-label={open ? "Hide deadlines and notes" : `Deadlines and notes (${t.deadlines.length} deadlines)`}
+          title={open ? "Hide deadlines and notes" : "Deadlines and notes"}
+          onClick={() => setOpen(!open)}
+        >
           <Clock aria-hidden className="size-3.5" />
-          {open ? "Hide deadlines" : `Deadlines (${t.deadlines.length})`}
+          {open ? "Hide" : t.deadlines.length}
         </button>
       </div>
 
