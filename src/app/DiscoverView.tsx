@@ -3,7 +3,7 @@
 import { Link2, MapPinned, PencilLine, RefreshCw, Search, SearchX, SlidersHorizontal, Trophy, Users, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { HackathonCard } from "@/components/HackathonCard";
 import { useHackmate } from "@/components/HackmateProvider";
 import type { MapBounds } from "@/components/MapView";
@@ -100,6 +100,8 @@ function HackathonsView() {
     window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
   };
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // The card a pin click wants scrolled to, cleared once it's on the page and scrolled into view.
+  const scrollTarget = useRef<string | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [searchInMap, setSearchInMap] = useState(false);
   const [bounds, setBounds] = useState<MapBounds | null>(null);
@@ -133,7 +135,19 @@ function HackathonsView() {
   // "Search as I move the map" narrows the list to what's in view; the map itself keeps every match.
   const mapOn = f.view !== "list";
   const shown = searchInMap && mapOn && bounds ? filtered.filter((h) => inBounds(h, bounds)) : filtered;
+  // A pin can be past the list's cap; show the list down to it so its card exists to scroll to.
+  const selectedAt = selectedId ? shown.findIndex((h) => h.id === selectedId) : -1;
+  const listCount = Math.max(LIST_CAP, selectedAt + 1);
   const chips = activeFilters(f);
+
+  // Scroll once a render has put the card on the page; coming from Map view, the list shows a render later.
+  const scrollToTarget = () => {
+    const card = scrollTarget.current && document.getElementById(`h-${scrollTarget.current}`);
+    if (!card) return;
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    scrollTarget.current = null;
+  };
+  useEffect(scrollToTarget);
   const failed = lastSync ? Object.entries(lastSync.sources).filter(([, s]) => !s.ok) : [];
   const feedsDown = !loading && hackathons.length === 0 && error;
 
@@ -236,7 +250,7 @@ function HackathonsView() {
                 </EmptyState>
               )
             )}
-            {shown.slice(0, LIST_CAP).map((h) => (
+            {shown.slice(0, listCount).map((h) => (
               <HackathonCard
                 key={h.id}
                 h={h}
@@ -249,7 +263,7 @@ function HackathonsView() {
                 onUntrack={() => untrack(h.id)}
               />
             ))}
-            {shown.length > LIST_CAP && <p className="text-center text-sm text-muted">Showing the first {LIST_CAP}. Narrow the filters to see the rest.</p>}
+            {shown.length > listCount && <p className="text-center text-sm text-muted">Showing the first {listCount}. Narrow the filters to see the rest.</p>}
           </div>
         )}
         {mapOn && (
@@ -269,7 +283,11 @@ function HackathonsView() {
                 onBoundsChange={setBounds}
                 onSelect={(id) => {
                   setSelectedId(id);
-                  document.getElementById(`h-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  scrollTarget.current = id;
+                  // The card may already be showing (the same pin clicked again), with no re-render coming.
+                  scrollToTarget();
+                  // Map view has no list; switch to the split view so the card is there beside the map.
+                  if (f.view === "map") set({ view: "split" });
                 }}
               />
             )}
