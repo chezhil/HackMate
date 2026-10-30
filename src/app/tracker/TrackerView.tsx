@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Check, Clock, GripVertical, Pin, PinOff, TriangleAlert } from "lucide-react";
+import { ArrowRight, Check, Clock, ExternalLink, GripVertical, Pin, PinOff, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ClashList } from "@/components/ClashList";
@@ -335,6 +335,12 @@ function TrackerCard({
         <Link href={`/hackathon/${hid(h.id)}`} className="btn btn-sm btn-primary" title="Rules, Ask AI, ideas, pitch and Q&A tools">
           Open <ArrowRight aria-hidden className="size-3.5" />
         </Link>
+        {h.url && (
+          <a href={h.url} target="_blank" rel="noreferrer" className="btn btn-sm" title={`Open ${h.title} on ${SOURCE_LABELS[h.source]}`}>
+            Website <ExternalLink aria-hidden className="size-3.5" />
+            <span className="sr-only"> (opens in a new tab)</span>
+          </a>
+        )}
         <button type="button" className="btn btn-sm" aria-expanded={open} onClick={() => setOpen(!open)}>
           <Clock aria-hidden className="size-3.5" />
           {open ? "Hide deadlines" : `Deadlines (${t.deadlines.length})`}
