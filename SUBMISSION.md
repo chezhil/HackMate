@@ -48,7 +48,7 @@ submit.
 **How it's built.** Next.js 16 and React 19 on Vercel, with Postgres on Supabase. Row-level security keeps each
 account's data private, and the database enforces it, not just the app. Groq handles the frequent AI calls and
 Gemini the long reads. A shared AI cache means the same question is only paid for once, and each account has an AI
-allowance. It has 150 automated tests, including a fuzz test that sends broken and hostile input to every API
+allowance. It has 151 automated tests, including a fuzz test that sends broken and hostile input to every API
 route.
 
 **How I used Wispr Flow.** I'm the only builder, and every instruction went through Wispr:

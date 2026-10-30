@@ -50,7 +50,7 @@ the numbers.
   - Each account has an hourly and daily AI allowance.
 - **Scheduled jobs:** Supabase's scheduler calls `/api/cron` every 5 minutes, for email reminders and feed
   refreshes.
-- **Tests:** `npm test` runs 150 tests, including a fuzz test that sends broken and hostile input to all 44
+- **Tests:** `npm test` runs 151 tests, including a fuzz test that sends broken and hostile input to all 44
   API routes.
 
 ## What's in it
