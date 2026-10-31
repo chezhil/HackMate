@@ -1,12 +1,12 @@
-// Turns replica/design/tokens.json into src/app/tokens.css (CSS variables + the Tailwind theme mapping).
-// Run from the repo root: node replica/design/build-tokens.mjs
+// Turns design-system/tokens.json into src/app/tokens.css (CSS variables + the Tailwind theme mapping).
+// Run from the repo root: node design-system/build-tokens.mjs
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const t = JSON.parse(readFileSync(path.join(here, "tokens.json"), "utf8"));
-const out = path.join(here, "../../src/app/tokens.css");
+const out = path.join(here, "../src/app/tokens.css");
 
 const vars = (obj, indent) =>
   Object.entries(obj)
@@ -48,7 +48,7 @@ const theme = [
   `  --font-mono: ${t.font.mono};`,
 ].join("\n");
 
-const css = `/* Generated from replica/design/tokens.json by replica/design/build-tokens.mjs. Do not edit by hand. */
+const css = `/* Generated from design-system/tokens.json by design-system/build-tokens.mjs. Do not edit by hand. */
 
 :root {
   color-scheme: light;

@@ -1,5 +1,5 @@
 @import "tailwindcss";
-/* Colour roles, type, shadows and z-layers. Edit replica/design/tokens.json, then run node replica/design/build-tokens.mjs. */
+/* Colour roles, type, shadows and z-layers. Edit design-system/tokens.json, then run node design-system/build-tokens.mjs. */
 @import "./tokens.css";
 
 /* Neobrutalist page: cream paper with a dotted grid behind everything. */

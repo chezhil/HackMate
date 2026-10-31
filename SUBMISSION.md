@@ -1,7 +1,6 @@
 # HackMate — submission text
 
-Text for the **No Hands: The Wispr Challenge** form (Builders track). One thing is still to add: the
-demo video link, marked **TODO** below.
+Text for the **No Hands: The Wispr Challenge** form (Builders track).
 
 ## Short description (a few lines)
 
@@ -17,9 +16,9 @@ demo video link, marked **TODO** below.
 > judge Q&A, checks your submission against the rules, and keeps your results, prizes and certificates on a
 > public profile.
 >
-> **How I used Wispr:** I built HackMate entirely by voice. Every spec, feature request, bug report and design
-> note went to an AI coding agent through Wispr Flow, as did these docs. I didn't type a single prompt.
-> My Wispr usage card: 3,550 words dictated at 159 words a minute, across 9 apps, on a 5-day streak.
+> **How I used Wispr:** I built HackMate by voice. The specs, feature requests, bug reports and design notes
+> went to an AI coding agent through Wispr Flow, as did these docs: 110 AI prompts, 82% of everything I
+> dictated, 3,550 words at 159 words a minute.
 
 ## Longer version (if there's room)
 
@@ -51,7 +50,7 @@ Gemini the long reads. A shared AI cache means the same question is only paid fo
 allowance. It has 152 automated tests, including a fuzz test that sends broken and hostile input to every API
 route.
 
-**How I used Wispr Flow.** I'm the only builder, and every instruction went through Wispr:
+**How I used Wispr Flow.** I'm the only builder, and my instructions went through Wispr:
 - **Specs:** "make it so I can drag the hackathons in the tracker like tiles", "rank clashes by importance".
 - **Bug reports:** "Mergetober is still in my tracking when I unpinned it", "the Hack2skill import shows just
   'Hack2skill'".
@@ -67,6 +66,6 @@ without breaking off to type.
 
 - Live app: https://hackmate-pied.vercel.app
 - Test login: username `chezhil`, password `Password` (an account with hackathons already pinned)
-- Demo video (≤ 2 min): **TODO: link** (script in DEMO_SCRIPT.txt)
-- Wispr usage card: 3,550 words dictated, 159 words a minute, 9 apps, 5-day streak (uploaded with the form)
+- Demo video (≤ 2 min): linked in the submission form (script in DEMO_SCRIPT.txt)
+- Wispr usage card: the "Where you Flow" card, 110 AI prompts (82% of dictation), uploaded with the form
 - Code: https://github.com/chezhil/HackMate

@@ -11,7 +11,7 @@ import type { AiOutput, DeckRoast, PitchScript, QaTurn, VideoScript } from "@/li
 
 export type PitchSection = "pitch" | "video" | "roast" | "qa";
 
-export const PITCH_SECTIONS: { key: PitchSection; label: string }[] = [
+const PITCH_SECTIONS: { key: PitchSection; label: string }[] = [
   { key: "pitch", label: "Pitch script" },
   { key: "video", label: "Demo video script" },
   { key: "roast", label: "Deck roaster" },

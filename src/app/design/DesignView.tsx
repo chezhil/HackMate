@@ -54,7 +54,7 @@ export function DesignView() {
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="page-title">Design system</h1>
-            <p className="text-sm text-muted">Tokens from replica/design/tokens.json. Every pair here passes WCAG AA in both themes.</p>
+            <p className="text-sm text-muted">Tokens from design-system/tokens.json. Every pair here passes WCAG AA in both themes.</p>
           </div>
           <div role="radiogroup" aria-label="Theme" className="flex rounded-lg border border-border p-0.5">
             {([["system", Monitor], ["light", Sun], ["dark", Moon]] as const).map(([k, Icon]) => (

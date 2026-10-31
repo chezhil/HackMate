@@ -14,7 +14,7 @@ import type { Certificate, Prize, PrizeStatus, Profile, Project, Retro, Stats, T
 type Row = Record<string, string | number | null>;
 
 /** A hackathon counts as "done" once you've submitted, or it has ended while you were registered/building. */
-export function isDone(t: TrackedWithHackathon, now = Date.now()) {
+function isDone(t: TrackedWithHackathon, now = Date.now()) {
   if (t.status === "submitted" || t.status === "results") return true;
   const end = t.hackathon.endsAt ? new Date(t.hackathon.endsAt).getTime() : null;
   return t.status !== "interested" && end !== null && end < now;

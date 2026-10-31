@@ -78,7 +78,7 @@ export function deadlineEvent(d: Deadline, h: Hackathon, alarmMinutes: number[])
   ];
 }
 
-export function buildCalendar(name: string, events: string[][]): string {
+function buildCalendar(name: string, events: string[][]): string {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",

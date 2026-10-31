@@ -50,7 +50,7 @@ export async function fetchUnstop(): Promise<Hackathon[]> {
   return items.map(normalizeUnstop);
 }
 
-export function normalizeUnstop(it: UnstopItem): Hackathon {
+function normalizeUnstop(it: UnstopItem): Hackathon {
   const addr = it.address_with_country_logo ?? null;
   const mode: Mode = it.region === "offline" ? "offline" : it.region === "hybrid" ? "hybrid" : "online";
   const cash = (it.prizes ?? []).reduce((sum, p) => sum + (p.cash ?? 0), 0);

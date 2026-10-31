@@ -33,7 +33,7 @@ export interface SyncReport {
   sources: Record<FeedSource, { ok: boolean; count: number; error?: string }>;
 }
 
-export const STALE_AFTER_MS = 6 * 3600_000;
+const STALE_AFTER_MS = 6 * 3600_000;
 
 let inFlight: Promise<SyncReport> | null = null;
 

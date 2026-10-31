@@ -5,7 +5,8 @@ data
 .env*
 !.env.example
 .git
-replica
+design-system
+brand
 tests
 tests-setup.cjs
 tsconfig.tsbuildinfo

@@ -7,7 +7,7 @@ export function dayKey(d: Date | string): string {
 }
 
 /** The event's span. Sources without a start date (Unstop) are treated as a one-day event on the end date. */
-export function eventRange(h: Hackathon): { start: Date; end: Date } | null {
+function eventRange(h: Hackathon): { start: Date; end: Date } | null {
   const end = h.endsAt ?? h.startsAt;
   if (!end) return null;
   return { start: new Date(h.startsAt ?? end), end: new Date(end) };

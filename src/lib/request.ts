@@ -23,7 +23,7 @@ export function withClient<T>(ip: string, fn: () => T): T {
 /** The caller's IP in this request, or null outside one (background jobs). */
 export const clientIp = (): string | null => client.getStore()?.ip ?? null;
 
-/** Behind Fly or Railway the real address is the first entry of X-Forwarded-For. */
+/** Behind a proxy (Vercel, or a host in front of Docker) the real address is the first entry of X-Forwarded-For. */
 export function ipOf(req: Request | undefined): string {
   const fwd = req?.headers?.get?.("x-forwarded-for")?.split(",")[0]?.trim();
   return fwd || req?.headers?.get?.("x-real-ip") || req?.headers?.get?.("fly-client-ip") || "local";

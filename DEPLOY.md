@@ -14,9 +14,8 @@ HackMate runs on Vercel with its data in Supabase Postgres. With `DATABASE_URL` 
 - **Deploy**: `vercel deploy --prod` from this folder.
 - **Limits**: uploads up to 4 MB each (Vercel's request size); Supabase pauses a free project after about a week
   with no activity (the 5-minute job usually keeps it awake; otherwise press Restore in its dashboard).
-- **Copying an old SQLite HackMate in**: `DATABASE_URL=... node --conditions=react-server scripts/import-sqlite.ts`.
 
-## A server of your own (Railway, Fly, a VPS)
+## A server of your own (Docker)
 
 Here HackMate runs as one Node server with its own background jobs (reminder emails every 5 minutes, feed refresh
 every 30). Without `DATABASE_URL` its data is PGlite in `/app/data/pg`, so it needs:
@@ -45,25 +44,6 @@ limited number of AI calls per hour and per day.
 
 Keep the keys in the host's secrets, never in the repo (`.env*` is git-ignored).
 
-## Fly.io
-
-```bash
-fly launch --copy-config --no-deploy        # pick a unique app name; fly.toml is already set up
-fly volumes create hackmate_data --size 1 --region bom
-fly secrets set GROQ_API_KEY=... GEMINI_API_KEY=... TZ=Asia/Kolkata
-fly deploy
-```
-
-`fly.toml` keeps one machine running (so reminders keep firing), forces HTTPS and checks `/api/health`.
-Change `primary_region` to the one nearest you, and create the volume in that same region.
-
-## Railway
-
-1. New project → Deploy from GitHub repo → pick this repo. `railway.json` tells it to build the Dockerfile.
-2. On the service: **Settings → Volumes → Add volume**, mount path `/app/data`.
-3. **Variables**: add `GROQ_API_KEY`, `GEMINI_API_KEY`, `TZ` (and the SMTP ones for email).
-4. **Settings → Networking → Generate domain**. Keep replicas at 1.
-
 ## After the first deploy
 
 - Open the site and **create your account**. The first account gets a copy of anything in the
@@ -71,7 +51,7 @@ Change `primary_region` to the one nearest you, and create the volume in that sa
 - Calendar subscriptions (Settings → Calendar) use the site's own address, so they work once it's deployed.
 - **Back up the database**: for hosted Postgres use the provider's backups or `pg_dump`. For local PGlite, stop
   the server before copying the entire `/app/data/pg` directory, or use the host's consistent volume snapshots.
-  Uploads and personal data are stored inside the database; the old SQLite file is only a migration source.
+  Uploads and personal data are stored inside the database.
 
 ## Try the image locally
 

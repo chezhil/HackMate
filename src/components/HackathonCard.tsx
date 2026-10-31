@@ -27,7 +27,7 @@ const AI_BADGE: Record<AiPolicyKind, { label: string; tone: Tone; Icon: typeof G
 };
 
 /** The hackathon's stated rule on AI tools; hover shows the sentence it came from. Hidden when the rules don't say. */
-export function AiPolicyBadge({ policy }: { policy: Hackathon["aiPolicy"] }) {
+function AiPolicyBadge({ policy }: { policy: Hackathon["aiPolicy"] }) {
   if (!policy) return null;
   const { label, tone, Icon } = AI_BADGE[policy.kind];
   return (

@@ -223,7 +223,7 @@ export async function updateTracked(id: string, patch: TrackedPatch) {
 // ---------- deadlines ----------
 
 /** Create or refresh the deadlines that come straight from feed data. User-edited ones are left alone. */
-export async function syncAutoDeadlines(hackathonId: string) {
+async function syncAutoDeadlines(hackathonId: string) {
   return withAccountLock("tracker", async () => {
     const h = await getHackathon(hackathonId);
     if (!h) return;

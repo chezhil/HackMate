@@ -98,13 +98,13 @@ export function filtersToQuery(f: Filters): string {
 
 const DAY = 86_400_000;
 
-export function lengthOf(h: Hackathon): Length | null {
+function lengthOf(h: Hackathon): Length | null {
   if (!h.startsAt || !h.endsAt) return null;
   const days = (new Date(h.endsAt).getTime() - new Date(h.startsAt).getTime()) / DAY;
   return days <= 2 ? "short" : days <= 7 ? "week" : "long";
 }
 
-export function startOf(h: Hackathon) {
+function startOf(h: Hackathon) {
   return new Date(h.startsAt ?? h.endsAt ?? 0).getTime();
 }
 
@@ -143,7 +143,7 @@ export function isOver(h: Hackathon, now: number): boolean {
  * The next thing that happens: registration closing, the start, or the end, whichever is still ahead. An event
  * that's already running sorts by when it ends, not by a start months ago; one with no dates goes last.
  */
-export function nextDate(h: Hackathon, now: number): number {
+function nextDate(h: Hackathon, now: number): number {
   return Math.min(ahead(h.regEndsAt, now), ahead(h.startsAt, now), ahead(h.endsAt, now));
 }
 

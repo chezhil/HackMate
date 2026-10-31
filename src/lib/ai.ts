@@ -298,7 +298,7 @@ async function cached(req: AiRequest, call: () => Promise<AiResult>, accept: (te
 }
 
 /** How much the cache has saved: answers stored, and calls answered from them. */
-export async function cacheStats() {
+async function cacheStats() {
   const r = (await get("SELECT COUNT(*) AS entries, COALESCE(SUM(hits), 0) AS hits FROM ai_cache WHERE expires_at > ?", new Date().toISOString())) as {
     entries: number;
     hits: number;

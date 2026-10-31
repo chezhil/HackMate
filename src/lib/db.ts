@@ -8,7 +8,7 @@ import path from "node:path";
 // Postgres. With DATABASE_URL set (Supabase in production) it's a real server; without it (your own machine,
 // tests) it's PGlite, Postgres running inside this process, kept in data/pg. Same SQL, same rules either way.
 
-export const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_DIR = path.join(process.cwd(), "data");
 
 // ---------- whose data ----------
 //
@@ -20,7 +20,7 @@ export const DATA_DIR = path.join(process.cwd(), "data");
 // Signed out on your own machine you're account 0 (the data from before accounts). A signed-out visitor on a
 // public HackMate is ANONYMOUS: they match no rows at all.
 
-export const PERSONAL_TABLES = [
+const PERSONAL_TABLES = [
   "tracked", "deadlines", "reminders_sent", "email_log", "settings", "chat_messages", "ideas", "idea_versions",
   "teammates", "standups", "projects", "ai_outputs", "qa_turns", "checklist_items", "certificates", "prizes", "retros",
 ];
@@ -30,7 +30,7 @@ const SHARED_TABLES = ["hackathons", "geocache", "users", "sessions", "ai_cache"
 
 export const ANONYMOUS = -1;
 /** Signed out, on your own machine: the data kept before accounts existed. */
-export const LOCAL = 0;
+const LOCAL = 0;
 
 /** null = signed out (LOCAL). Set per request by withAccount() in auth.ts. */
 const scope = new AsyncLocalStorage<number | null>();
@@ -513,7 +513,6 @@ function ensureSchema(): Promise<void> {
 }
 
 /** For scripts: create or update the tables now. */
-export const prepareSchema = () => ensureSchema();
 
 /** For tests and scripts: close the connection so the process can exit. */
 export async function closeDb() {

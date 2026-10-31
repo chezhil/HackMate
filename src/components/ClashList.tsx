@@ -8,7 +8,7 @@ import { useHackmate } from "./HackmateProvider";
 import { Badge } from "./ui/Feedback";
 import { OUTLINE, type Tone } from "./ui/tone";
 
-export function describeClash(c: Clash): { title: string; detail: string } {
+function describeClash(c: Clash): { title: string; detail: string } {
   if (c.kind === "events") {
     const days = c.days.length;
     return {

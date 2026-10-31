@@ -15,7 +15,7 @@ const emit = (next: State) => {
   for (const l of listeners) l();
 };
 
-export function reloadAccount() {
+function reloadAccount() {
   fetching = true;
   return call<{ user: Account | null; loginRequired?: boolean }>("/api/auth")
     .then(({ user, loginRequired }) => emit({ loaded: true, user, loginRequired: !!loginRequired }))

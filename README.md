@@ -36,9 +36,9 @@ Built for **No Hands: The Wispr Challenge** (Builders track), entirely by voice 
 
 ### How Wispr Flow was used
 
-Every spec, feature request, bug report and design note that built HackMate was dictated with Wispr Flow and
-sent to an AI coding agent. So were these docs. No prompts were typed. The usage card in the submission shows
-the numbers.
+HackMate's specs, feature requests, bug reports and design notes were dictated with Wispr Flow and sent to an
+AI coding agent, and so were these docs. The Wispr usage card: **110 AI prompts** (82% of everything dictated),
+**3,550 words** at **159 words a minute**, across 9 apps, on a 5-day streak.
 
 ### How it's built
 
