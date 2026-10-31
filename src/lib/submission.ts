@@ -5,6 +5,7 @@ import { factsBlock, getDetails } from "./details";
 import { deleteFile, readFile } from "./files";
 import { videoLimitSec } from "./pitch";
 import { getProject, projectBlock } from "./project";
+import { fetchPublic } from "./publicFetch";
 import { getHackathon, listTracked } from "./repo";
 import { USER_AGENT } from "./sources/util";
 import { listTeam } from "./team";
@@ -151,11 +152,12 @@ export async function deleteChecklistItem(id: number) {
 
 // ---------- verification ----------
 
+/** Whether a submission link opens. Links are typed in, so private addresses (and redirects to them) count as broken. */
 async function head(url: string): Promise<{ ok: boolean; status: number; finalUrl: string }> {
   try {
-    const res = await fetch(url, { method: "GET", redirect: "follow", headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(12_000) });
+    const res = await fetchPublic(url, { headers: { "User-Agent": USER_AGENT }, timeoutMs: 12_000 });
     await res.body?.cancel();
-    return { ok: res.ok, status: res.status, finalUrl: res.url };
+    return { ok: res.ok, status: res.status, finalUrl: res.url || url };
   } catch {
     return { ok: false, status: 0, finalUrl: url };
   }

@@ -12,4 +12,7 @@ Module._resolveFilename = function (id, parent, ...rest) {
 require.extensions['.ts'] = (module, filename) => module._compile(ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true }, fileName: filename,
 }).outputText, filename);
+// Tests never touch the network: every name resolves to a public documentation address (publicFetch checks it).
+const PUBLIC = { address: '192.0.2.10', family: 4 };
+require('node:dns/promises').lookup = async (_host, opts) => (opts && opts.all ? [PUBLIC] : PUBLIC);
 module.exports = root;

@@ -3,7 +3,8 @@ import { createHash } from "node:crypto";
 import { AiUnavailableError, generate, generateJson } from "./ai";
 import { all, get, run, stmt } from "./db";
 import { getDescription, getHackathon } from "./repo";
-import { fetchJson, fetchText, htmlToText, USER_AGENT } from "./sources/util";
+import { fetchPublicText } from "./publicFetch";
+import { fetchJson, htmlToText, USER_AGENT } from "./sources/util";
 import { passagesBlock, relevantPassages, resolveCitations } from "./citations";
 import type { ChatMessage, Citation, Hackathon, HackathonDetails, HackathonInfo, WinnerProject } from "./types";
 
@@ -30,7 +31,8 @@ async function gatherSourceText(h: Hackathon): Promise<string> {
       }
     } else if (h.url && (!["unstop", "devfolio", "devsemble"].includes(h.source) || !feedText)) {
       // Sources with brief listing text need the event page for complete rules.
-      parts.push(htmlToText(await fetchText(h.url, { headers: { "User-Agent": USER_AGENT } })));
+      // Imported and hand-added hackathons carry a link someone typed, so it goes through the public-only fetch.
+      parts.push(htmlToText(await fetchPublicText(h.url, { "User-Agent": USER_AGENT })));
     }
   } catch (e) {
     console.warn("[details] could not fetch page for", h.id, (e as Error).message);

@@ -26,7 +26,7 @@ export const clientIp = (): string | null => client.getStore()?.ip ?? null;
 /** Behind a proxy (Vercel, or a host in front of Docker) the real address is the first entry of X-Forwarded-For. */
 export function ipOf(req: Request | undefined): string {
   const fwd = req?.headers?.get?.("x-forwarded-for")?.split(",")[0]?.trim();
-  return fwd || req?.headers?.get?.("x-real-ip") || req?.headers?.get?.("fly-client-ip") || "local";
+  return fwd || req?.headers?.get?.("x-real-ip") || "local";
 }
 
 // ---------- after the response ----------
