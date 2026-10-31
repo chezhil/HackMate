@@ -67,6 +67,6 @@ without breaking off to type.
 
 - Live app: https://hackmate-pied.vercel.app
 - Test login: username `chezhil`, password `Password` (an account with hackathons already pinned)
-- Demo video (≤ 2 min): **TODO: link** (script in DEMO_SCRIPT.md)
+- Demo video (≤ 2 min): **TODO: link** (script in DEMO_SCRIPT.txt)
 - Wispr usage card: **TODO: screenshot**
 - Code: https://github.com/chezhil/HackMate

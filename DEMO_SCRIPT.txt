@@ -1,0 +1,157 @@
+HACKMATE DEMO SCRIPT
+Under 2 minutes. Aim for 1:50.
+
+DO = what to click
+SAY = what to read out
+
+----------------------------------------
+BEFORE YOU RECORD
+----------------------------------------
+- Sign in as chezhil.
+- Light mode. Browser window full screen.
+- Open the Wispr Challenge hackathon page
+  once, so it loads instantly.
+- Have Wispr Flow and your coding agent
+  open in another window for the ending.
+- Cut any waiting in editing. Don't talk
+  over a loading screen.
+
+----------------------------------------
+1. THE PROBLEM  (0:00 - 0:12)
+----------------------------------------
+DO: Start on Discover, at the top.
+
+SAY:
+"I do a lot of hackathons. Seventeen
+are on my tracker right now.
+
+The hard part isn't building. It's
+keeping track: ten different sites,
+clashing deadlines, and rules that hide
+things like a two-minute video limit.
+
+So I built HackMate, entirely by voice
+with Wispr Flow."
+
+----------------------------------------
+2. DISCOVER  (0:12 - 0:30)
+----------------------------------------
+DO: Set Format to In person.
+DO: Set City to Bengaluru.
+DO: Switch to Split view.
+DO: Click a pin on the map.
+    The list jumps to that card.
+
+SAY:
+"Discover pulls about 490 upcoming
+hackathons from ten sites into one list.
+
+I can filter by format, city, prize and
+dates, and see what's near me on the
+map. Clicking a pin takes me straight to
+that hackathon."
+
+----------------------------------------
+3. THE RULES  (0:30 - 0:55)
+----------------------------------------
+DO: Open "No Hands: The Wispr Challenge"
+    (from Tracker or search "Wispr").
+DO: Point at the summary, then the
+    gotcha "Demo video limit: 2 min".
+DO: Open Ask AI. Type:
+    "What do I need to submit?"
+DO: Click a citation number.
+
+SAY:
+"This is the hackathon I'm entering
+right now. HackMate has read the full
+rules: what to submit, how it's judged,
+team size and dates.
+
+It flags the gotchas. That's why this
+video is under two minutes.
+
+And Ask AI answers only from the rules,
+with citations I can check."
+
+----------------------------------------
+4. TRACKER + CALENDAR  (0:55 - 1:18)
+----------------------------------------
+DO: Go to Tracker.
+DO: Point at the Wispr card's countdown
+    (submission due tonight, 11:59 pm).
+DO: Drag "Speed Demon" from Building
+    to Submitted.
+DO: Click Website on any card.
+DO: Go to Calendar. Move to November.
+
+SAY:
+"Everything I've pinned lives on my
+tracker: four registered, three in
+progress, two submitted.
+
+Each card counts down to its next
+deadline. I drag cards along as I go,
+and open the hackathon's own site in
+one click.
+
+The calendar shows November filling up,
+warns me when deadlines clash, and
+emails me a day and three hours before
+each one."
+
+----------------------------------------
+5. BUILD, PITCH, SUBMIT  (1:18 - 1:38)
+----------------------------------------
+DO: Back on the Wispr Challenge page.
+DO: Open Pitch, then Mock judge Q&A.
+    (Generate once; cut the wait.)
+DO: Open Submit. Paste:
+    github.com/chezhil/HackMate
+    and the live link. Show the checks.
+
+SAY:
+"While building, it writes a pitch timed
+to the judging criteria, and plays a
+mock judge that grades my answers.
+
+Before I submit, the checklist checks my
+links and that my repo is public,
+against this hackathon's own rules."
+
+----------------------------------------
+6. RESULTS + PROFILE  (1:38 - 1:50)
+----------------------------------------
+DO: Go to Results.
+DO: Point at the win, the prizes and
+    the certificates.
+DO: Open Profile.
+
+SAY:
+"Afterwards, it keeps score. Eight
+finished: one win, two runner-ups,
+a special mention, fifteen thousand
+rupees in prizes, all paid, and eight
+certificates, all on my public profile."
+
+----------------------------------------
+7. HOW IT WAS BUILT  (1:50 - 2:00)
+----------------------------------------
+DO: Switch to Wispr Flow. Dictate one
+    line to your coding agent, e.g.
+    "make the tracker buttons fit on
+    one line".
+DO: End on HackMate with the URL showing.
+
+SAY:
+"Every feature you saw was built like
+this: I said it out loud with Wispr
+Flow, and never typed a prompt.
+
+HackMate. hackmate-pied.vercel.app."
+
+----------------------------------------
+IF YOU'RE RUNNING LONG
+----------------------------------------
+Drop the Calendar in part 4, and the
+Mock Q&A in part 5.
