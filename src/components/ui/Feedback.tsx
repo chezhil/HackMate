@@ -84,7 +84,7 @@ export function Banner({ tone = "neutral", children, action }: { tone?: Tone; ch
 }
 
 export function Skeleton({ className = "h-24" }: { className?: string }) {
-  return <div aria-hidden className={`animate-pulse rounded-xl bg-surface-2 ${className}`} />;
+  return <div aria-hidden className={`skeleton rounded-xl ${className}`} />;
 }
 
 /** `level` 1 when the empty state is the whole page, so the page still has its h1. */

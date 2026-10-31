@@ -140,14 +140,17 @@ export async function signUp(input: { username: string; email: string; password:
   return toAccount(created);
 }
 
+/** Signs in with either the account's email or its username. */
 export async function signIn(input: { email: string; password: string }, secure: boolean): Promise<Account> {
   const email = input.email.trim().toLowerCase();
   if ((await used(failKey(email), WINDOW_MS)) >= MAX_FAILURES) throw new AuthError("Too many wrong passwords. Wait 15 minutes and try again.", 429);
-  const row = (await get("SELECT * FROM users WHERE email = ?", email)) as UserRow | undefined;
+  const row = (email.includes("@")
+    ? await get("SELECT * FROM users WHERE email = ?", email)
+    : await get("SELECT * FROM users WHERE lower(username) = ?", email)) as UserRow | undefined;
   const ok = row ? await checkPassword(input.password, row.password_hash) : (await checkPassword(input.password, await DUMMY_HASH), false);
   if (!row || !ok) {
     await record([failKey(email)]);
-    throw new AuthError("Wrong email or password.", 401);
+    throw new AuthError("Wrong email, username or password.", 401);
   }
   await clearUses(failKey(email));
   await startSession(row.id, secure);

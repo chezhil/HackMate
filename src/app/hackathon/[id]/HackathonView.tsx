@@ -93,6 +93,12 @@ export function HackathonView() {
     void load();
   }, [load]);
 
+  // The tab shows which hackathon this is, not just "Hackathon".
+  const title = data?.hackathon.title;
+  useEffect(() => {
+    if (title) document.title = `${title} · HackMate`;
+  }, [title]);
+
   // While the AI reads the page in the background, check back every few seconds.
   useEffect(() => {
     if (!data?.building) return;

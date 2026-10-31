@@ -8,7 +8,8 @@ Built for **No Hands: The Wispr Challenge** (Builders track), entirely by voice 
 ## For judges
 
 - **Live app:** https://hackmate-pied.vercel.app
-- **Test login:** email `[judge email]`, password `[password]`. This account has some demo data pinned.
+- **Test login:** username `chezhil`, password `Password` (sign in with the username or the account's email). This
+  account has hackathons pinned, so the Tracker, Calendar and Results have something in them.
   You can also create your own account in a few seconds from **Sign in → Create account**.
 - **You don't need to sign in** to browse Discover, open any hackathon's rules and overview, or look through
   People. Everything personal (Tracker, Calendar, Results, Profile, and the AI tools that save your work) is
@@ -16,7 +17,7 @@ Built for **No Hands: The Wispr Challenge** (Builders track), entirely by voice 
 
 ### A two-minute tour
 
-1. **Discover** lists about 470 upcoming hackathons from 10 sites in one place. Try the filters, the **Map**
+1. **Discover** lists about 490 upcoming hackathons from 10 sites in one place. Try the filters, the **Map**
    view and the **People** tab.
 2. **Open any hackathon:**
    - **Rules & overview** shows what the AI pulled out of the rules (deliverables, judging, team size, prizes,
@@ -50,7 +51,7 @@ the numbers.
   - Each account has an hourly and daily AI allowance.
 - **Scheduled jobs:** Supabase's scheduler calls `/api/cron` every 5 minutes, for email reminders and feed
   refreshes.
-- **Tests:** `npm test` runs 151 tests, including a fuzz test that sends broken and hostile input to all 44
+- **Tests:** `npm test` runs 152 tests, including a fuzz test that sends broken and hostile input to all 44
   API routes.
 
 ## What's in it

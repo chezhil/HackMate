@@ -142,7 +142,7 @@ export function WrapUpTab({ id }: { id: string }) {
             <CertificateList data={certs} onChange={setCerts} hackathonId={id} />
           </section>
         </div>
-        {notes ? <RetroEditor id={id} notes={notes} onChange={setNotes} /> : <div className="h-64 animate-pulse rounded-xl bg-surface-2" />}
+        {notes ? <RetroEditor id={id} notes={notes} onChange={setNotes} /> : <div className="h-64 skeleton rounded-xl" />}
       </div>
 
       {/* One save for the result and notes, kept in view while you fill things in. */}

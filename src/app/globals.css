@@ -21,9 +21,24 @@ h1, h2, h3 {
   outline-offset: 2px;
 }
 
+/* The logo's nod while HackMate first loads. */
+@keyframes hm-wiggle {
+  /* The rotate and scale properties, as -rotate-6 sets "rotate" rather than "transform". */
+  0%, 100% { rotate: -6deg; scale: 1; }
+  50% { rotate: 6deg; scale: 1.06; }
+}
+
+/* Loading placeholders: a soft highlight sweeps across, left to right. */
+@keyframes hm-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 1ms !important;
+    /* Run looping animations (shimmer, pulse, the loading logo) once, so they sit still instead of flickering. */
+    animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
     scroll-behavior: auto !important;
   }
@@ -32,6 +47,11 @@ h1, h2, h3 {
 /* Component classes. Utilities passed alongside them (e.g. "btn btn-sm") still win.
    Radius map: rounded-md badges · rounded-lg controls · rounded-xl cards · rounded-2xl dialogs · rounded-full chips.
    Every control is outlined in ink (--line) and sits on a hard shadow; pressing it pushes it into the shadow. */
+@utility skeleton {
+  background: linear-gradient(100deg, var(--surface-2) 35%, color-mix(in oklab, var(--surface-2), var(--surface) 75%) 50%, var(--surface-2) 65%);
+  background-size: 200% 100%;
+  animation: hm-shimmer 1.6s ease-in-out infinite;
+}
 @utility btn {
   @apply inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border-(length:--line) border-border bg-surface px-3.5 text-sm font-semibold whitespace-nowrap text-text shadow-hard-sm transition-[transform,box-shadow,background-color] duration-(--dur-fast) hover:-translate-x-px hover:-translate-y-px hover:shadow-hard active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none;
 }

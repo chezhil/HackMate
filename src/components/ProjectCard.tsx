@@ -31,7 +31,7 @@ export function ProjectCard({ id, onSaved, standalone }: { id: string; onSaved?:
   }, [id]);
 
   if (!project && error) return <p className="text-sm text-danger" role="alert">{error}</p>;
-  if (!project) return <div className="h-14 animate-pulse rounded-xl bg-surface-2" />;
+  if (!project) return <div className="h-14 skeleton rounded-xl" />;
 
   const save = async () => {
     setSaving(true);

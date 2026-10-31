@@ -1,7 +1,7 @@
 # HackMate — submission text
 
-Drafts for the **No Hands: The Wispr Challenge** form (Builders track). Replace the `[…]` bits before you
-submit.
+Text for the **No Hands: The Wispr Challenge** form (Builders track). Two things are still to add: the Wispr
+usage card numbers and the demo video link, marked **TODO** below.
 
 ## Short description (a few lines)
 
@@ -19,13 +19,13 @@ submit.
 >
 > **How I used Wispr:** I built HackMate entirely by voice. Every spec, feature request, bug report and design
 > note went to an AI coding agent through Wispr Flow, as did these docs. I didn't type a single prompt.
-> [My Wispr usage card: N words dictated, see the screenshot.]
+> **TODO:** my Wispr usage card: N words dictated, see the screenshot.
 
 ## Longer version (if there's room)
 
 **What it is.** HackMate is one place for everything around a hackathon, before, during and after:
 
-- **Discover:** around 470 upcoming hackathons from Unstop, Devfolio, MLH, WeMakeDevs, Devpost, lablab.ai,
+- **Discover:** around 490 upcoming hackathons from Unstop, Devfolio, MLH, WeMakeDevs, Devpost, lablab.ai,
   HackerEarth, Hack2skill, Devsemble and Devnovate. The same event listed on several sites shows up once. You can
   filter by format, city, prize, dates, length and theme, see at a glance whether AI is allowed, and use the map
   or a near-me view. Any event that isn't listed can be added from its link or typed in by hand.
@@ -48,7 +48,7 @@ submit.
 **How it's built.** Next.js 16 and React 19 on Vercel, with Postgres on Supabase. Row-level security keeps each
 account's data private, and the database enforces it, not just the app. Groq handles the frequent AI calls and
 Gemini the long reads. A shared AI cache means the same question is only paid for once, and each account has an AI
-allowance. It has 151 automated tests, including a fuzz test that sends broken and hostile input to every API
+allowance. It has 152 automated tests, including a fuzz test that sends broken and hostile input to every API
 route.
 
 **How I used Wispr Flow.** I'm the only builder, and every instruction went through Wispr:
@@ -60,12 +60,13 @@ route.
 - **Decisions:** "migrate to Vercel and Supabase on a branch, then deploy it".
 
 Speaking instead of typing made it easy to describe what I wanted the way I'd tell a teammate: what's wrong, why
-it matters, and what good looks like. [Add one line from your own experience, e.g. how many hours or prompts.]
+it matters, and what good looks like. It also meant I reported bugs the moment I saw them, in full sentences,
+without breaking off to type.
 
 ## Links and login for judges
 
 - Live app: https://hackmate-pied.vercel.app
-- Test login: email `[judge email]`, password `[password]` (an account with some demo data pinned)
-- Demo video (≤ 2 min): [link]
-- Wispr usage card: [screenshot]
-- Code: [https://github.com/chezhil/HackMate, if you make it public]
+- Test login: username `chezhil`, password `Password` (an account with hackathons already pinned)
+- Demo video (≤ 2 min): **TODO: link** (script in DEMO_SCRIPT.md)
+- Wispr usage card: **TODO: screenshot**
+- Code: https://github.com/chezhil/HackMate

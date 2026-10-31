@@ -41,7 +41,7 @@ export function SettingsView() {
   }, [loadOutbox]);
 
   if (!settings && status) return <Banner tone="danger">{status}</Banner>;
-  if (!settings) return <div className="h-64 animate-pulse rounded-xl bg-surface-2" />;
+  if (!settings) return <div className="h-64 skeleton rounded-xl" />;
 
   const save = async (patch: Partial<Settings>) => {
     setSaving(true);

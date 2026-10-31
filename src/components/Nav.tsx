@@ -7,6 +7,7 @@ import { useHackmate } from "./HackmateProvider";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { useAccount } from "./useAccount";
 import { Avatar } from "./Avatar";
+import { LogoMark } from "./Logo";
 import { CountPill } from "./ui/Feedback";
 
 const LINKS = [
@@ -30,7 +31,7 @@ export function Nav() {
     <header className="sticky top-0 z-[1000] border-b-(length:--line) border-border bg-surface">
       <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-3 sm:gap-6">
         <Link href="/" className="flex items-center gap-2 text-base font-semibold tracking-tight">
-          <span className="grid h-8 w-8 -rotate-6 place-items-center rounded-lg border-(length:--line) border-border bg-warn-soft text-base font-bold text-text shadow-hard-sm">H</span>
+          <LogoMark />
           <span className="hidden sm:inline">HackMate</span>
         </Link>
         <nav className="flex min-w-0 flex-1 gap-1 overflow-x-auto p-1 text-sm">

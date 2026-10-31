@@ -87,9 +87,15 @@ export function SignInView() {
             {(c) => <input {...c} className="input" autoComplete="username" required minLength={3} maxLength={24} pattern="[A-Za-z0-9][A-Za-z0-9_\-]{2,23}" value={username} onChange={(e) => setUsername(e.target.value)} />}
           </Field>
         )}
-        <Field label="Email">
-          {(c) => <input {...c} className="input" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />}
-        </Field>
+        {mode === "signup" ? (
+          <Field label="Email">
+            {(c) => <input {...c} className="input" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />}
+          </Field>
+        ) : (
+          <Field label="Email or username">
+            {(c) => <input {...c} className="input" autoComplete="username" autoCapitalize="none" spellCheck={false} required value={email} onChange={(e) => setEmail(e.target.value)} />}
+          </Field>
+        )}
         <Field label="Password" hint={mode === "signup" ? "At least 8 characters." : undefined}>
           {(c) => (
             <input

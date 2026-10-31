@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- HackMate mark: the tilted "H" sticker from the nav, with its hard shadow. -->
+  <g transform="rotate(-6 32 32)">
+    <rect x="9" y="9" width="48" height="48" rx="11" fill="#111111"/>
+    <rect x="5" y="5" width="48" height="48" rx="11" fill="#ffe17a" stroke="#111111" stroke-width="4"/>
+    <path fill="#111111" d="M18 16h7.5v12h7V16H40v32h-7.5V35h-7v13H18z"/>
+  </g>
+</svg>

@@ -33,7 +33,7 @@ export function CalendarSync() {
   }, []);
 
   if (!settings && error) return <Banner tone="danger">{error}</Banner>;
-  if (!settings) return <div className="h-40 animate-pulse rounded-xl bg-surface-2" />;
+  if (!settings) return <div className="h-40 skeleton rounded-xl" />;
 
   const provider = settings.calendarProvider;
   const feed = `${origin}/api/calendar.ics?token=${settings.calendarToken}`;

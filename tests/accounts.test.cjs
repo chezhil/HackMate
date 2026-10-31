@@ -94,6 +94,14 @@ test('parallel signups for the same username return a friendly conflict', async 
   assert.equal(failure.status, 409);
 });
 
+test('signing in works with the username as well as the email', async () => {
+  const jar = createCookieJar();
+  const user = await withCookies(jar, () => auth.signIn({ email: '  BOB_TEST ', password: 'StrongPassword123' }, false));
+  assert.equal(user.email, 'bob@example.com');
+  assert.equal(await withCookies(jar, auth.currentUserId), bobId);
+  await assert.rejects(withCookies(createCookieJar(), () => auth.signIn({ email: 'bob_test', password: 'wrong-password' }, false)), { status: 401 });
+});
+
 test('expired sessions cannot read account data', async () => {
   const temp = createCookieJar();
   await withCookies(temp, () => auth.signIn({ email: 'bob@example.com', password: 'StrongPassword123' }, false));

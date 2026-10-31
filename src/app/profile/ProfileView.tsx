@@ -61,7 +61,7 @@ export function ProfileView() {
       </Banner>
     );
   }
-  if (!data) return <div className="h-64 animate-pulse rounded-xl bg-surface-2" />;
+  if (!data) return <div className="h-64 skeleton rounded-xl" />;
 
   return (
     <div className="space-y-4">

@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Space_Grotesk } from "next/font/google";
 import Script from "next/script";
 import { Suspense } from "react";
 import { HackmateProvider } from "@/components/HackmateProvider";
 import { Nav } from "@/components/Nav";
-import { PageSkeleton } from "@/components/PageSkeleton";
+import { LoadingShell } from "@/components/LoadingShell";
 import { SignInGate } from "@/components/SignInGate";
 import { ConfirmProvider } from "@/components/ui/Confirm";
 import { ToastProvider } from "@/components/ui/Toast";
@@ -23,9 +23,23 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const DESCRIPTION = "Find hackathons from 10 sites, understand their rules with AI, and track every entry to the finish.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000"),
   title: "HackMate",
-  description: "Find hackathons, track your entries and never miss a deadline.",
+  applicationName: "HackMate",
+  description: DESCRIPTION,
+  openGraph: { type: "website", siteName: "HackMate", title: "HackMate", description: DESCRIPTION },
+  twitter: { card: "summary_large_image", title: "HackMate", description: DESCRIPTION },
+};
+
+// The browser's toolbar takes the page colour, light or dark.
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fff4d6" },
+    { media: "(prefers-color-scheme: dark)", color: "#1b1916" },
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -35,13 +49,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col">
         <Script id="theme" strategy="beforeInteractive">{themeScript}</Script>
         {/* Everything below reads the clock and live data on the client, so nothing is prerendered. */}
-        <Suspense
-          fallback={
-            <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
-              <PageSkeleton />
-            </main>
-          }
-        >
+        <Suspense fallback={<LoadingShell />}>
           <HackmateProvider>
             <ConfirmProvider>
               <ToastProvider>

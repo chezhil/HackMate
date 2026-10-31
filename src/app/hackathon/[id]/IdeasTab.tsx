@@ -184,7 +184,7 @@ export function IdeasTab({ id }: { id: string }) {
       <aside className="space-y-2">
         <h2 className="text-sm font-bold uppercase tracking-wide">Past winners</h2>
         <p className="text-xs text-muted">Prize-winning Devfolio projects from earlier editions and similar themes. The AI uses these too.</p>
-        {winners === null && Array.from({ length: 4 }, (_, i) => <div key={i} className="h-16 animate-pulse rounded-lg bg-surface-2" />)}
+        {winners === null && Array.from({ length: 4 }, (_, i) => <div key={i} className="h-16 skeleton rounded-lg" />)}
         {winners?.length === 0 && <p className="text-sm text-muted">No past winners found.</p>}
         {winners?.map((w) => (
           <a key={w.url} href={w.url} target="_blank" rel="noreferrer" className="card block p-3 text-sm hover:border-muted">
