@@ -1,7 +1,7 @@
 # HackMate — submission text
 
-Text for the **No Hands: The Wispr Challenge** form (Builders track). Two things are still to add: the Wispr
-usage card numbers and the demo video link, marked **TODO** below.
+Text for the **No Hands: The Wispr Challenge** form (Builders track). One thing is still to add: the
+demo video link, marked **TODO** below.
 
 ## Short description (a few lines)
 
@@ -19,7 +19,7 @@ usage card numbers and the demo video link, marked **TODO** below.
 >
 > **How I used Wispr:** I built HackMate entirely by voice. Every spec, feature request, bug report and design
 > note went to an AI coding agent through Wispr Flow, as did these docs. I didn't type a single prompt.
-> **TODO:** my Wispr usage card: N words dictated, see the screenshot.
+> My Wispr usage card: 3,550 words dictated at 159 words a minute, across 9 apps, on a 5-day streak.
 
 ## Longer version (if there's room)
 
@@ -68,5 +68,5 @@ without breaking off to type.
 - Live app: https://hackmate-pied.vercel.app
 - Test login: username `chezhil`, password `Password` (an account with hackathons already pinned)
 - Demo video (≤ 2 min): **TODO: link** (script in DEMO_SCRIPT.txt)
-- Wispr usage card: **TODO: screenshot**
+- Wispr usage card: 3,550 words dictated, 159 words a minute, 9 apps, 5-day streak (uploaded with the form)
 - Code: https://github.com/chezhil/HackMate
