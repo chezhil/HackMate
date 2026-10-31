@@ -51,7 +51,7 @@ AI coding agent, and so were these docs. The Wispr usage card: **110 AI prompts*
   - Each account has an hourly and daily AI allowance.
 - **Scheduled jobs:** Supabase's scheduler calls `/api/cron` every 5 minutes, for email reminders and feed
   refreshes.
-- **Tests:** `npm test` runs 152 tests, including a fuzz test that sends broken and hostile input to all 44
+- **Tests:** `npm test` runs 156 tests, including a fuzz test that sends broken and hostile input to all 44
   API routes.
 
 ## What's in it

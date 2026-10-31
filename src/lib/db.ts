@@ -80,6 +80,9 @@ CREATE TABLE IF NOT EXISTS hackathons (
   team_max INTEGER
 );
 CREATE INDEX IF NOT EXISTS hackathons_ends ON hackathons(ends_at);
+-- The AI-tools policy read from the rules (or the feed description), as JSON ("null" when none is stated), so
+-- listing hackathons doesn't pull every rules text. NULL means not worked out yet.
+ALTER TABLE hackathons ADD COLUMN IF NOT EXISTS ai_policy TEXT;
 
 CREATE TABLE IF NOT EXISTS geocache (
   query TEXT PRIMARY KEY,
@@ -398,7 +401,7 @@ END $$;
 `;
 
 /** Bump when SCHEMA changes, so every server re-applies it once. */
-const SCHEMA_VERSION = "pg-1";
+const SCHEMA_VERSION = "pg-2";
 
 // ---------- connections ----------
 

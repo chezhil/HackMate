@@ -1,5 +1,5 @@
 import "server-only";
-import { aiPolicy } from "./aiPolicy";
+import { aiPolicy, type AiPolicy } from "./aiPolicy";
 import { deduplicateHackathons, sameHackathon } from "./deduplicate";
 import { all, get, run, tx, withAccountLock } from "./db";
 import type {
@@ -74,7 +74,11 @@ function toDeadline(r: Row): Deadline {
 // ---------- hackathons ----------
 
 const HACKATHON_COLUMNS =
-  "id, source, title, tagline, url, image, mode, city, state, country, venue, lat, lng, starts_at, ends_at, reg_starts_at, reg_ends_at, prize_text, prize_usd, entry_fee, themes, organizer, last_seen_at, description, team_min, team_max";
+  "id, source, title, tagline, url, image, mode, city, state, country, venue, lat, lng, starts_at, ends_at, reg_starts_at, reg_ends_at, prize_text, prize_usd, entry_fee, themes, organizer, last_seen_at, description, team_min, team_max, ai_policy";
+
+/** Everything a hackathon card needs; not the description, which can be long. */
+const LIST_COLUMNS =
+  "h.id, h.source, h.title, h.tagline, h.url, h.image, h.mode, h.city, h.state, h.country, h.venue, h.lat, h.lng, h.starts_at, h.ends_at, h.reg_starts_at, h.reg_ends_at, h.prize_text, h.prize_usd, h.entry_fee, h.themes, h.organizer, h.team_min, h.team_max, h.ai_policy";
 
 /** Insert or refresh hackathons from a feed, 100 rows per statement so a sync is a handful of round trips. */
 export async function upsertHackathons(list: Hackathon[], seenAt: string) {
@@ -89,7 +93,7 @@ export async function upsertHackathons(list: Hackathon[], seenAt: string) {
         h.id, h.source, h.title, h.tagline, h.url, h.image, h.mode, h.city, h.state, h.country, h.venue,
         h.lat, h.lng, h.startsAt, h.endsAt, h.regStartsAt, h.regEndsAt, h.prizeText, h.prizeUsd,
         h.entryFee, JSON.stringify(h.themes), h.organizer, seenAt,
-        h.description ?? null, h.teamMin, h.teamMax,
+        h.description ?? null, h.teamMin, h.teamMax, JSON.stringify(aiPolicy(h.description)),
       ]);
       await run(
         `INSERT INTO hackathons (${HACKATHON_COLUMNS}) VALUES ${values}
@@ -104,25 +108,43 @@ export async function upsertHackathons(list: Hackathon[], seenAt: string) {
            reg_starts_at = excluded.reg_starts_at, reg_ends_at = excluded.reg_ends_at,
            prize_text = excluded.prize_text, prize_usd = excluded.prize_usd, entry_fee = excluded.entry_fee,
            themes = excluded.themes, organizer = excluded.organizer, last_seen_at = excluded.last_seen_at,
-           description = excluded.description, team_min = excluded.team_min, team_max = excluded.team_max`,
+           description = excluded.description, team_min = excluded.team_min, team_max = excluded.team_max,
+           -- once the full rules are read, their policy wins over the feed description's
+           ai_policy = CASE WHEN EXISTS (SELECT 1 FROM hackathon_details d WHERE d.hackathon_id = hackathons.id)
+             THEN hackathons.ai_policy ELSE excluded.ai_policy END`,
         ...params,
       );
     }
   });
 }
 
+/** Work out and store a hackathon's AI policy: from its full rules when they've been read, else its description. */
+export async function refreshAiPolicy(id: string): Promise<AiPolicy | null> {
+  const r = await get<{ text: string | null }>(
+    `SELECT COALESCE(d.source_text, h.description) AS text FROM hackathons h
+     LEFT JOIN hackathon_details d ON d.hackathon_id = h.id WHERE h.id = ?`,
+    id,
+  );
+  const policy = aiPolicy(r?.text);
+  await run("UPDATE hackathons SET ai_policy = ? WHERE id = ?", JSON.stringify(policy), id);
+  return policy;
+}
+
 /** Hackathons that haven't ended yet (or have no end date), plus anything being tracked. */
 export async function listHackathons(): Promise<Hackathon[]> {
   const cutoff = new Date(Date.now() - 24 * 3600_000).toISOString();
-  // The full rules, when available, take precedence over the feed description for the AI policy.
   const rows = await all(
-    `SELECT h.*, COALESCE(d.source_text, h.description) AS policy_text FROM hackathons h
-     LEFT JOIN hackathon_details d ON d.hackathon_id = h.id
+    `SELECT ${LIST_COLUMNS} FROM hackathons h
      WHERE h.ends_at IS NULL OR h.ends_at >= ? OR h.id IN (SELECT hackathon_id FROM tracked)
      ORDER BY COALESCE(h.starts_at, h.ends_at) ASC`,
     cutoff,
   );
-  const list = rows.map((row) => ({ ...toHackathon(row), aiPolicy: aiPolicy(row.policy_text as string | null) }));
+  const list: Hackathon[] = [];
+  for (const row of rows) {
+    // Rows saved before the policy was stored get it worked out once, here.
+    const policy = row.ai_policy == null ? await refreshAiPolicy(row.id as string) : (JSON.parse(row.ai_policy as string) as AiPolicy | null);
+    list.push({ ...toHackathon(row), aiPolicy: policy });
+  }
   const tracked = await all<{ hackathon_id: string }>("SELECT hackathon_id FROM tracked");
   const trackedIds = new Set(tracked.map((row) => row.hackathon_id));
   return deduplicateHackathons(list, trackedIds);

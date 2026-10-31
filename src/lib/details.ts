@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { AiUnavailableError, generate, generateJson } from "./ai";
 import { all, get, run, stmt } from "./db";
-import { getDescription, getHackathon } from "./repo";
+import { getDescription, getHackathon, refreshAiPolicy } from "./repo";
 import { fetchPublicText } from "./publicFetch";
 import { fetchJson, htmlToText, USER_AGENT } from "./sources/util";
 import { passagesBlock, relevantPassages, resolveCitations } from "./citations";
@@ -152,6 +152,8 @@ export function buildDetails(id: string): Promise<HackathonDetails> {
     (await run(`INSERT INTO hackathon_details (hackathon_id, source_text, info, provider, error, fetched_at) VALUES (?, ?, ?, ?, ?, ?)
          ON CONFLICT(hackathon_id) DO UPDATE SET source_text = excluded.source_text, info = excluded.info,
            provider = excluded.provider, error = excluded.error, fetched_at = excluded.fetched_at`, id, sourceText, info ? JSON.stringify(info) : null, provider, error, new Date().toISOString()));
+    // The full rules now decide the AI-tools badge on Discover.
+    await refreshAiPolicy(id);
     return (await getDetails(id))!;
   })().finally(() => {
     building.delete(id);

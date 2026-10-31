@@ -43,3 +43,22 @@ test('opening a hackathon for the first time says its rules are being read, from
     global.fetch = fetch;
   }
 });
+
+test('the AI-tools badge is stored, and follows the full rules once they are read', async () => {
+  const event = { id: 'devpost:policy-badge', source: 'devpost', title: 'Policy badge', tagline: null, url: 'https://example.com/policy', image: null, mode: 'online', city: null, state: null, country: null, venue: null, lat: null, lng: null, startsAt: '2030-02-01T00:00:00Z', endsAt: '2030-02-02T00:00:00Z', regStartsAt: null, regEndsAt: null, prizeText: null, prizeUsd: null, entryFee: 'free', themes: [], organizer: null, teamMin: 1, teamMax: 4, description: 'Build something great in 48 hours.' };
+  await repo.upsertHackathons([event], new Date().toISOString());
+  const badge = async () => (await repo.listHackathons()).find((h) => h.id === event.id).aiPolicy;
+  assert.equal(await badge(), null, 'the description states no policy');
+
+  const fetch = global.fetch;
+  global.fetch = async () => new Response('<p>Use of AI tools is strictly prohibited and leads to disqualification.</p>', { status: 200 });
+  try {
+    await require(root + '/src/lib/details.ts').buildDetails(event.id);
+  } finally {
+    global.fetch = fetch;
+  }
+  assert.equal((await badge()).kind, 'banned', 'the rules decide once read');
+  // A later feed refresh, with the old description, doesn't undo what the rules said.
+  await repo.upsertHackathons([event], new Date().toISOString());
+  assert.equal((await badge()).kind, 'banned');
+});

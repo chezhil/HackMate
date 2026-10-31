@@ -1,6 +1,10 @@
 import { runAllReminders } from "@/lib/reminders";
 import { isStale, syncAll } from "@/lib/sync";
 import { connection } from "next/server";
+import { createHash, timingSafeEqual } from "node:crypto";
+
+// Compared as hashes, so the check takes the same time however much of a guess is right.
+const digest = (s: string) => createHash("sha256").update(s).digest();
 
 /**
  * The scheduled jobs, for hosts without a long-running server (Vercel): send everyone's due reminders and
@@ -10,7 +14,7 @@ import { connection } from "next/server";
 export async function GET(req: Request) {
   await connection();
   const secret = process.env.CRON_SECRET;
-  if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!secret || !timingSafeEqual(digest(req.headers.get("authorization") ?? ""), digest(`Bearer ${secret}`))) {
     return Response.json({ error: "Not allowed" }, { status: 401 });
   }
   const reminders = await runAllReminders();
