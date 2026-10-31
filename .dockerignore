@@ -12,3 +12,4 @@ tests-setup.cjs
 tsconfig.tsbuildinfo
 *.md
 !README.md
+docs

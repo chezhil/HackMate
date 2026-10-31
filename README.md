@@ -3,7 +3,18 @@
 HackMate keeps track of everything you need for a hackathon: finding one, understanding its rules, planning,
 building and pitching, submitting, and everything afterwards.
 
-Built for **No Hands: The Wispr Challenge** (Builders track), entirely by voice with Wispr Flow.
+Built for **No Hands: The Wispr Challenge** (Builders track), by voice with Wispr Flow.
+
+**Live:** https://hackmate-pied.vercel.app
+
+![Discover: hackathons from 10 sites, with filters, AI-policy badges, countdowns and a map](docs/screenshots/discover.webp)
+
+| | |
+| --- | --- |
+| ![A hackathon's rules, read by AI: summary, gotchas quoted from the rules, and every tool for that event](docs/screenshots/rules.webp) | ![Tracker: drag each hackathon from Registered to Building to Expecting results, with countdowns and clash warnings](docs/screenshots/tracker.webp) |
+| **Rules & overview:** what the AI read from the rules, the gotchas, and every tool for that hackathon. | **Tracker:** each entry's stage, next deadline and clashes. |
+| ![Calendar: every deadline in a month view, with clashes ranked and upcoming deadlines counting down](docs/screenshots/calendar.webp) | ![Public profile: skills and every hackathon with its result](docs/screenshots/profile.webp) |
+| **Calendar:** deadlines, clashes and countdowns, with calendar sync. | **Profile:** a public page with your hackathons and results. |
 
 ## For judges
 
@@ -17,7 +28,7 @@ Built for **No Hands: The Wispr Challenge** (Builders track), entirely by voice 
 
 ### A two-minute tour
 
-1. **Discover** lists about 490 upcoming hackathons from 10 sites in one place. Try the filters, the **Map**
+1. **Discover** lists about 470 upcoming hackathons from 10 sites in one place. Try the filters, the **Map**
    view and the **People** tab.
 2. **Open any hackathon:**
    - **Rules & overview** shows what the AI pulled out of the rules (deliverables, judging, team size, prizes,
