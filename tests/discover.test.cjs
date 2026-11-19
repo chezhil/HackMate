@@ -45,3 +45,12 @@ test('team-size sorts put known sizes first, smallest or largest', () => {
   assert.deepEqual(sortHackathons([...list], 'teamSmall').map((x) => x.id), ['solo', 'pair', 'big', 'unknown']);
   assert.deepEqual(sortHackathons([...list], 'teamLarge').map((x) => x.id), ['big', 'pair', 'solo', 'unknown']);
 });
+
+test('themes and sources start all on, and switching one off hides the hackathons with it', () => {
+  const ai = h({ source: 'unstop', themes: ['AI / ML'] }), web3 = h({ source: 'devpost', themes: ['Web3', 'AI / ML'] }), none = h({ source: 'mlh', themes: [] });
+  assert.deepEqual([ai, web3, none].map((x) => matches(x, DEFAULTS)), [true, true, true], 'nothing hidden by default');
+  assert.deepEqual([ai, web3, none].map((x) => matches(x, { ...DEFAULTS, hideThemes: ['Web3'] })), [true, false, true]);
+  assert.deepEqual([ai, web3, none].map((x) => matches(x, { ...DEFAULTS, hideSources: ['unstop'] })), [false, true, true]);
+  const f = parseFilters(new URLSearchParams(filtersToQuery({ ...DEFAULTS, hideThemes: ['Web3'], hideSources: ['mlh'] })));
+  assert.deepEqual([f.hideThemes, f.hideSources], [['Web3'], ['mlh']]);
+});

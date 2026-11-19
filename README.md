@@ -24,7 +24,8 @@ started.
   that start and end between them.
 - **Sort** by what happens next, registration closing, biggest prize, or team size (smallest or largest first).
   Each card shows its team size ("Solo", "Team 2–4").
-- **Filters** for format, city, prize, length, theme, source and free entry; a map with a near-me view.
+- **Filters** for format, city, prize, length and free entry. Every theme and source starts on; click one to hide
+  hackathons with it. A map with a near-me view.
 - Each card's title and **Website** button open the hackathon's own page.
 - **Add from link** reads a Hack2skill, Unstop or Devnovate event (or any page, with AI); **Add manually** for
   anything else.

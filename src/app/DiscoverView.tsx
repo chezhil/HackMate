@@ -322,17 +322,23 @@ function FilterPanel({ f, set, cities }: { f: Filters; set: (p: Partial<Filters>
         <Select label="Length" value={f.length} onChange={(v) => set({ length: v as Filters["length"] })} options={LENGTH_OPTIONS} />
       </div>
       <fieldset>
-        <legend className="label">Themes</legend>
+        <legend className="label">Themes <span className="font-normal normal-case text-muted">· click to hide</span></legend>
         <div className="flex flex-wrap gap-1.5">
-          {THEMES.map((t) => <ChipToggle key={t} on={f.themes.includes(t)} onClick={() => set({ themes: toggle(f.themes, t) })}>{t}</ChipToggle>)}
+          {THEMES.map((t) => (
+            <ChipToggle key={t} on={!f.hideThemes.includes(t)} onClick={() => set({ hideThemes: toggle(f.hideThemes, t) })}>
+              <span className={f.hideThemes.includes(t) ? "line-through" : ""}>{t}</span>
+            </ChipToggle>
+          ))}
         </div>
       </fieldset>
       <div className="flex flex-wrap items-end gap-x-4 gap-y-2 text-sm">
         <fieldset>
-          <legend className="label">Sources</legend>
+          <legend className="label">Sources <span className="font-normal normal-case text-muted">· click to hide</span></legend>
           <div className="flex flex-wrap gap-1.5">
             {(Object.keys(SOURCE_LABELS) as Source[]).map((s) => (
-              <ChipToggle key={s} on={f.sources.includes(s)} onClick={() => set({ sources: toggle(f.sources, s) })}>{SOURCE_LABELS[s]}</ChipToggle>
+              <ChipToggle key={s} on={!f.hideSources.includes(s)} onClick={() => set({ hideSources: toggle(f.hideSources, s) })}>
+                <span className={f.hideSources.includes(s) ? "line-through" : ""}>{SOURCE_LABELS[s]}</span>
+              </ChipToggle>
             ))}
           </div>
         </fieldset>

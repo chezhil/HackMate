@@ -5,10 +5,11 @@ import { SOURCE_LABELS } from "@/lib/types";
 /** Everything the Discover filters can be set to. It round-trips through the URL, so a filtered view can be shared and survives Back. */
 export interface Filters {
   q: string;
-  sources: Source[];
+  /** Sources and themes start all included; these are the ones switched off. */
+  hideSources: Source[];
   mode: Mode | "all";
   city: string;
-  themes: string[];
+  hideThemes: string[];
   minPrize: number;
   freeOnly: boolean;
   /** A date range as YYYY-MM-DD. Only `to` set: from today until then. */
@@ -25,7 +26,7 @@ export type Sort = "soonest" | "prize" | "regClosing" | "teamSmall" | "teamLarge
 export type View = "split" | "list" | "map";
 
 export const DEFAULTS: Filters = {
-  q: "", sources: [], mode: "all", city: "", themes: [], minPrize: 0, freeOnly: false,
+  q: "", hideSources: [], mode: "all", city: "", hideThemes: [], minPrize: 0, freeOnly: false,
   from: "", to: "", length: "any", hideClashing: false, sort: "soonest", view: "split",
 };
 
@@ -59,10 +60,10 @@ const day = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.
 export function parseFilters(p: URLSearchParams): Filters {
   return {
     q: p.get("q") ?? "",
-    sources: list(p.get("src")).filter((s): s is Source => Object.hasOwn(SOURCE_LABELS, s)),
+    hideSources: list(p.get("nosrc")).filter((s): s is Source => Object.hasOwn(SOURCE_LABELS, s)),
     mode: pick(p.get("mode"), ["all", "online", "offline", "hybrid"] as const, "all"),
     city: p.get("city") ?? "",
-    themes: list(p.get("themes")).filter((t) => (THEMES as readonly string[]).includes(t)),
+    hideThemes: list(p.get("nothemes")).filter((t) => (THEMES as readonly string[]).includes(t)),
     minPrize: Number.isFinite(Number(p.get("prize"))) ? Math.max(0, Number(p.get("prize"))) : 0,
     freeOnly: p.get("free") === "1",
     from: day(p.get("from")),
@@ -78,10 +79,10 @@ export function parseFilters(p: URLSearchParams): Filters {
 export function filtersToQuery(f: Filters): string {
   const p = new URLSearchParams();
   if (f.q) p.set("q", f.q);
-  if (f.sources.length) p.set("src", f.sources.join(","));
+  if (f.hideSources.length) p.set("nosrc", f.hideSources.join(","));
   if (f.mode !== "all") p.set("mode", f.mode);
   if (f.city) p.set("city", f.city);
-  if (f.themes.length) p.set("themes", f.themes.join(","));
+  if (f.hideThemes.length) p.set("nothemes", f.hideThemes.join(","));
   if (f.minPrize) p.set("prize", String(f.minPrize));
   if (f.freeOnly) p.set("free", "1");
   if (f.from) p.set("from", f.from);
@@ -117,10 +118,15 @@ export function registrationClosed(h: Hackathon, now: number): boolean {
 export function matches(h: Hackathon, f: Filters): boolean {
   const needle = f.q.trim().toLowerCase();
   if (needle && !`${h.title} ${h.tagline ?? ""} ${h.organizer ?? ""} ${h.city ?? ""}`.toLowerCase().includes(needle)) return false;
-  if (f.sources.length && !f.sources.includes(h.source) && !h.sourceListings?.some((s) => f.sources.includes(s.source))) return false;
+  // A switched-off source hides a hackathon unless it's also listed on a source that's still on.
+  if (f.hideSources.length) {
+    const listedOn = h.sourceListings?.length ? h.sourceListings.map((s) => s.source) : [h.source];
+    if (listedOn.every((s) => f.hideSources.includes(s))) return false;
+  }
   if (f.mode !== "all" && h.mode !== f.mode) return false;
   if (f.city && h.city !== f.city) return false;
-  if (f.themes.length && !h.themes.some((t) => f.themes.includes(t))) return false;
+  // A switched-off theme hides every hackathon tagged with it.
+  if (f.hideThemes.length && h.themes.some((t) => f.hideThemes.includes(t))) return false;
   if (f.minPrize && (h.prizeUsd ?? 0) < f.minPrize) return false;
   if (f.freeOnly && h.entryFee !== "free") return false;
   // A date range keeps hackathons that happen inside it: starting on or after the first day (with only an end
@@ -193,8 +199,8 @@ export function activeFilters(f: Filters): ActiveFilter[] {
   if (f.minPrize) out.push({ key: "prize", label: PRIZE_OPTIONS.find((o) => o.value === f.minPrize)?.label ?? `$${f.minPrize}+`, clear: (x) => ({ ...x, minPrize: 0 }) });
   if (f.from || f.to) out.push({ key: "dates", label: rangeLabel(f.from, f.to), clear: (x) => ({ ...x, from: "", to: "" }) });
   if (f.length !== "any") out.push({ key: "len", label: LENGTH_OPTIONS.find((o) => o.value === f.length)!.label, clear: (x) => ({ ...x, length: "any" }) });
-  for (const t of f.themes) out.push({ key: `t:${t}`, label: t, clear: (x) => ({ ...x, themes: x.themes.filter((y) => y !== t) }) });
-  for (const s of f.sources) out.push({ key: `s:${s}`, label: SOURCE_LABELS[s], clear: (x) => ({ ...x, sources: x.sources.filter((y) => y !== s) }) });
+  for (const t of f.hideThemes) out.push({ key: `t:${t}`, label: `No ${t}`, clear: (x) => ({ ...x, hideThemes: x.hideThemes.filter((y) => y !== t) }) });
+  for (const s of f.hideSources) out.push({ key: `s:${s}`, label: `No ${SOURCE_LABELS[s]}`, clear: (x) => ({ ...x, hideSources: x.hideSources.filter((y) => y !== s) }) });
   if (f.freeOnly) out.push({ key: "free", label: "Free entry", clear: (x) => ({ ...x, freeOnly: false }) });
   if (f.hideClashing) out.push({ key: "noclash", label: "No clashes", clear: (x) => ({ ...x, hideClashing: false }) });
   return out;
