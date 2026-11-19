@@ -450,7 +450,6 @@ export interface MemberHackathon {
   startsAt: string | null;
   endsAt: string | null;
   result: ResultKind | null;
-  project: { name: string; tagline: string; repoUrl: string; demoUrl: string } | null;
 }
 
 export type MemberCertificate = Pick<Certificate, "id" | "hackathonId" | "hackathonTitle" | "title" | "url" | "file" | "mime" | "receivedAt">;
@@ -474,7 +473,5 @@ export interface Stats {
   byMonth: { month: string; count: number; wins: number }[];
   byMode: Record<string, number>;
   topThemes: { theme: string; count: number }[];
-  avgIdeaScore: number | null;
-  avgQaScore: number | null;
   results: Record<string, number>;
 }

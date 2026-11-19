@@ -106,14 +106,6 @@ export function PersonView() {
                     <span className="break-words font-semibold">{h.title}</span>
                   )}
                   <p className="text-xs text-muted">{fmtRange(h)} · {h.mode === "online" ? "Online" : "In person"}</p>
-                  {h.project && (
-                    <p className="mt-1 text-sm">
-                      Built <span className="font-semibold">{h.project.name}</span>
-                      {h.project.tagline && <span className="text-muted">: {h.project.tagline}</span>}
-                      {h.project.repoUrl && <> · <a href={h.project.repoUrl} target="_blank" rel="noreferrer nofollow" className="text-accent hover:underline">Code ↗</a></>}
-                      {h.project.demoUrl && <> · <a href={h.project.demoUrl} target="_blank" rel="noreferrer nofollow" className="text-accent hover:underline">Demo ↗</a></>}
-                    </p>
-                  )}
                 </div>
                 {h.result ? (
                   <Badge tone={RESULT_TONE[h.result]}>{h.result === "won" && <Trophy aria-hidden className="size-3" />}{RESULT_LABELS[h.result]}</Badge>

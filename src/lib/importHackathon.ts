@@ -1,8 +1,6 @@
 import "server-only";
-import { background } from "./request";
 import { createHash, randomUUID } from "node:crypto";
 import { generateJson } from "./ai";
-import { buildDetails, markReading } from "./details";
 import { all } from "./db";
 import { fetchPublicText, PrivateAddressError } from "./publicFetch";
 import { canonicalUrl } from "./urls";
@@ -271,10 +269,7 @@ export interface ImportChoice {
   result: ResultKind | null;
 }
 
-/**
- * Save a checked draft as a hackathon "Added by you", pin it at the chosen stage, and start reading its full
- * rules in the background so Overview, Ask AI and the checklist work like for any other hackathon.
- */
+/** Save a checked draft as a hackathon "Added by you" and pin it at the chosen stage. */
 export async function createFromDraft(d: ImportDraft, choice: ImportChoice): Promise<string> {
   // No link: a hackathon you're adding by hand, with whatever details you type.
   const url = d.url.trim() ? checkUrl(d.url) : null;
@@ -320,9 +315,5 @@ export async function createFromDraft(d: ImportDraft, choice: ImportChoice): Pro
   if (choice.status !== "interested" || choice.result) {
     await updateTracked(trackedId, { status: choice.status, ...(choice.status === "results" ? { result: choice.result ?? "participated" } : {}) });
   }
-  // Fills Overview, rules, Ask AI and the submission checklist from the page, like any other hackathon.
-  // Marked first, so opening it straight away shows "Reading the rules" instead of starting a second read.
-  await markReading(trackedId);
-  background("import", () => buildDetails(trackedId));
   return trackedId;
 }

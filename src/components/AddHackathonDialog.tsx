@@ -1,14 +1,13 @@
 "use client";
 
 import { Link2, PencilLine, Sparkles } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useHackmate } from "./HackmateProvider";
 import { Button } from "./ui/Button";
 import { Dialog } from "./ui/Dialog";
 import { Banner } from "./ui/Feedback";
-import { call, hid } from "@/lib/client";
+import { call } from "@/lib/client";
 import { THEMES } from "@/lib/themes";
 import type { ImportDraft, ImportPreview, Mode, ResultKind, TrackStatus } from "@/lib/types";
 import { RESULT_LABELS } from "@/lib/types";
@@ -103,11 +102,11 @@ export function AddHackathonDialog({
     setBusy("save");
     setError(null);
     try {
-      const { id } = await call<{ id: string }>("/api/import", "POST", { action: "create", draft, status: stage, result: stage === "results" ? result : null });
+      await call<{ id: string }>("/api/import", "POST", { action: "create", draft, status: stage, result: stage === "results" ? result : null });
       await refresh();
       close();
-      // Finished ones open on Wrap-up, where prizes and certificates go; the rest on the overview.
-      router.push(`/hackathon/${hid(id)}${stage === "results" ? "?tab=wrapup" : ""}`);
+      // Show it where it landed: finished ones on Results, the rest on the Tracker.
+      router.push(stage === "results" ? "/results" : "/tracker");
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -174,7 +173,7 @@ export function AddHackathonDialog({
       ) : preview?.existingId ? (
         <div className="space-y-3">
           <Banner tone="ok">That hackathon is already in HackMate.</Banner>
-          <Link href={`/hackathon/${hid(preview.existingId)}`} className="btn btn-primary" onClick={close}>Open it</Link>
+          <button type="button" className="btn btn-primary" onClick={close}>Close</button>
         </div>
       ) : (
         <div className="space-y-4">

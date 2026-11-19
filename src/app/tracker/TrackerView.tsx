@@ -4,13 +4,13 @@ import { ArrowRight, Check, Clock, ExternalLink, GripVertical, Pin, PinOff, Tria
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ClashList } from "@/components/ClashList";
-import { hid } from "@/lib/client";
 import { DeadlineEditor } from "@/components/DeadlineEditor";
 import { useHackmate } from "@/components/HackmateProvider";
 import { useConfirm } from "@/components/ui/Confirm";
 import { Countdown } from "@/components/ui/Countdown";
 import { Badge, EmptyState, Kbd } from "@/components/ui/Feedback";
 import { useToast } from "@/components/ui/Toast";
+import { WrapUpDialog } from "@/components/WrapUpDialog";
 import { SEVERITY_LABEL, SEVERITY_TONE } from "@/components/ClashList";
 import { worstSeverity, type Clash } from "@/lib/clashes";
 import { fmtDate, fmtRange, place } from "@/lib/format";
@@ -278,9 +278,13 @@ function TrackerCard({
       className={`card card-lift space-y-2 p-3 text-sm md:cursor-grab ${dragging ? "border-dashed opacity-40 shadow-none" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
-        <Link href={`/hackathon/${hid(h.id)}`} className="min-w-0 break-words font-bold leading-snug hover:underline">
-          {h.title}
-        </Link>
+        {h.url ? (
+          <a href={h.url} target="_blank" rel="noreferrer" className="min-w-0 break-words font-bold leading-snug hover:underline">
+            {h.title}
+          </a>
+        ) : (
+          <span className="min-w-0 break-words font-bold leading-snug">{h.title}</span>
+        )}
         <div className="flex shrink-0 items-center gap-1">
           {worst && worst !== "low" && (
             <Badge tone={SEVERITY_TONE[worst]} className="py-1" title={`${SEVERITY_LABEL[worst]} clash`}>
@@ -333,11 +337,8 @@ function TrackerCard({
       {/* Moving between columns is drag-and-drop or ← → on the grip, so there's no status dropdown here. */}
       {/* One line even in the narrow four-column board, so Deadlines is a clock and a count. */}
       <div className="flex items-center gap-1.5 border-t border-border pt-2 whitespace-nowrap">
-        <Link href={`/hackathon/${hid(h.id)}`} className="btn btn-sm btn-primary" title="Rules, Ask AI, ideas, pitch and Q&A tools">
-          Open <ArrowRight aria-hidden className="size-3.5" />
-        </Link>
         {h.url && (
-          <a href={h.url} target="_blank" rel="noreferrer" className="btn btn-sm" title={`Open ${h.title} on ${SOURCE_LABELS[h.source]}`}>
+          <a href={h.url} target="_blank" rel="noreferrer" className="btn btn-sm btn-primary" title={`Open ${h.title} on ${SOURCE_LABELS[h.source]}`}>
             Website <ExternalLink aria-hidden className="size-3.5" />
             <span className="sr-only"> (opens in a new tab)</span>
           </a>
@@ -375,6 +376,7 @@ function StageActions({
   move: (s: TrackStatus, extra?: { submissionUrl?: string | null; result?: ResultKind | null; resultNotes?: string | null }) => Promise<void>;
 }) {
   const [url, setUrl] = useState(t.submissionUrl ?? "");
+  const [wrapping, setWrapping] = useState(false);
   const h = t.hackathon;
 
   switch (t.status) {
@@ -406,8 +408,8 @@ function StageActions({
         </form>
       );
     case "submitted":
-      // Results, prizes, certificate and notes are all recorded on the Wrap-up tab; choosing a result there
-      // moves the hackathon to the Results page.
+      // The result, prizes and certificate are recorded in the wrap-up dialog; choosing a result there moves the
+      // hackathon to the Results page.
       return (
         <div className="space-y-1.5">
           {t.submissionUrl && (
@@ -415,9 +417,10 @@ function StageActions({
               {t.submissionUrl}
             </a>
           )}
-          <Link href={`/hackathon/${hid(h.id)}?tab=wrapup`} className="btn btn-primary btn-sm w-full">
+          <button type="button" className="btn btn-primary btn-sm w-full" onClick={() => setWrapping(true)}>
             Wrap up <ArrowRight aria-hidden className="size-3.5" />
-          </Link>
+          </button>
+          <WrapUpDialog id={h.id} open={wrapping} onClose={() => setWrapping(false)} />
         </div>
       );
     case "results":

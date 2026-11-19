@@ -8,8 +8,6 @@ process.env.HACKMATE_PG_MEMORY = '1';
 const db = require('../src/lib/db.ts');
 const settings = require('../src/lib/settings.ts');
 const repo = require('../src/lib/repo.ts');
-const project = require('../src/lib/project.ts');
-const { saveRetro, getRetro } = require('../src/lib/wrapup.ts');
 const request = require('../src/lib/request.ts');
 const hackathon = {
   id: 'custom:concurrency', source: 'custom', title: 'Concurrent Builders', url: '', tagline: null, image: null, mode: 'online', city: null, state: null, country: null, venue: null, lat: null, lng: null, startsAt: '2030-01-01T00:00:00.000Z', endsAt: '2030-01-02T00:00:00.000Z', regStartsAt: null, regEndsAt: null, prizeText: null, prizeUsd: null, entryFee: null, themes: [], organizer: null, teamMin: null, teamMax: null
@@ -60,22 +58,6 @@ test('parallel tracker edits preserve notes and status', async () => {
   const value = (await repo.listTracked()).find(t => t.hackathonId === hackathon.id);
   assert.equal(value.notes, 'Keep these notes');
   assert.equal(value.status, 'registered');
-});
-
-test('parallel project edits preserve both fields', async () => {
-  await project.saveProject(hackathon.id, { name: 'Before', solution: 'Before' });
-  await Promise.all([project.saveProject(hackathon.id, { name: 'After name' }), project.saveProject(hackathon.id, { solution: 'After solution' })]);
-  const value = await project.getProject(hackathon.id);
-  assert.equal(value.name, 'After name');
-  assert.equal(value.solution, 'After solution');
-});
-
-test('parallel retrospective edits preserve rating and notes', async () => {
-  await saveRetro(hackathon.id, { rating: 1, wentWell: 'Before' });
-  await Promise.all([saveRetro(hackathon.id, { rating: 5 }), saveRetro(hackathon.id, { wentWell: 'After' })]);
-  const value = await getRetro(hackathon.id);
-  assert.equal(value.rating, 5);
-  assert.equal(value.wentWell, 'After');
 });
 
 test('account data is isolated and transaction rollback preserves it', async () => {

@@ -1,13 +1,12 @@
 "use client";
 
 import { Trophy, X } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 import { useHackmate } from "./HackmateProvider";
 import { SOFT } from "./ui/tone";
 import { useConfirm } from "./ui/Confirm";
 import { useToast } from "./ui/Toast";
-import { call, hid } from "@/lib/client";
+import { call } from "@/lib/client";
 import { fmtDate, formatMoney } from "@/lib/format";
 import type { Prize, PrizeStatus } from "@/lib/types";
 import { PRIZE_STATUS_LABELS } from "@/lib/types";
@@ -81,7 +80,7 @@ export function PrizeList({
                     {p.kind !== "cash" && <span className="ml-2 text-xs text-muted">({p.kind})</span>}
                   </div>
                   {!hackathonId && (
-                    <Link href={`/hackathon/${hid(p.hackathonId)}`} className="text-xs text-muted hover:underline">{p.hackathonTitle}</Link>
+                    <span className="text-xs text-muted">{p.hackathonTitle}</span>
                   )}
                   <div className="text-xs text-muted">
                     {p.status === "paid" && p.paidAt ? `Paid ${fmtDate(p.paidAt)}` : p.expectedBy ? `Expected by ${fmtDate(p.expectedBy)}` : ""}

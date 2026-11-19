@@ -8,10 +8,11 @@ import { useEffect, useMemo, useState } from "react";
 import { AddHackathonDialog } from "@/components/AddHackathonDialog";
 import { useHackmate } from "@/components/HackmateProvider";
 import { useConfirm } from "@/components/ui/Confirm";
+import { WrapUpDialog } from "@/components/WrapUpDialog";
 import { Badge, Banner, EmptyState, Skeleton } from "@/components/ui/Feedback";
 import { ChipToggle } from "@/components/ui/Form";
 import type { Tone } from "@/components/ui/tone";
-import { call, hid } from "@/lib/client";
+import { call } from "@/lib/client";
 import { fmtDate, fmtRange } from "@/lib/format";
 import type { Certificate, Prize, ResultKind, TrackedWithHackathon } from "@/lib/types";
 import { RESULT_LABELS } from "@/lib/types";
@@ -72,7 +73,10 @@ export function ResultsView() {
   const [addOpen, setAddOpen] = useState(false);
   const [addManual, setAddManual] = useState(false);
 
-  useEffect(() => {
+  // The hackathon whose wrap-up dialog is open.
+  const [wrapId, setWrapId] = useState<string | null>(null);
+
+  const load = () =>
     Promise.all([call<{ prizes: Prize[] }>("/api/prizes"), call<{ certificates: Certificate[] }>("/api/certificates")]).then(
       ([p, c]) => {
         setPrizes(p.prizes);
@@ -80,6 +84,8 @@ export function ResultsView() {
       },
       (e: Error) => setError(e.message),
     );
+  useEffect(() => {
+    void load();
   }, []);
 
   const { wrapping, archive } = useMemo(() => {
@@ -147,9 +153,13 @@ export function ResultsView() {
             {wrapping.map(({ t, state }) => (
               <li key={t.hackathonId} className="card space-y-2 p-3 text-sm">
                 <div className="flex items-start justify-between gap-2">
-                  <Link href={`/hackathon/${hid(t.hackathonId)}`} className="min-w-0 break-words font-bold leading-snug hover:underline">
-                    {t.hackathon.title}
-                  </Link>
+                  {t.hackathon.url ? (
+                    <a href={t.hackathon.url} target="_blank" rel="noreferrer" className="min-w-0 break-words font-bold leading-snug hover:underline">
+                      {t.hackathon.title}
+                    </a>
+                  ) : (
+                    <span className="min-w-0 break-words font-bold leading-snug">{t.hackathon.title}</span>
+                  )}
                   <ResultBadge result={t.result} />
                 </div>
                 <p className="text-xs text-muted">{fmtRange(t.hackathon)}</p>
@@ -162,9 +172,9 @@ export function ResultsView() {
                   ))}
                 </ul>
                 <div className="flex flex-wrap gap-1.5">
-                  <Link href={`/hackathon/${hid(t.hackathonId)}?tab=wrapup`} className="btn btn-sm btn-primary">
+                  <button type="button" className="btn btn-sm btn-primary" onClick={() => setWrapId(t.hackathonId)}>
                     Wrap up <ArrowRight aria-hidden className="size-3.5" />
-                  </Link>
+                  </button>
                   <button type="button" className="btn btn-sm" onClick={() => remove(t)}>
                     <PinOff aria-hidden className="size-3.5" /> Remove
                   </button>
@@ -218,16 +228,18 @@ export function ResultsView() {
                     const cert = certs!.some((c) => c.hackathonId === t.hackathonId && c.status === "received");
                     return (
                       <li key={t.hackathonId} className="group flex items-center">
-                        <Link
-                          href={`/hackathon/${hid(t.hackathonId)}?tab=wrapup`}
-                          className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm hover:bg-surface-2"
+                        <button
+                          type="button"
+                          onClick={() => setWrapId(t.hackathonId)}
+                          title="Wrap up: result, prizes and certificate"
+                          className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-left text-sm hover:bg-surface-2"
                         >
                           <span className="min-w-0 flex-1 truncate font-semibold">{t.hackathon.title}</span>
                           <span className="text-xs text-muted tabular-nums">{fmtDate(new Date(endOf(t)).toISOString())}</span>
                           <ResultBadge result={t.result} />
                           {paid && <span className="text-xs font-semibold text-ok">{paid}</span>}
                           {cert && <span title="Certificate received"><Award aria-hidden className="size-4 text-accent" /><span className="sr-only">Certificate received</span></span>}
-                        </Link>
+                        </button>
                         <button
                           type="button"
                           className="mr-2 grid size-7 shrink-0 place-items-center rounded-md text-muted opacity-0 hover:bg-danger-soft hover:text-danger group-hover:opacity-100 focus-visible:opacity-100"
@@ -244,6 +256,18 @@ export function ResultsView() {
             );
           })}
         </section>
+      )}
+
+      {wrapId && (
+        <WrapUpDialog
+          id={wrapId}
+          open
+          onClose={() => {
+            setWrapId(null);
+            // Prizes or a certificate may have been added: refresh what decides "wrapping up" vs archive.
+            void load();
+          }}
+        />
       )}
     </div>
   );

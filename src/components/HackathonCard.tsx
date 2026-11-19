@@ -1,10 +1,7 @@
 "use client";
 
-import { ArrowRight, Ban, Check, ExternalLink, Globe, MapPin, Pin, Sparkles, TriangleAlert, Trophy } from "lucide-react";
+import { Ban, Check, ExternalLink, Globe, MapPin, Pin, Sparkles, TriangleAlert, Trophy } from "lucide-react";
 import type { AiPolicyKind } from "@/lib/aiPolicy";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { hid } from "@/lib/client";
 import { fmtRange, place } from "@/lib/format";
 import { useHackmate } from "./HackmateProvider";
 import { Countdown } from "./ui/Countdown";
@@ -71,18 +68,15 @@ export function HackathonCard({
   onHover?: (id: string | null) => void;
 }) {
   const { now } = useHackmate();
-  const router = useRouter();
   const regOpen = h.regEndsAt && new Date(h.regEndsAt).getTime() > now;
   return (
     <article
       id={`h-${h.id}`}
-      // The whole tile opens the hackathon; the title link is the keyboard way in, and the buttons stop the click.
-      onClick={() => router.push(`/hackathon/${hid(h.id)}`)}
       onMouseEnter={onHover && (() => onHover(h.id))}
       onMouseLeave={onHover && (() => onHover(null))}
       onFocus={onHover && (() => onHover(h.id))}
       onBlur={onHover && ((e) => !e.currentTarget.contains(e.relatedTarget as Node) && onHover(null))}
-      className={`card flex gap-3 p-3 ${selected ? "bg-accent-soft" : highlighted ? "bg-warn-soft" : ""} card-lift cursor-pointer`}
+      className={`card flex gap-3 p-3 ${selected ? "bg-accent-soft" : highlighted ? "bg-warn-soft" : ""}`}
     >
       <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border-(length:--line) border-border bg-surface-2">
         {h.image && (
@@ -93,14 +87,18 @@ export function HackathonCard({
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <h3 className="line-clamp-2 min-w-0 break-words font-bold leading-snug" title={h.title}>
-            <Link href={`/hackathon/${hid(h.id)}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
-              {h.title}
-            </Link>
+            {/* The title opens the hackathon's own page; hackathons added by hand may have none. */}
+            {h.url ? (
+              <a href={h.url} target="_blank" rel="noreferrer" className="hover:underline">
+                {h.title}
+              </a>
+            ) : (
+              h.title
+            )}
           </h3>
           <div className="flex shrink-0 flex-col items-stretch gap-1.5">
             <button
-              onClick={(e) => {
-                e.stopPropagation();
+              onClick={() => {
                 if (tracked) onUntrack();
                 else onTrack();
               }}
@@ -109,24 +107,14 @@ export function HackathonCard({
             >
               {tracked ? <><Check aria-hidden className="size-3.5" /> Tracking</> : <><Pin aria-hidden className="size-3.5" /> Pin</>}
             </button>
-            <Link
-              href={`/hackathon/${hid(h.id)}`}
-              className="btn btn-sm btn-primary"
-              title="Rules, Ask AI, ideas, pitch and Q&A tools"
-              onClick={(e) => e.stopPropagation()}
-            >
-              Open <ArrowRight aria-hidden className="size-3.5" />
-              <span className="sr-only"> {h.title} in HackMate</span>
-            </Link>
             {/* Hackathons added by hand may have no website. */}
             {h.url && (
               <a
                 href={h.url}
                 target="_blank"
                 rel="noreferrer"
-                className="btn btn-sm"
+                className="btn btn-sm btn-primary"
                 title={`Open ${h.title} on ${SOURCE_LABELS[h.source]}`}
-                onClick={(e) => e.stopPropagation()}
               >
                 Website <ExternalLink aria-hidden className="size-3.5" />
                 <span className="sr-only"> (opens in a new tab)</span>
@@ -144,7 +132,7 @@ export function HackathonCard({
           {h.sourceListings && h.sourceListings.length > 1 && (
             <span className="inline-flex flex-wrap gap-x-2" aria-label="Other listings of this event">
               {h.sourceListings.filter((other) => other.id !== h.id).map((other) => (
-                <a key={other.id} href={other.url} target="_blank" rel="noreferrer" className="text-accent hover:underline" onClick={(e) => e.stopPropagation()}>
+                <a key={other.id} href={other.url} target="_blank" rel="noreferrer" className="text-accent hover:underline">
                   Also on {SOURCE_LABELS[other.source]} ↗
                 </a>
               ))}

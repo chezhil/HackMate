@@ -1,9 +1,8 @@
 "use client";
 
 import { ScrollText, X } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
-import { hid } from "@/lib/client";
+
 import { fmtDate } from "@/lib/format";
 import type { Certificate } from "@/lib/types";
 import { useConfirm } from "./ui/Confirm";
@@ -72,7 +71,7 @@ export function CertificateList({ data, onChange, hackathonId }: { data: CertDat
             {missing.map((m) => (
               <li key={m.hackathonId} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed border-warn/50 px-3 py-2 text-sm">
                 <span>
-                  {!hackathonId && <Link href={`/hackathon/${hid(m.hackathonId)}`} className="font-medium hover:underline">{m.title}</Link>}
+                  {!hackathonId && <span className="font-medium">{m.title}</span>}
                   <span className="text-muted">{hackathonId ? "No certificate yet" : ` · ended ${fmtDate(m.endedAt)}`}</span>
                 </span>
                 <span className="flex gap-1.5">

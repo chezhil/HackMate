@@ -1,15 +1,9 @@
 import "server-only";
-import { generateJson } from "./ai";
 import { all, get, getSetting, run, setSetting, withAccountLock } from "./db";
-import { factsBlock } from "./details";
 import { deleteFile } from "./files";
-import { listQa } from "./pitch";
-import { listIdeas } from "./planning";
-import { getProject, projectBlock } from "./project";
-import { getHackathon, listTracked } from "./repo";
+import { listTracked } from "./repo";
 import { toUsd } from "./sources/util";
-import { listStandups } from "./standups";
-import type { Certificate, Prize, PrizeStatus, Profile, Project, Retro, Stats, TrackedWithHackathon } from "./types";
+import type { Certificate, Prize, PrizeStatus, Profile, Stats, TrackedWithHackathon } from "./types";
 
 type Row = Record<string, string | number | null>;
 
@@ -133,59 +127,6 @@ export async function certificateHackathon(id: number) {
   return ((await get("SELECT hackathon_id FROM certificates WHERE id = ?", id)) as { hackathon_id: string } | undefined)?.hackathon_id ?? null;
 }
 
-// ---------- retro notes ----------
-
-export async function getRetro(hackathonId: string): Promise<Retro> {
-  const r = (await get("SELECT * FROM retros WHERE hackathon_id = ?", hackathonId)) as Row | undefined;
-  return {
-    hackathonId,
-    rating: (r?.rating as number) ?? null,
-    wentWell: (r?.went_well as string) ?? "",
-    improve: (r?.improve as string) ?? "",
-    lessons: (r?.lessons as string) ?? "",
-    updatedAt: (r?.updated_at as string) ?? null,
-  };
-}
-
-export async function saveRetro(hackathonId: string, patch: Partial<Retro>): Promise<Retro> {
-  return withAccountLock(`wrapup:saveRetro:${hackathonId}`, async () => {
-    const next = { ...await getRetro(hackathonId), ...patch };
-    (await run(`INSERT INTO retros (hackathon_id, rating, went_well, improve, lessons, updated_at) VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(user_id, hackathon_id) DO UPDATE SET rating = excluded.rating, went_well = excluded.went_well,
-           improve = excluded.improve, lessons = excluded.lessons, updated_at = excluded.updated_at`, hackathonId, next.rating, next.wentWell, next.improve, next.lessons, new Date().toISOString()));
-    return getRetro(hackathonId);
-  });
-}
-
-/** Draft retro notes from what HackMate saw: standups, idea critiques, mock Q&A scores, result, prizes. */
-export async function draftRetro(hackathonId: string): Promise<Pick<Retro, "wentWell" | "improve" | "lessons">> {
-  const h = await getHackathon(hackathonId);
-  if (!h) throw new Error("Unknown hackathon");
-  const standups = (await listStandups(hackathonId)).filter((s) => s.summary).reverse();
-  const ideas = await listIdeas(hackathonId);
-  const qa = (await listQa(hackathonId)).filter((t) => t.grade);
-  const prizes = await listPrizes(hackathonId);
-  const activity = [
-    standups.length > 0 &&
-      `Standups (oldest first):\n${standups.map((s) => `- ${s.createdAt.slice(0, 16)}: done ${s.summary!.done.join("; ") || "—"} | next ${s.summary!.next.join("; ") || "—"} | blockers ${s.summary!.blockers.join("; ") || "—"}`).join("\n")}`,
-    ideas.length > 0 &&
-      `Idea iterations:\n${ideas.map((i) => `- ${i.title}: scores ${i.versions.filter((v) => v.critique).map((v) => v.critique!.score).join(" → ") || "unscored"}; last weak points: ${i.versions.at(-1)?.critique?.negatives.slice(0, 3).join("; ") ?? "—"}`).join("\n")}`,
-    qa.length > 0 && `Mock Q&A: average ${(qa.reduce((n, t) => n + t.grade!.score, 0) / qa.length).toFixed(1)}/10; weakest: ${qa.sort((a, b) => a.grade!.score - b.grade!.score).slice(0, 2).map((t) => t.question).join(" | ")}`,
-    prizes.length > 0 && `Prizes: ${prizes.map((p) => `${p.title}${p.amount ? ` (${p.amount} ${p.currency})` : ""}`).join(", ")}`,
-  ]
-    .filter(Boolean)
-    .join("\n\n");
-
-  const res = await generateJson<{ wentWell: string; improve: string; lessons: string }>({
-    task: "retro",
-    temperature: 0.5,
-    system:
-      'Draft a short, honest hackathon retrospective in the first person from the activity log. Reply with JSON { "wentWell": string, "improve": string, "lessons": string }, each 2-5 bullet lines starting with "- ". Base it only on the log: never claim user feedback, metrics, or events it does not mention. Where there is too little data, write a prompt for the user to fill in, e.g. "- [How did the demo go?]".',
-    messages: [{ role: "user", content: `${factsBlock(h)}\n\n${await projectBlock(hackathonId)}\n\n${activity || "(no activity logged)"}` }],
-  });
-  return res.data;
-}
-
 // ---------- profile & portfolio ----------
 
 const EMPTY_PROFILE: Profile = { name: "", headline: "", bio: "", location: "", github: "", linkedin: "", website: "" };
@@ -204,10 +145,8 @@ export async function saveProfile(p: Partial<Profile>): Promise<Profile> {
 
 export interface PortfolioEntry {
   tracked: TrackedWithHackathon;
-  project: Project;
   prizes: Prize[];
   certificates: Certificate[];
-  retro: Retro;
 }
 
 export async function portfolio(): Promise<PortfolioEntry[]> {
@@ -216,15 +155,11 @@ export async function portfolio(): Promise<PortfolioEntry[]> {
   const done = (await listTracked())
     .filter((t) => isDone(t))
     .sort((a, b) => (b.hackathon.endsAt ?? "").localeCompare(a.hackathon.endsAt ?? ""));
-  return Promise.all(
-    done.map(async (t) => ({
-      tracked: t,
-      project: await getProject(t.hackathonId),
-      prizes: prizes.filter((p) => p.hackathonId === t.hackathonId),
-      certificates: certs.filter((c) => c.hackathonId === t.hackathonId),
-      retro: await getRetro(t.hackathonId),
-    })),
-  );
+  return done.map((t) => ({
+    tracked: t,
+    prizes: prizes.filter((p) => p.hackathonId === t.hackathonId),
+    certificates: certs.filter((c) => c.hackathonId === t.hackathonId),
+  }));
 }
 
 // ---------- stats ----------
@@ -262,10 +197,6 @@ export async function stats(): Promise<Stats> {
     for (const th of t.hackathon.themes) themes[th] = (themes[th] ?? 0) + 1;
   }
 
-  const ideaScores = (await all("SELECT critique FROM idea_versions WHERE critique IS NOT NULL")) as { critique: string }[];
-  const qaScores = (await all("SELECT grade FROM qa_turns WHERE grade IS NOT NULL")) as { grade: string }[];
-  const avg = (xs: number[]) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null);
-
   return {
     tracked: tracked.length,
     done: done.length,
@@ -284,8 +215,6 @@ export async function stats(): Promise<Stats> {
     byMonth: months,
     byMode,
     topThemes: Object.entries(themes).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([theme, count]) => ({ theme, count })),
-    avgIdeaScore: avg(ideaScores.map((r) => JSON.parse(r.critique).score)),
-    avgQaScore: avg(qaScores.map((r) => JSON.parse(r.grade).score)),
     results,
   };
 }

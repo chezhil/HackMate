@@ -52,6 +52,6 @@ test('no API route crashes or answers 500 on bad input', async () => {
     }
   }
   await require(root + '/src/lib/db.ts').closeDb();
-  assert.ok(calls > 1000, `only ${calls} calls`);
+  assert.ok(calls > 500, `only ${calls} calls`);
   assert.deepEqual(bad.slice(0, 10), [], `${bad.length} of ${calls} calls failed`);
 });

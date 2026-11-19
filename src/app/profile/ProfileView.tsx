@@ -7,19 +7,17 @@ import { Avatar } from "@/components/Avatar";
 import { CertificateList, type CertData } from "@/components/CertificateList";
 import { setAccount } from "@/components/useAccount";
 import { PrizeList } from "@/components/PrizeList";
-import { Badge, Banner, CountPill, Stars } from "@/components/ui/Feedback";
+import { Badge, Banner, CountPill } from "@/components/ui/Feedback";
 import { Tabs } from "@/components/ui/Tabs";
-import { call, hid } from "@/lib/client";
-import { fmtDate, fmtRange, formatMoney } from "@/lib/format";
-import type { Account, Certificate, MemberProfile, Prize, Profile, Project, Retro, Stats, TrackedWithHackathon } from "@/lib/types";
+import { call } from "@/lib/client";
+import { fmtRange, formatMoney } from "@/lib/format";
+import type { Account, Certificate, MemberProfile, Prize, Profile, Stats, TrackedWithHackathon } from "@/lib/types";
 import { RESULT_LABELS, SOURCE_LABELS } from "@/lib/types";
 
 interface PortfolioEntry {
   tracked: TrackedWithHackathon;
-  project: Project;
   prizes: Prize[];
   certificates: Certificate[];
-  retro: Retro;
 }
 
 interface ProfileData {
@@ -38,7 +36,6 @@ const TABS = [
   { key: "portfolio", label: "Portfolio" },
   { key: "certificates", label: "Certificates" },
   { key: "prizes", label: "Prizes" },
-  { key: "notes", label: "Notes" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
 
@@ -94,7 +91,6 @@ export function ProfileView() {
         </section>
       )}
       {tab === "prizes" && <PrizesTab data={data} onChange={() => void load()} />}
-      {tab === "notes" && <NotesTab entries={data.portfolio} />}
     </div>
   );
 }
@@ -334,17 +330,8 @@ function StatsTab({ stats }: { stats: Stats }) {
         <RankList title="Results" rows={resultRows} />
         <RankList title="Top themes" rows={stats.topThemes.map((t) => ({ label: t.theme, count: t.count }))} />
         <section className="card space-y-3 p-4 text-sm">
-          <h2 className="text-sm font-bold uppercase tracking-wide">Practice</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wide">Formats</h2>
           <div>
-            <div className="text-xs text-muted">Average idea critique score</div>
-            <div className="text-xl font-semibold">{stats.avgIdeaScore ?? "—"}<span className="text-sm text-muted">/10</span></div>
-          </div>
-          <div>
-            <div className="text-xs text-muted">Average mock Q&A score</div>
-            <div className="text-xl font-semibold">{stats.avgQaScore ?? "—"}<span className="text-sm text-muted">/10</span></div>
-          </div>
-          <div>
-            <div className="text-xs text-muted">Formats</div>
             <div>{Object.entries(stats.byMode).map(([m, n]) => `${n} ${m}`).join(" · ") || "—"}</div>
           </div>
         </section>
@@ -357,22 +344,18 @@ function StatsTab({ stats }: { stats: Stats }) {
 // ---------- portfolio ----------
 
 function PortfolioTab({ entries }: { entries: PortfolioEntry[] }) {
-  if (entries.length === 0) return <p className="card p-8 text-center text-sm text-muted">Finished hackathons show up here with your project, result and prizes.</p>;
+  if (entries.length === 0) return <p className="card p-8 text-center text-sm text-muted">Finished hackathons show up here with your result and prizes.</p>;
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      {entries.map(({ tracked: t, project: p, prizes, certificates }) => {
-        const links = [
-          p.repoUrl && { label: "Code", href: p.repoUrl },
-          p.demoUrl && { label: "Live demo", href: p.demoUrl },
-          p.videoUrl && { label: "Video", href: p.videoUrl },
-          t.submissionUrl && !p.repoUrl && !p.demoUrl && { label: "Submission", href: t.submissionUrl },
-        ].filter(Boolean) as { label: string; href: string }[];
+      {entries.map(({ tracked: t, prizes, certificates }) => {
+        const links = t.submissionUrl ? [{ label: "Submission", href: t.submissionUrl }] : [];
         return (
           <article key={t.hackathonId} className="card space-y-2 p-4 break-inside-avoid">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <h3 className="font-semibold">{p.name || t.hackathon.title}</h3>
-                {p.tagline && <p className="text-sm text-muted">{p.tagline}</p>}
+                <h3 className="font-semibold">
+                  {t.hackathon.url ? <a href={t.hackathon.url} target="_blank" rel="noreferrer" className="hover:underline">{t.hackathon.title}</a> : t.hackathon.title}
+                </h3>
               </div>
               {t.result && (
                 <Badge tone={t.result === "won" || t.result === "runner_up" ? "ok" : "neutral"} className="shrink-0">
@@ -382,10 +365,8 @@ function PortfolioTab({ entries }: { entries: PortfolioEntry[] }) {
               )}
             </div>
             <p className="text-xs text-muted">
-              <Link href={`/hackathon/${hid(t.hackathonId)}`} className="hover:underline">{t.hackathon.title}</Link> · {fmtRange(t.hackathon)} · {SOURCE_LABELS[t.hackathon.source]}
+              {fmtRange(t.hackathon)} · {SOURCE_LABELS[t.hackathon.source]}
             </p>
-            {p.solution && <p className="line-clamp-3 text-sm">{p.solution}</p>}
-            {p.stack && <p className="text-xs text-muted">Built with {p.stack}</p>}
             {prizes.length > 0 && (
               <p className="flex items-start gap-1.5 text-sm text-ok"><Trophy aria-hidden className="mt-0.5 size-4 shrink-0" /> {prizes.map((x) => `${x.title}${x.amount ? ` (${formatMoney(x.amount, x.currency)})` : ""}`).join(", ")}</p>
             )}
@@ -416,46 +397,11 @@ function PrizesTab({ data, onChange }: { data: ProfileData; onChange: () => void
       </div>
       <section className="card p-4">
         {options.length === 0 && data.prizes.length === 0 ? (
-          <p className="text-sm text-muted">Finish a hackathon first, then record what you won here or on its Wrap-up tab.</p>
+          <p className="text-sm text-muted">Finish a hackathon first, then record what you won here or with Wrap up on the Tracker.</p>
         ) : (
           <PrizeList prizes={data.prizes} onChange={onChange} hackathonOptions={options} />
         )}
       </section>
-    </div>
-  );
-}
-
-// ---------- notes ----------
-
-function NotesTab({ entries }: { entries: PortfolioEntry[] }) {
-  const withNotes = entries.filter((e) => e.retro.updatedAt);
-  const without = entries.filter((e) => !e.retro.updatedAt);
-  return (
-    <div className="space-y-3">
-      {withNotes.length === 0 && <p className="card p-6 text-center text-sm text-muted">No retro notes yet. Write them on a hackathon&apos;s Wrap-up tab.</p>}
-      {withNotes.map(({ tracked: t, retro: r }) => (
-        <article key={t.hackathonId} className="card space-y-2 p-4 text-sm">
-          <div className="flex items-center justify-between gap-2">
-            <Link href={`/hackathon/${hid(t.hackathonId)}`} className="font-semibold hover:underline">{t.hackathon.title}</Link>
-            <span className="flex items-center gap-1 text-xs text-muted">{r.rating ? <Stars value={r.rating} /> : null} {r.updatedAt && `· ${fmtDate(r.updatedAt)}`}</span>
-          </div>
-          <div className="grid gap-3 md:grid-cols-3">
-            {([["Went well", r.wentWell, "text-ok"], ["Do better", r.improve, "text-warn"], ["Lessons", r.lessons, "text-accent"]] as const).map(([label, text, tone]) => (
-              <div key={label}>
-                <h4 className={`label ${tone}`}>{label}</h4>
-                <p className="whitespace-pre-wrap">{text || <span className="text-muted">—</span>}</p>
-              </div>
-            ))}
-          </div>
-        </article>
-      ))}
-      {without.length > 0 && (
-        <p className="text-xs text-muted">
-          No notes yet for: {without.map((e, i) => (
-            <span key={e.tracked.hackathonId}>{i > 0 && ", "}<Link href={`/hackathon/${hid(e.tracked.hackathonId)}`} className="text-accent hover:underline">{e.tracked.hackathon.title}</Link></span>
-          ))}
-        </p>
-      )}
     </div>
   );
 }

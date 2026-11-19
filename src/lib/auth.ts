@@ -226,7 +226,7 @@ async function guarded<A extends unknown[], R>(handler: (...args: A) => Promise<
 }
 
 /**
- * What someone's done, read from their own data: finished hackathons (with the project's name and links) and
+ * What someone's done, read from their own data: finished hackathons and
  * the certificates they've received.
  */
 export async function memberActivity(username: string): Promise<{ hackathons: MemberHackathon[]; certificates: MemberCertificate[] } | null> {
@@ -234,7 +234,7 @@ export async function memberActivity(username: string): Promise<{ hackathons: Me
   if (!row) return null;
   return runAs(row.id, async () => {
     const link = (u: string) => (/^https?:\/\//i.test(u) ? u : "");
-    const hackathons = (await portfolio()).map(({ tracked: t, project: p }): MemberHackathon => ({
+    const hackathons = (await portfolio()).map(({ tracked: t }): MemberHackathon => ({
       id: t.hackathonId,
       title: t.hackathon.title,
       url: t.hackathon.url,
@@ -243,7 +243,6 @@ export async function memberActivity(username: string): Promise<{ hackathons: Me
       startsAt: t.hackathon.startsAt,
       endsAt: t.hackathon.endsAt,
       result: t.result,
-      project: p.name.trim() ? { name: p.name, tagline: p.tagline, repoUrl: link(p.repoUrl), demoUrl: link(p.demoUrl) } : null,
     }));
     const certificates = (await listCertificates())
       .filter((c) => c.status === "received")
