@@ -42,9 +42,6 @@ test('null deadline dates are rejected instead of saved as epoch', async () => {
   assert.equal(res.status,400);
 });
 test('free filter excludes events with unknown fees', async () => assert.equal(matches({...event,entryFee:null},{...DEFAULTS,freeOnly:true},0),false));
-test('registration filter excludes events before registration opens', async () => assert.equal(matches(event,{...DEFAULTS,when:'reg'},new Date('2029-11-01').getTime()),false));
-test('upcoming filter excludes finished events', async () => assert.equal(matches(event,{...DEFAULTS,when:'7'},new Date('2030-01-05').getTime()),false));
-test('upcoming filter excludes events with no dates', async () => assert.equal(matches({...event,startsAt:null,endsAt:null},{...DEFAULTS,when:'7'},new Date('2030-01-01').getTime()),false));
 test('URL source filters ignore prototype property names', async () => assert.deepEqual(parseFilters(new URLSearchParams('src=toString,constructor,unstop')).sources,['unstop']));
 test('calendar alerts fire relative to the deadline', async () => {
   const d={id:1,hackathonId:event.id,kind:'submission',label:'Submit',dueAt:event.endsAt,auto:false,done:false};

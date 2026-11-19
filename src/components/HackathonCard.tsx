@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, Check, ExternalLink, Globe, MapPin, Pin, Sparkles, TriangleAlert, Trophy } from "lucide-react";
+import { Ban, Check, ExternalLink, Globe, MapPin, Pin, Sparkles, TriangleAlert, Trophy, Users } from "lucide-react";
 import type { AiPolicyKind } from "@/lib/aiPolicy";
 import { fmtRange, place } from "@/lib/format";
 import { useHackmate } from "./HackmateProvider";
@@ -22,6 +22,15 @@ const AI_BADGE: Record<AiPolicyKind, { label: string; tone: Tone; Icon: typeof G
   conditional: { label: "AI with conditions", tone: "warn", Icon: Sparkles },
   banned: { label: "No AI", tone: "danger", Icon: Ban },
 };
+
+/** "Solo", "Team of 4", "Team 2–4", "Up to 4", "Team 2+"; null when the listing doesn't say. */
+function teamSize({ teamMin: min, teamMax: max }: Hackathon): string | null {
+  if (max === 1) return "Solo";
+  if (min && max) return min === max ? `Team of ${min}` : `Team ${min}–${max}`;
+  if (max) return `Up to ${max}`;
+  if (min) return min === 1 ? "Solo or team" : `Team ${min}+`;
+  return null;
+}
 
 /** The hackathon's stated rule on AI tools; hover shows the sentence it came from. Hidden when the rules don't say. */
 function AiPolicyBadge({ policy }: { policy: Hackathon["aiPolicy"] }) {
@@ -143,6 +152,7 @@ export function HackathonCard({
         <div className="mt-2 flex flex-wrap gap-1.5">
           {h.prizeText && <span className="chip border-ok/30 text-ok"><Trophy aria-hidden className="size-3" /> {h.prizeText}</span>}
           {h.entryFee === "paid" && <span className="chip border-warn/30 text-warn">Paid entry</span>}
+          {teamSize(h) && <span className="chip"><Users aria-hidden className="size-3" /> {teamSize(h)}</span>}
           {regOpen && (
             <Countdown to={h.regEndsAt!} label="Reg closes" />
           )}

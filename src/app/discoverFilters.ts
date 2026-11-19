@@ -11,21 +11,22 @@ export interface Filters {
   themes: string[];
   minPrize: number;
   freeOnly: boolean;
-  when: When;
+  /** A date range as YYYY-MM-DD. Only `to` set: from today until then. */
+  from: string;
+  to: string;
   length: Length;
   hideClashing: boolean;
   sort: Sort;
   view: View;
 }
 
-export type When = "any" | "7" | "30" | "reg";
 export type Length = "any" | "short" | "week" | "long";
-export type Sort = "soonest" | "prize" | "regClosing";
+export type Sort = "soonest" | "prize" | "regClosing" | "teamSmall" | "teamLarge";
 export type View = "split" | "list" | "map";
 
 export const DEFAULTS: Filters = {
   q: "", sources: [], mode: "all", city: "", themes: [], minPrize: 0, freeOnly: false,
-  when: "any", length: "any", hideClashing: false, sort: "soonest", view: "split",
+  from: "", to: "", length: "any", hideClashing: false, sort: "soonest", view: "split",
 };
 
 export const PRIZE_OPTIONS = [
@@ -34,13 +35,6 @@ export const PRIZE_OPTIONS = [
   { value: 1000, label: "$1k+" },
   { value: 5000, label: "$5k+" },
   { value: 10000, label: "$10k+" },
-];
-
-export const WHEN_OPTIONS: { value: When; label: string }[] = [
-  { value: "any", label: "Any time" },
-  { value: "7", label: "Next 7 days" },
-  { value: "30", label: "Next 30 days" },
-  { value: "reg", label: "Registration open" },
 ];
 
 export const LENGTH_OPTIONS: { value: Length; label: string }[] = [
@@ -60,6 +54,7 @@ export const MODE_OPTIONS: { value: Mode | "all"; label: string }[] = [
 const pick = <T extends string>(v: string | null, allowed: readonly T[], fallback: T): T =>
   allowed.includes(v as T) ? (v as T) : fallback;
 const list = (v: string | null) => (v ? v.split(",").filter(Boolean) : []);
+const day = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(new Date(`${v}T00:00:00`).getTime()) ? v : "");
 
 export function parseFilters(p: URLSearchParams): Filters {
   return {
@@ -70,10 +65,11 @@ export function parseFilters(p: URLSearchParams): Filters {
     themes: list(p.get("themes")).filter((t) => (THEMES as readonly string[]).includes(t)),
     minPrize: Number.isFinite(Number(p.get("prize"))) ? Math.max(0, Number(p.get("prize"))) : 0,
     freeOnly: p.get("free") === "1",
-    when: pick(p.get("when"), ["any", "7", "30", "reg"] as const, "any"),
+    from: day(p.get("from")),
+    to: day(p.get("to")),
     length: pick(p.get("len"), ["any", "short", "week", "long"] as const, "any"),
     hideClashing: p.get("noclash") === "1",
-    sort: pick(p.get("sort"), ["soonest", "prize", "regClosing"] as const, "soonest"),
+    sort: pick(p.get("sort"), ["soonest", "prize", "regClosing", "teamSmall", "teamLarge"] as const, "soonest"),
     view: pick(p.get("view"), ["split", "list", "map"] as const, "split"),
   };
 }
@@ -88,7 +84,8 @@ export function filtersToQuery(f: Filters): string {
   if (f.themes.length) p.set("themes", f.themes.join(","));
   if (f.minPrize) p.set("prize", String(f.minPrize));
   if (f.freeOnly) p.set("free", "1");
-  if (f.when !== "any") p.set("when", f.when);
+  if (f.from) p.set("from", f.from);
+  if (f.to) p.set("to", f.to);
   if (f.length !== "any") p.set("len", f.length);
   if (f.hideClashing) p.set("noclash", "1");
   if (f.sort !== "soonest") p.set("sort", f.sort);
@@ -104,11 +101,20 @@ function lengthOf(h: Hackathon): Length | null {
   return days <= 2 ? "short" : days <= 7 ? "week" : "long";
 }
 
-function startOf(h: Hackathon) {
-  return new Date(h.startsAt ?? h.endsAt ?? 0).getTime();
+/** The start and end of a calendar day (YYYY-MM-DD) in local time. */
+export const dayStart = (d: string) => new Date(`${d}T00:00:00`).getTime();
+export const dayEnd = (d: string) => new Date(`${d}T23:59:59.999`).getTime();
+
+/**
+ * Registration has closed: its close date has passed, or, with no close date, an in-person event has already
+ * started. Online events with no close date usually take entries until the deadline, so they stay.
+ */
+export function registrationClosed(h: Hackathon, now: number): boolean {
+  if (h.regEndsAt) return time(h.regEndsAt) < now;
+  return h.mode !== "online" && time(h.startsAt) < now;
 }
 
-export function matches(h: Hackathon, f: Filters, now: number): boolean {
+export function matches(h: Hackathon, f: Filters): boolean {
   const needle = f.q.trim().toLowerCase();
   if (needle && !`${h.title} ${h.tagline ?? ""} ${h.organizer ?? ""} ${h.city ?? ""}`.toLowerCase().includes(needle)) return false;
   if (f.sources.length && !f.sources.includes(h.source) && !h.sourceListings?.some((s) => f.sources.includes(s.source))) return false;
@@ -117,11 +123,13 @@ export function matches(h: Hackathon, f: Filters, now: number): boolean {
   if (f.themes.length && !h.themes.some((t) => f.themes.includes(t))) return false;
   if (f.minPrize && (h.prizeUsd ?? 0) < f.minPrize) return false;
   if (f.freeOnly && h.entryFee !== "free") return false;
-  if (f.when === "reg" && (!(h.regEndsAt && new Date(h.regEndsAt).getTime() > now)
-    || (h.regStartsAt && new Date(h.regStartsAt).getTime() > now))) return false;
-  if (f.when === "7" || f.when === "30") {
-    const start = startOf(h);
-    if ((!h.startsAt && !h.endsAt) || !Number.isFinite(start) || start < now || start > now + Number(f.when) * DAY) return false;
+  // A date range keeps hackathons that happen inside it: starting on or after the first day (with only an end
+  // date picked, anything from today on, including ones already running) and ending by the last day.
+  if (f.from || f.to) {
+    const start = time(h.startsAt ?? h.endsAt), end = time(h.endsAt ?? h.startsAt);
+    if (!Number.isFinite(start) || !Number.isFinite(end)) return false;
+    if (f.from && start < dayStart(f.from)) return false;
+    if (f.to && end > dayEnd(f.to)) return false;
   }
   if (f.length !== "any" && lengthOf(h) !== f.length) return false;
   return true;
@@ -154,6 +162,13 @@ export function sortHackathons(list: Hackathon[], sort: Sort, now = Date.now()) 
   };
   return list.sort((a, b) => {
     if (sort === "prize") return (b.prizeUsd ?? 0) - (a.prizeUsd ?? 0) || byNext(a, b);
+    if (sort === "teamSmall" || sort === "teamLarge") {
+      // By how many people it needs (the minimum, else the maximum); unknown team sizes go last either way.
+      const x = a.teamMin ?? a.teamMax, y = b.teamMin ?? b.teamMax;
+      if (x == null || y == null) return x == null && y == null ? byNext(a, b) : x == null ? 1 : -1;
+      const big = (h: Hackathon) => h.teamMax ?? h.teamMin ?? 0;
+      return (sort === "teamSmall" ? x - y || big(a) - big(b) : big(b) - big(a) || y - x) || byNext(a, b);
+    }
     if (sort === "regClosing") {
       // Open registrations by how soon they close; closed or unknown ones after, soonest first among them.
       const x = ahead(a.regEndsAt, now), y = ahead(b.regEndsAt, now);
@@ -176,13 +191,22 @@ export function activeFilters(f: Filters): ActiveFilter[] {
   if (f.mode !== "all") out.push({ key: "mode", label: MODE_OPTIONS.find((o) => o.value === f.mode)!.label, clear: (x) => ({ ...x, mode: "all" }) });
   if (f.city) out.push({ key: "city", label: f.city, clear: (x) => ({ ...x, city: "" }) });
   if (f.minPrize) out.push({ key: "prize", label: PRIZE_OPTIONS.find((o) => o.value === f.minPrize)?.label ?? `$${f.minPrize}+`, clear: (x) => ({ ...x, minPrize: 0 }) });
-  if (f.when !== "any") out.push({ key: "when", label: WHEN_OPTIONS.find((o) => o.value === f.when)!.label, clear: (x) => ({ ...x, when: "any" }) });
+  if (f.from || f.to) out.push({ key: "dates", label: rangeLabel(f.from, f.to), clear: (x) => ({ ...x, from: "", to: "" }) });
   if (f.length !== "any") out.push({ key: "len", label: LENGTH_OPTIONS.find((o) => o.value === f.length)!.label, clear: (x) => ({ ...x, length: "any" }) });
   for (const t of f.themes) out.push({ key: `t:${t}`, label: t, clear: (x) => ({ ...x, themes: x.themes.filter((y) => y !== t) }) });
   for (const s of f.sources) out.push({ key: `s:${s}`, label: SOURCE_LABELS[s], clear: (x) => ({ ...x, sources: x.sources.filter((y) => y !== s) }) });
   if (f.freeOnly) out.push({ key: "free", label: "Free entry", clear: (x) => ({ ...x, freeOnly: false }) });
   if (f.hideClashing) out.push({ key: "noclash", label: "No clashes", clear: (x) => ({ ...x, hideClashing: false }) });
   return out;
+}
+
+const shortDay = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+/** "Today – Dec 10" (only an end date) or "Dec 1 – Dec 10". */
+export function rangeLabel(from: string, to: string): string {
+  if (!from && !to) return "Any dates";
+  if (!from) return `Today – ${shortDay(to)}`;
+  return from === to ? shortDay(from) : `${shortDay(from)} – ${shortDay(to || from)}`;
 }
 
 /** Clears every filter but keeps how the results are shown. */

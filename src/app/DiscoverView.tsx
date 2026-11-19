@@ -8,6 +8,7 @@ import { HackathonCard } from "@/components/HackathonCard";
 import { useHackmate } from "@/components/HackmateProvider";
 import type { MapBounds } from "@/components/MapView";
 import { AddHackathonDialog } from "@/components/AddHackathonDialog";
+import { DateRangePicker } from "@/components/DateRangePicker";
 import { PeopleDirectory } from "@/components/PeopleDirectory";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -21,7 +22,7 @@ import type { Hackathon, Source } from "@/lib/types";
 import { SOURCE_LABELS } from "@/lib/types";
 import {
   activeFilters, clearAll, filtersToQuery, isOver, LENGTH_OPTIONS, matches, MODE_OPTIONS, parseFilters, PRIZE_OPTIONS,
-  sortHackathons, WHEN_OPTIONS, type Filters, type Sort, type View,
+  registrationClosed, sortHackathons, type Filters, type Sort, type View,
 } from "./discoverFilters";
 
 const MapView = dynamic(() => import("@/components/MapView"), {
@@ -39,6 +40,8 @@ const SORTS: { value: Sort; label: string }[] = [
   { value: "soonest", label: "Soonest first" },
   { value: "regClosing", label: "Registration closing" },
   { value: "prize", label: "Biggest prize" },
+  { value: "teamSmall", label: "Team size: smallest" },
+  { value: "teamLarge", label: "Team size: largest" },
 ];
 
 const LIST_CAP = 200;
@@ -118,19 +121,23 @@ function HackathonsView() {
   }, [hackathons]);
 
   const filtered = useMemo(() => {
-    // Discover is for what's still ahead: finished ones (including ones you pinned or added as done) live in
-    // Tracker and Results.
+    // Discover is for what you can still join: finished ones (including ones you pinned or added as done) live in
+    // Tracker and Results, and ones whose registration has closed are left out unless you're tracking them.
     const done = new Set(tracked.filter((t) => t.status === "results").map((t) => t.hackathonId));
     const list = hackathons.filter((h) => {
       if (isOver(h, now) || done.has(h.id)) return false;
-      if (!matches(h, f, now)) return false;
+      if (registrationClosed(h, now) && !trackedIds.has(h.id)) return false;
+      if (!matches(h, f)) return false;
       if (f.hideClashing && !trackedIds.has(h.id) && clashesWithTracked(h, tracked).length) return false;
       return true;
     });
     return sortHackathons(list, f.sort, now);
   }, [hackathons, tracked, trackedIds, now, f]);
 
-  const upcoming = useMemo(() => hackathons.filter((h) => !isOver(h, now)).length, [hackathons, now]);
+  const upcoming = useMemo(
+    () => hackathons.filter((h) => !isOver(h, now) && (!registrationClosed(h, now) || trackedIds.has(h.id))).length,
+    [hackathons, trackedIds, now],
+  );
 
   // "Search as I move the map" narrows the list to what's in view; the map itself keeps every match.
   const mapOn = f.view !== "list";
@@ -159,7 +166,7 @@ function HackathonsView() {
         <div className="min-w-0">
           <h1 className="page-title">Discover hackathons</h1>
           <p className="text-sm text-muted" aria-live="polite">
-            {loading ? "Pulling hackathon feeds…" : `${shown.length} of ${upcoming} upcoming`}
+            {loading ? "Pulling hackathon feeds…" : `${shown.length} of ${upcoming} open to join`}
             {lastSync && ` · updated ${relative(lastSync.at)}`}
           </p>
         </div>
@@ -311,7 +318,7 @@ function FilterPanel({ f, set, cities }: { f: Filters; set: (p: Partial<Filters>
           options={[{ value: "", label: "Any city" }, ...cities.map(([c, n]) => ({ value: c, label: `${c} (${n})` }))]}
         />
         <Select label="Prize" value={String(f.minPrize)} onChange={(v) => set({ minPrize: Number(v) })} options={PRIZE_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))} />
-        <Select label="When" value={f.when} onChange={(v) => set({ when: v as Filters["when"] })} options={WHEN_OPTIONS} />
+        <DateRangePicker from={f.from} to={f.to} onChange={(from, to) => set({ from, to })} />
         <Select label="Length" value={f.length} onChange={(v) => set({ length: v as Filters["length"] })} options={LENGTH_OPTIONS} />
       </div>
       <fieldset>

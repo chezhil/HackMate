@@ -1,130 +1,44 @@
 # HackMate
 
-HackMate keeps track of everything you need for a hackathon: finding one, understanding its rules, planning,
-building and pitching, submitting, and everything afterwards.
+HackMate keeps track of the hackathons you enter: finding ones you can still join, pinning them, following their
+deadlines, and recording how they went.
 
-Built for **No Hands: The Wispr Challenge** (Builders track), by voice with Wispr Flow.
+Built for **No Hands: The Wispr Challenge** by voice with Wispr Flow, then trimmed down to what I use.
 
 **Live:** https://hackmate-pied.vercel.app
 
-![Discover: hackathons from 10 sites, with filters, AI-policy badges, countdowns and a map](docs/screenshots/discover.webp)
+![Discover: hackathons from 10 sites, with filters, team sizes, countdowns and a map](docs/screenshots/discover.webp)
 
 | | |
 | --- | --- |
-| ![A hackathon's rules, read by AI: summary, gotchas quoted from the rules, and every tool for that event](docs/screenshots/rules.webp) | ![Tracker: drag each hackathon from Registered to Building to Expecting results, with countdowns and clash warnings](docs/screenshots/tracker.webp) |
-| **Rules & overview:** what the AI read from the rules, the gotchas, and every tool for that hackathon. | **Tracker:** each entry's stage, next deadline and clashes. |
-| ![Calendar: every deadline in a month view, with clashes ranked and upcoming deadlines counting down](docs/screenshots/calendar.webp) | ![Public profile: skills and every hackathon with its result](docs/screenshots/profile.webp) |
-| **Calendar:** deadlines, clashes and countdowns, with calendar sync. | **Profile:** a public page with your hackathons and results. |
-
-## For judges
-
-- **Live app:** https://hackmate-pied.vercel.app
-- **Test login:** username `chezhil`, password `Password` (sign in with the username or the account's email). This
-  account has hackathons pinned, so the Tracker, Calendar and Results have something in them.
-  You can also create your own account in a few seconds from **Sign in → Create account**.
-- **You don't need to sign in** to browse Discover, open any hackathon's rules and overview, or look through
-  People. Everything personal (Tracker, Calendar, Results, Profile, and the AI tools that save your work) is
-  per account.
-
-### A two-minute tour
-
-1. **Discover** lists about 470 upcoming hackathons from 10 sites in one place. Try the filters, the **Map**
-   view and the **People** tab.
-2. **Open any hackathon:**
-   - **Rules & overview** shows what the AI pulled out of the rules (deliverables, judging, team size, prizes,
-     dates), plus gotchas quoted from the rules.
-   - **Ask AI** answers only from the rules, with numbered citations; click one to see the passage.
-3. **Pin it**, then open **Tracker** and drag the card through *Pinned → Registered → Building → Submitted*.
-   Deadlines come from the hackathon's own dates.
-4. **Calendar** shows every deadline, ranks clashes by how much they matter, and lets you mark them resolved.
-5. On a hackathon page:
-   - **Ideas:** suggestions based on its tracks and past winners, and critiques of your own ideas.
-   - **Pitch script** and **Mock judge Q&A:** questions from the judges, with your answers graded.
-   - **Submit:** a checklist built from that hackathon's own rules, with link, repo, video and screenshot checks.
-6. **Add from link:** paste a Hack2skill, Unstop or Devnovate event link (even one that's over) and the form
-   fills itself in. **Add manually** works for anything else.
-7. **Results** and **Profile:** wrap-up, prizes, a certificate vault, stats and a public profile.
-
-### How Wispr Flow was used
-
-HackMate's specs, feature requests, bug reports and design notes were dictated with Wispr Flow and sent to an
-AI coding agent, and so were these docs. The Wispr usage card: **110 AI prompts** (82% of everything dictated),
-**3,550 words** at **159 words a minute**, across 9 apps, on a 5-day streak.
-
-### How it's built
-
-- **App:** Next.js 16 (App Router) and React 19, deployed on Vercel.
-- **Data:** Postgres on Supabase. Every personal table has a `user_id`, and Postgres row-level security limits
-  each request to the signed-in account's rows. One account can't read or change another's data, even by
-  guessing an id, and the database enforces that, not just the app.
-- **AI:** Groq for frequent calls and Gemini for long reads and audio, each falling back to the other.
-  - A shared AI cache means the same question about the same hackathon is answered once for everyone.
-  - Each account has an hourly and daily AI allowance.
-- **Scheduled jobs:** Supabase's scheduler calls `/api/cron` every 5 minutes, for email reminders and feed
-  refreshes.
-- **Tests:** `npm test` runs 156 tests, including a fuzz test that sends broken and hostile input to all 44
-  API routes.
+| ![Tracker: each hackathon from Registered to Building to Expecting results, with countdowns and clash warnings](docs/screenshots/tracker.webp) | ![Calendar: every deadline in a month view, with clashes ranked and upcoming deadlines counting down](docs/screenshots/calendar.webp) |
+| **Tracker:** each entry's stage, next deadline and clashes. | **Calendar:** deadlines, clashes and countdowns, with calendar sync. |
 
 ## What's in it
 
-**Discover**: pulls upcoming hackathons from **Unstop**, **Devfolio**, **MLH**, **WeMakeDevs**, **Devpost**, **lablab.ai**, **HackerEarth**, **Hack2skill**, **Devsemble** and **Devnovate** into one list.
-Filter by city, online / in person / hybrid, prize pool, free entry, theme, source and date. Finished events drop
-off, and the rest are sorted by what happens next. In-person events show on a map with a near-me view. A
-hackathon that isn't listed can be added from its link (Unstop, Hack2skill and Devnovate links are read from
-those sites' own event data) or typed in by hand.
+**Discover** pulls upcoming hackathons from **Unstop**, **Devfolio**, **MLH**, **WeMakeDevs**, **Devpost**,
+**lablab.ai**, **HackerEarth**, **Hack2skill**, **Devsemble** and **Devnovate** into one list, and leaves out
+the ones you can no longer join: finished events, closed registrations, and in-person events that have already
+started.
+- **Dates:** pick a day on the calendar to see hackathons from today until then, or two days to see only the ones
+  that start and end between them.
+- **Sort** by what happens next, registration closing, biggest prize, or team size (smallest or largest first).
+  Each card shows its team size ("Solo", "Team 2–4").
+- **Filters** for format, city, prize, length, theme, source and free entry; a map with a near-me view.
+- Each card's title and **Website** button open the hackathon's own page.
+- **Add from link** reads a Hack2skill, Unstop or Devnovate event (or any page, with AI); **Add manually** for
+  anything else.
 
-**Accounts and People**: sign up to get your own tracker, ideas and results. Discover → People lists everyone
-with an account, with their skills, "looking for a team", and a public profile showing their hackathons and
-certificates.
+**Tracker:** pin a hackathon, then move it through *Pinned → Registered → Building → Submitted* by dragging.
+Registration close, start and submission dates come from the listing; you can edit them or add your own.
+**Wrap up** records the result, prizes and certificate, and moves it to Results.
 
-**Tracker**: pin a hackathon, then move it through *Pinned → Registered → Building → Submitted → Results*.
-Each stage has its own action: register link, project link on submit, result and notes at the end.
+**Calendar:** every tracked deadline in a month view. Clashes (two in-person events on the same days, deadlines
+on the same day) are ranked and can be marked resolved. Subscribe from Google, Apple or Outlook, or download an
+`.ics` file. **Email reminders** go out before each deadline (1 week / 3 days / 1 day / 3 hours / 1 hour).
 
-**Deadlines & calendar**:
-- Registration close, start and submission dates come from the feed automatically. You can edit them or add your own.
-- In-app month calendar with every tracked event and deadline (optionally every discovered hackathon too).
-- Clash detection flags hackathons on the same days, deadlines that land on the same day, and deadlines due
-  while you're at another event. Discover also warns before you pin something that clashes.
-- Calendar sync via a private iCal feed: one-click subscribe for Google, Apple and Outlook, or a one-time `.ics` download.
-- Email reminders before each deadline (1 week / 3 days / 1 day / 3 hours / 1 hour — your pick), batched into one email.
-
-**Hackathon pages**: click any hackathon to open its page:
-- **Overview**: the AI reads the full rules once and pulls out the summary, team size, deliverables
-  (deck, video length…), eligibility, IP terms, judges, judging criteria, tracks, prizes and key dates.
-  A built-in rule scanner also flags gotchas (solo-only, video/slide limits, IP terms, students-only…)
-  with the exact quote, and it works even without an AI key.
-- **Ask AI**: ask questions about that hackathon. Answers come only from its rules.
-- **Ideas**: guidelines and idea suggestions based on its tracks, criteria and past winners. Write your
-  own idea and get a score with positives, negatives, risks and fixes, then edit and re-critique as many
-  times as you like. Every version and its score are kept.
-- **Past winners**: prize-winning Devfolio projects from earlier editions and similar themes.
-- **Team**: add teammates (confirmed or invited) against the team-size limit, and write a "looking for
-  teammates" post to share on X, LinkedIn, Reddit, WhatsApp, Discord or the platform's team finder.
-- **Standups**: record voice notes; each is transcribed and split into done / next / blockers.
-- **Pitch**: fill in your project once, then:
-  - a timed pitch script (1–7 min) written to the judging criteria
-  - a demo video storyboard (time, shot, voiceover, captions) that fits the video limit
-  - a **deck roaster**: paste your script or slide text for a score, quoted weak points with fixes,
-    what's missing, and a stronger opening
-  - **mock judge Q&A**: five questions from AI judges (the real judges when they're listed); each answer
-    is scored with what you missed and a model answer
-- **Submit**: a checklist built from the rules (e.g. the usage-card screenshot and a 2-minute video),
-  with links and uploads as proof. **Check submission** tests the deadline and team size, that links
-  open, that the GitHub repo is public with a README, the uploaded video's length, whether screenshots
-  show the right thing (Gemini), and runs an AI review against the rules. Also writes LinkedIn posts,
-  X threads and dev.to blogs about your project.
-- **Wrap-up**: record the result, prizes and certificates, and write retro notes (or draft them from
-  your standups, idea critiques and mock Q&A).
-
-**Profile**: after hackathons:
-- **Stats**: hackathons done, win rate, prize money (won / paid / owed), certificates, monthly
-  activity, results, themes, average idea and Q&A scores.
-- **Portfolio**: every finished hackathon with its project, links, result, prizes and certificate.
-  "Save as PDF" prints it.
-- **Certificate vault**: stored certificates, plus pending ones; any finished hackathon without a
-  certificate shows up automatically.
-- **Prize tracker**: won → claimed → paid out, expected payout dates, and overdue flags.
-- **Notes**: all your retros in one place.
+**Results and Profile:** finished hackathons by year, prizes (won → claimed → paid), a certificate vault, stats
+(win rate, prize money, monthly activity) and a public profile. **People** lists everyone with an account.
 
 ## Running it
 
@@ -135,33 +49,25 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000. The first load pulls all ten feeds (a few seconds). After that they refresh every 6 hours,
-or on demand with **Refresh feeds**. Map coordinates are filled in from OpenStreetMap in the background.
+Open http://localhost:3000. The first load pulls all ten feeds (a few seconds). After that they refresh every 6
+hours, or on demand with **Refresh feeds**. Map coordinates are filled in from OpenStreetMap in the background.
 
-With no `DATABASE_URL`, local Postgres data lives in `data/pg` (git-ignored). Uploads are stored in the database. See `DEPLOY.md` for hosted Postgres and deployment options.
+With no `DATABASE_URL`, local data lives in `data/pg` (git-ignored). See `DEPLOY.md` for hosted Postgres and
+deployment.
 
-### AI keys
+- **AI (optional):** `GROQ_API_KEY` and/or `GEMINI_API_KEY` in `.env.local` let **Add from link** read pages
+  that aren't from a known site. Everything else works without them.
+- **Email reminders:** fill in the SMTP details from `.env.example` (a Gmail app password works). Without SMTP,
+  reminders go to the **Outbox** on the Settings page instead.
+- **Calendar sync:** Google and Outlook fetch the feed from their servers, so they need HackMate at a public URL.
 
-Add these to `.env.local` (see `.env.example`):
+## How it's built
 
-- `GROQ_API_KEY`: chat answers, idea suggestions and critiques, teammate posts. Fast, with a generous
-  free tier (about 8k tokens a minute, so requests are trimmed to fit).
-- `GEMINI_API_KEY`: reads each hackathon's full rules once (cached) and listens to voice notes.
-  Its free tier is rate-limited, so it's only used for those.
-
-If one provider is missing, overloaded or rate-limited, the other takes over (voice notes fall back to
-Groq's Whisper). Models are picked automatically from what your key can access.
-
-### Email reminders
-
-Copy `.env.example` to `.env.local` and fill in SMTP details (a Gmail app password works), then restart.
-Without SMTP, reminders are written to the **Outbox** on the Settings page instead of being sent.
-The server checks for due reminders every 5 minutes while it's running.
-
-### Calendar sync
-
-Google and Outlook fetch the feed from their servers, so they need HackMate at a public URL. Set
-`NEXT_PUBLIC_BASE_URL` once it's deployed. Locally, Apple Calendar subscriptions and the `.ics` download both work.
+- **App:** Next.js 16 (App Router) and React 19, deployed on Vercel.
+- **Data:** Postgres on Supabase, with row-level security: each request only sees the signed-in account's rows,
+  enforced by the database.
+- **Scheduled jobs:** Supabase's scheduler calls `/api/cron` every 5 minutes for reminders and feed refreshes.
+- **Tests:** `npm test`, including a fuzz test that sends broken and hostile input to every API route.
 
 ## How the feeds are read
 
@@ -204,4 +110,4 @@ The regression suite uses Node's test runner and the existing TypeScript depende
 It creates an isolated in-memory Postgres database and disables AI credentials and SMTP for the test process.
 Your saved database, uploads, and environment files are not used.
 The tests cover saving partial updates, request validation, discovery filters, calendar alerts,
-submission proof and team limits, and concurrent reminder delivery.
+the date range, closed registrations, team-size sorting, and concurrent reminder delivery.
